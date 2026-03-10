@@ -98,6 +98,26 @@ class AIProvider {
      * @param string $image_b64 Base64-encoded image (optional).
      * @return string|\WP_Error
      */
+    /**
+     * Stream a chat reply from the AI.
+     */
+    public static function stream_reply( array $messages, string $image_b64, callable $chunk_callback ) {
+        if ( ! self::has_api_key() ) {
+            return new \WP_Error( 'no_api_key', __( 'AI API key is not configured.', 'sonoai' ) );
+        }
+
+        return self::is_gemini()
+            ? self::gemini_chat_stream( $messages, $image_b64, $chunk_callback )
+            : self::openai_chat_stream( $messages, $image_b64, $chunk_callback );
+    }
+
+    /**
+     * Get a chat reply from the AI, optionally with an image.
+     *
+     * @param array  $messages Array of {role, content} objects.
+     * @param string $image_b64 Base64-encoded image (optional).
+     * @return string|\WP_Error
+     */
     public static function get_reply( array $messages, string $image_b64 = '' ) {
         if ( ! self::has_api_key() ) {
             return new \WP_Error( 'no_api_key', __( 'AI API key is not configured.', 'sonoai' ) );
@@ -279,5 +299,144 @@ class AIProvider {
         }
 
         return $data['candidates'][0]['content']['parts'][0]['text'];
+    }
+
+    // ── Streaming internals ───────────────────────────────────────────────────
+
+    private static function execute_curl_stream( string $url, array $headers, string $payload, callable $line_parser ) {
+        $ch = curl_init( $url );
+        curl_setopt( $ch, CURLOPT_RETURNTRANSFER, false );
+        curl_setopt( $ch, CURLOPT_POST, true );
+        curl_setopt( $ch, CURLOPT_HTTPHEADER, $headers );
+        curl_setopt( $ch, CURLOPT_POSTFIELDS, $payload );
+        curl_setopt( $ch, CURLOPT_TIMEOUT, 120 );
+
+        $full_text = '';
+        $buffer = '';
+
+        curl_setopt( $ch, CURLOPT_WRITEFUNCTION, function( $ch, $chunk ) use ( &$buffer, &$full_text, $line_parser ) {
+            $buffer .= $chunk;
+            while ( false !== ( $pos = strpos( $buffer, "\n" ) ) ) {
+                $line = substr( $buffer, 0, $pos + 1 );
+                $buffer = substr( $buffer, $pos + 1 );
+                $parsed = $line_parser( trim( $line ) );
+                if ( $parsed ) {
+                    $full_text .= $parsed;
+                }
+            }
+            return strlen( $chunk );
+        } );
+
+        curl_exec( $ch );
+        if ( curl_errno( $ch ) ) {
+            $err = curl_error( $ch );
+            curl_close( $ch );
+            return new \WP_Error( 'curl_error', $err );
+        }
+        $http_code = curl_getinfo( $ch, CURLINFO_HTTP_CODE );
+        curl_close( $ch );
+
+        if ( $http_code >= 400 ) {
+            return new \WP_Error( 'api_error', "HTTP Error $http_code" );
+        }
+
+        return $full_text;
+    }
+
+    private static function openai_chat_stream( array $messages, string $image_b64, callable $callback ) {
+        if ( ! empty( $image_b64 ) ) {
+            foreach ( array_reverse( array_keys( $messages ) ) as $idx ) {
+                if ( ( $messages[ $idx ]['role'] ?? '' ) === 'user' ) {
+                    $text_content = $messages[ $idx ]['content'];
+                    $messages[ $idx ]['content'] = [
+                        [ 'type' => 'text', 'text' => $text_content ],
+                        [ 'type' => 'image_url', 'image_url' => [ 'url' => 'data:image/jpeg;base64,' . $image_b64 ] ],
+                    ];
+                    break;
+                }
+            }
+        }
+
+        $url = 'https://api.openai.com/v1/chat/completions';
+        $payload = wp_json_encode( [
+            'model'    => self::get_chat_model(),
+            'messages' => $messages,
+            'stream'   => true,
+        ] );
+
+        $headers = [
+            'Authorization: Bearer ' . self::get_api_key(),
+            'Content-Type: application/json',
+        ];
+
+        return self::execute_curl_stream( $url, $headers, $payload, function($line) use ($callback) {
+            if ( str_starts_with( $line, 'data: ' ) ) {
+                $data_str = substr( $line, 6 );
+                if ( $data_str === '[DONE]' ) return '';
+                $decoded = json_decode( $data_str, true );
+                if ( isset( $decoded['choices'][0]['delta']['content'] ) ) {
+                    $text = $decoded['choices'][0]['delta']['content'];
+                    $callback( $text );
+                    return $text;
+                }
+            }
+            return '';
+        } );
+    }
+
+    private static function gemini_chat_stream( array $messages, string $image_b64, callable $callback ) {
+        $api_key  = self::get_api_key();
+        $model    = self::get_chat_model();
+        $endpoint = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:streamGenerateContent?alt=sse&key={$api_key}";
+
+        $system_parts  = [];
+        $gemini_contents = [];
+
+        foreach ( $messages as $msg ) {
+            $role    = $msg['role'] ?? 'user';
+            $content = $msg['content'] ?? '';
+
+            if ( 'system' === $role ) {
+                $system_parts[] = [ 'text' => $content ];
+                continue;
+            }
+
+            $parts = [ [ 'text' => $content ] ];
+
+            if ( 'user' === $role && ! empty( $image_b64 ) ) {
+                $parts[] = [
+                    'inline_data' => [
+                        'mime_type' => 'image/jpeg',
+                        'data'      => $image_b64,
+                    ],
+                ];
+                $image_b64 = '';
+            }
+
+            $gemini_contents[] = [
+                'role'  => 'user' === $role ? 'user' : 'model',
+                'parts' => $parts,
+            ];
+        }
+
+        $body = [ 'contents' => $gemini_contents ];
+        if ( ! empty( $system_parts ) ) {
+            $body['system_instruction'] = [ 'parts' => $system_parts ];
+        }
+
+        $headers = [ 'Content-Type: application/json' ];
+
+        return self::execute_curl_stream( $endpoint, $headers, wp_json_encode( $body ), function($line) use ($callback) {
+            if ( str_starts_with( $line, 'data: ' ) ) {
+                $data_str = substr( $line, 6 );
+                $decoded = json_decode( $data_str, true );
+                if ( isset( $decoded['candidates'][0]['content']['parts'][0]['text'] ) ) {
+                    $text = $decoded['candidates'][0]['content']['parts'][0]['text'];
+                    $callback( $text );
+                    return $text;
+                }
+            }
+            return '';
+        } );
     }
 }

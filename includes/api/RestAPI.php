@@ -138,6 +138,38 @@ class RestAPI {
         );
 
         // ── AI call ──────────────────────────────────────────────────────────
+        $stream = isset( $_POST['stream'] ) && $_POST['stream'] === '1';
+
+        if ( $stream ) {
+            if ( ob_get_level() ) {
+                @ob_end_clean();
+            }
+            header( 'Content-Type: text/event-stream' );
+            header( 'Cache-Control: no-cache' );
+            header( 'Connection: keep-alive' );
+            header( 'X-Accel-Buffering: no' );
+
+            echo "event: meta\ndata: " . wp_json_encode( [
+                'session_uuid'   => $session_uuid,
+                'is_new_session' => $is_new_session,
+                'context_images' => $context_imgs,
+            ] ) . "\n\n";
+            @ob_flush(); flush();
+
+            $reply = AIProvider::stream_reply( $ai_messages, $image_b64, function( $chunk ) {
+                echo "event: chunk\ndata: " . wp_json_encode( [ 'chunk' => $chunk ] ) . "\n\n";
+                @ob_flush(); flush();
+            } );
+
+            if ( is_wp_error( $reply ) ) {
+                echo "event: error\ndata: " . wp_json_encode( [ 'error' => $reply->get_error_message() ] ) . "\n\n";
+            } else {
+                Chat::add_message( $session_uuid, 'assistant', $reply );
+                echo "event: done\ndata: {}\n\n";
+            }
+            exit;
+        }
+
         $reply = AIProvider::get_reply( $ai_messages, $image_b64 );
 
         if ( is_wp_error( $reply ) ) {

@@ -246,39 +246,96 @@
         state.sending  = true;
         sendBtn.disabled = true;
 
-        apiFetch('chat', { method: 'POST', body: formData, isFormData: true })
-            .then(function (data) {
-                typingEl.remove();
-                state.sending = false;
-                sendBtn.disabled = textarea.value.trim().length === 0;
+        formData.append('stream', '1');
 
-                if (data.error) {
-                    showError(data.error);
-                    return;
+        fetch(sonoai_vars.rest_url + 'chat', {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-WP-Nonce': sonoai_vars.nonce }
+        }).then(async function (response) {
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(text || sonoai_vars.i18n.error);
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let buffer = '';
+            
+            let assistantWrapper = null;
+            let bubble = null;
+            let fullReply = '';
+
+            try {
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    
+                    buffer += decoder.decode(value, { stream: true });
+                    
+                    let events = buffer.split('\n\n');
+                    buffer = events.pop();
+                    
+                    for (let i = 0; i < events.length; i++) {
+                        let ev = events[i];
+                        if (!ev.trim()) continue;
+                        
+                        let lines = ev.split('\n');
+                        let eventType = 'message';
+                        let eventData = '';
+                        
+                        lines.forEach(function(l) {
+                            if (l.startsWith('event: ')) eventType = l.substring(7).trim();
+                            if (l.startsWith('data: ')) {
+                                eventData = l.substring(6).trim();
+                            }
+                        });
+                        
+                        if (eventData) {
+                            const parsed = JSON.parse(eventData);
+                            
+                            if (eventType === 'meta') {
+                                if (typingEl && typingEl.parentNode) typingEl.remove();
+                                state.sending = false;
+                                state.sessionUuid = parsed.session_uuid;
+                                
+                                if (parsed.is_new_session) {
+                                    state.sessions.unshift({
+                                        session_uuid: parsed.session_uuid,
+                                        title       : text.substring(0, 80),
+                                    });
+                                    renderHistoryList();
+                                }
+                                
+                                assistantWrapper = appendMessage('assistant', '', '', parsed.context_images || []);
+                                bubble = assistantWrapper.querySelector('.sonoai-bubble');
+                                updateHistoryActiveState();
+                            }
+                            else if (eventType === 'chunk') {
+                                fullReply += parsed.chunk;
+                                if (bubble) {
+                                    bubble.innerHTML = markdownToHtml(fullReply);
+                                    scrollToBottom();
+                                }
+                            }
+                            else if (eventType === 'error') {
+                                throw new Error(parsed.error);
+                            }
+                        }
+                    }
                 }
+            } finally {
+                reader.releaseLock();
+            }
+            
+            sendBtn.disabled = textarea.value.trim().length === 0;
 
-                state.sessionUuid = data.session_uuid;
-
-                // Add to history sidebar if new session.
-                if (data.is_new_session) {
-                    const newSession = {
-                        session_uuid: data.session_uuid,
-                        title       : text.substring(0, 80),
-                    };
-                    state.sessions.unshift(newSession);
-                    renderHistoryList();
-                }
-
-                appendMessage('assistant', data.reply || '', '', data.context_images || []);
-                updateHistoryActiveState();
-                scrollToBottom();
-            })
-            .catch(function (err) {
-                typingEl.remove();
-                state.sending    = false;
-                sendBtn.disabled = false;
-                showError(err.message || sonoai_vars.i18n.error);
-            });
+        }).catch(function (err) {
+            if (typingEl && typingEl.parentNode) typingEl.remove();
+            state.sending    = false;
+            sendBtn.disabled = textarea.value.trim().length === 0;
+            showError(err.message || sonoai_vars.i18n.error);
+        });
     }
 
     // ── Message rendering ──────────────────────────────────────────────────
@@ -315,7 +372,7 @@
         }
 
         // Text bubble.
-        if (content) {
+        if (content !== null && content !== undefined) {
             const bubble = document.createElement('div');
             bubble.className = 'sonoai-bubble';
             bubble.innerHTML = isUser

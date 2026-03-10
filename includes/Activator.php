@@ -65,6 +65,15 @@ class Activator {
         ) $charset_collate;";
         dbDelta( $sql_embeddings );
 
+        // Explicit fallback for WP dbDelta failing to alter existing tables
+        $cols = $wpdb->get_col( "DESCRIBE `$embeddings_table`", 0 );
+        if ( ! empty( $cols ) && ! in_array( 'type', $cols, true ) ) {
+            $wpdb->query( "ALTER TABLE `$embeddings_table` ADD COLUMN `type` VARCHAR(20) NOT NULL DEFAULT 'wp' AFTER `post_type`" );
+            $wpdb->query( "ALTER TABLE `$embeddings_table` ADD COLUMN `source_url` TEXT DEFAULT NULL AFTER `type`" );
+            $wpdb->query( "ALTER TABLE `$embeddings_table` ADD COLUMN `source_title` VARCHAR(255) DEFAULT NULL AFTER `source_url`" );
+            $wpdb->query( "ALTER TABLE `$embeddings_table` ADD COLUMN `image_urls` LONGTEXT DEFAULT NULL AFTER `source_title`" );
+        }
+
         // ── KB Items table ─────────────────────────────────────────────────────
         // One row per KB item (not per chunk) — drives the list-table views.
         $kb_items_table = $wpdb->prefix . 'sonoai_kb_items';
