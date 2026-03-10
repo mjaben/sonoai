@@ -23,21 +23,24 @@ class Admin {
     }
 
     private function __construct() {
-        add_action( 'admin_menu', [ $this, 'add_menu' ] );
-        add_action( 'admin_init', [ $this, 'register_settings' ] );
+        add_action( 'admin_menu',            [ $this, 'add_menu' ] );
+        add_action( 'admin_init',            [ $this, 'register_settings' ] );
         add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_admin_assets' ] );
     }
 
     public function add_menu(): void {
         add_menu_page(
-            __( 'SonoAI Settings', 'sonoai' ),
+            __( 'SonoAI', 'sonoai' ),
             __( 'SonoAI', 'sonoai' ),
             'manage_options',
             'sonoai-settings',
             [ $this, 'render_settings_page' ],
-            'dashicons-robot', // robotic icon for AI assistant
-            58  // below Comments, above Appearance
+            'dashicons-robot',
+            58
         );
+
+        // Sub-menus — add any future sub-menus below this line.
+        // API Configuration is registered by the ApiConfig class itself.
     }
 
     public function register_settings(): void {
@@ -47,32 +50,29 @@ class Admin {
     }
 
     public function sanitize_settings( array $input ): array {
-        $clean = [];
+        // Guard: only process when this page's form was submitted.
+        // Both Admin and ApiConfig register sanitize callbacks for the same option;
+        // WordPress chains them. If the _page sentinel isn't ours, pass through unchanged.
+        if ( ( $input['_page'] ?? '' ) !== 'main_settings' ) {
+            return $input;
+        }
 
-        $clean['active_provider']        = in_array( $input['active_provider'] ?? '', [ 'openai', 'gemini' ], true )
-                                           ? $input['active_provider'] : 'openai';
-        $clean['openai_api_key']         = sanitize_text_field( $input['openai_api_key'] ?? '' );
-        $clean['gemini_api_key']         = sanitize_text_field( $input['gemini_api_key'] ?? '' );
-        $clean['openai_chat_model']      = sanitize_text_field( $input['openai_chat_model'] ?? 'gpt-4o' );
-        $clean['gemini_chat_model']      = sanitize_text_field( $input['gemini_chat_model'] ?? 'gemini-1.5-pro' );
-        $clean['openai_embedding_model'] = sanitize_text_field( $input['openai_embedding_model'] ?? 'text-embedding-3-small' );
-        $clean['gemini_embedding_model'] = sanitize_text_field( $input['gemini_embedding_model'] ?? 'text-embedding-004' );
-        $clean['system_prompt']          = sanitize_textarea_field( $input['system_prompt'] ?? '' );
-        $clean['history_limit']          = max( 1, min( 500, absint( $input['history_limit'] ?? 50 ) ) );
-        $clean['rag_results']            = max( 1, min( 20, absint( $input['rag_results'] ?? 5 ) ) );
-        $clean['rag_use_docs']           = ! empty( $input['rag_use_docs'] ) ? '1' : '0';
-        $clean['rag_use_topics']         = ! empty( $input['rag_use_topics'] ) ? '1' : '0';
-        $clean['delete_on_uninstall']    = ! empty( $input['delete_on_uninstall'] ) ? '1' : '0';
+        $existing = (array) get_option( 'sonoai_settings', [] );
+        $clean    = $existing;
 
-        // Refresh provider singleton after settings save.
-        AIProvider::refresh();
+        $clean['system_prompt']       = sanitize_textarea_field( $input['system_prompt'] ?? '' );
+        $clean['history_limit']       = max( 1, min( 500, absint( $input['history_limit'] ?? 50 ) ) );
+        $clean['rag_results']         = max( 1, min( 20, absint( $input['rag_results'] ?? 5 ) ) );
+        $clean['rag_use_docs']        = ! empty( $input['rag_use_docs'] ) ? '1' : '0';
+        $clean['rag_use_topics']      = ! empty( $input['rag_use_topics'] ) ? '1' : '0';
+        $clean['delete_on_uninstall'] = ! empty( $input['delete_on_uninstall'] ) ? '1' : '0';
 
         return $clean;
     }
 
     public function enqueue_admin_assets( string $hook ): void {
-        // $hook is 'toplevel_page_sonoai-settings' for top-level menu pages.
-        if ( strpos( $hook, 'sonoai-settings' ) === false ) {
+        // Only enqueue on main SonoAI settings page (not sub-menu pages).
+        if ( 'toplevel_page_sonoai-settings' !== $hook ) {
             return;
         }
         wp_enqueue_style( 'sonoai-admin', SONOAI_URL . 'assets/css/admin.css', [], SONOAI_VERSION );
@@ -99,49 +99,11 @@ class Admin {
 
             <form method="post" action="options.php">
                 <?php settings_fields( 'sonoai_settings_group' ); ?>
+                <input type="hidden" name="sonoai_settings[_page]" value="main_settings">
 
                 <div class="sonoai-card-grid">
 
-                    <!-- AI Provider -->
-                    <div class="sonoai-card">
-                        <h2><?php esc_html_e( 'AI Provider', 'sonoai' ); ?></h2>
-                        <table class="form-table">
-                            <tr>
-                                <th><?php esc_html_e( 'Active Provider', 'sonoai' ); ?></th>
-                                <td>
-                                    <select name="sonoai_settings[active_provider]">
-                                        <option value="openai" <?php selected( $opts['active_provider'] ?? 'openai', 'openai' ); ?>>OpenAI</option>
-                                        <option value="gemini" <?php selected( $opts['active_provider'] ?? 'openai', 'gemini' ); ?>>Google Gemini</option>
-                                    </select>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th><?php esc_html_e( 'OpenAI API Key', 'sonoai' ); ?></th>
-                                <td><input type="password" name="sonoai_settings[openai_api_key]" value="<?php echo esc_attr( $opts['openai_api_key'] ?? '' ); ?>" class="regular-text"></td>
-                            </tr>
-                            <tr>
-                                <th><?php esc_html_e( 'OpenAI Chat Model', 'sonoai' ); ?></th>
-                                <td><input type="text" name="sonoai_settings[openai_chat_model]" value="<?php echo esc_attr( $opts['openai_chat_model'] ?? 'gpt-4o' ); ?>" class="regular-text">
-                                <p class="description">e.g. gpt-4o, gpt-4o-mini</p></td>
-                            </tr>
-                            <tr>
-                                <th><?php esc_html_e( 'OpenAI Embedding Model', 'sonoai' ); ?></th>
-                                <td><input type="text" name="sonoai_settings[openai_embedding_model]" value="<?php echo esc_attr( $opts['openai_embedding_model'] ?? 'text-embedding-3-small' ); ?>" class="regular-text"></td>
-                            </tr>
-                            <tr>
-                                <th><?php esc_html_e( 'Gemini API Key', 'sonoai' ); ?></th>
-                                <td><input type="password" name="sonoai_settings[gemini_api_key]" value="<?php echo esc_attr( $opts['gemini_api_key'] ?? '' ); ?>" class="regular-text"></td>
-                            </tr>
-                            <tr>
-                                <th><?php esc_html_e( 'Gemini Chat Model', 'sonoai' ); ?></th>
-                                <td><input type="text" name="sonoai_settings[gemini_chat_model]" value="<?php echo esc_attr( $opts['gemini_chat_model'] ?? 'gemini-1.5-pro' ); ?>" class="regular-text"></td>
-                            </tr>
-                            <tr>
-                                <th><?php esc_html_e( 'Gemini Embedding Model', 'sonoai' ); ?></th>
-                                <td><input type="text" name="sonoai_settings[gemini_embedding_model]" value="<?php echo esc_attr( $opts['gemini_embedding_model'] ?? 'text-embedding-004' ); ?>" class="regular-text"></td>
-                            </tr>
-                        </table>
-                    </div>
+                    <!-- API config moved to SonoAI → API Configuration sub-menu -->
 
                     <!-- System Prompt -->
                     <div class="sonoai-card">
