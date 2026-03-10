@@ -126,7 +126,9 @@ class RestAPI {
         Chat::add_message( $session_uuid, 'user', $message, $image_url );
 
         // ── Build prompt + history ───────────────────────────────────────────
-        $system_prompt = RAG::build_system_prompt( $message );
+        $context_data  = RAG::get_context_data( $message );
+        $system_prompt = $context_data['prompt'];
+        $context_imgs  = $context_data['images'];
         $history       = Chat::get_messages_for_ai( $session_uuid );
 
         // Build messages array for the AI provider.
@@ -149,6 +151,7 @@ class RestAPI {
             'reply'          => $reply,
             'session_uuid'   => $session_uuid,
             'is_new_session' => $is_new_session,
+            'context_images' => $context_imgs,
         ], 200 );
     }
 

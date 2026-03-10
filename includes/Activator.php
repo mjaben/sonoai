@@ -19,7 +19,6 @@ class Activator {
     public static function run(): void {
         self::create_tables();
         self::create_upload_dir();
-        // Flush rewrite rules after CPT/shortcode registration.
         flush_rewrite_rules();
     }
 
@@ -40,12 +39,18 @@ class Activator {
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
         // ── Embeddings table ──────────────────────────────────────────────────
+        // Stores individual 800-char chunks with their vector embedding.
+        // knowledge_id groups all chunks that belong to one KB item.
         $embeddings_table = $wpdb->prefix . 'sonoai_embeddings';
         $sql_embeddings   = "CREATE TABLE IF NOT EXISTS `$embeddings_table` (
             `id`                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
             `knowledge_id`      VARCHAR(36)     NOT NULL,
             `post_id`           BIGINT UNSIGNED NOT NULL DEFAULT 0,
             `post_type`         VARCHAR(50)     NOT NULL DEFAULT 'docs',
+            `type`              VARCHAR(20)     NOT NULL DEFAULT 'wp',
+            `source_url`        TEXT                     DEFAULT NULL,
+            `source_title`      VARCHAR(255)             DEFAULT NULL,
+            `image_urls`        LONGTEXT                 DEFAULT NULL,
             `chunk_index`       INT             NOT NULL DEFAULT 0,
             `chunk_text`        LONGTEXT        NOT NULL,
             `embedding`         LONGTEXT        NOT NULL,
@@ -53,10 +58,35 @@ class Activator {
             `embedding_model`   VARCHAR(100)             DEFAULT NULL,
             `post_modified_gmt` DATETIME                 DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (`id`),
-            KEY `idx_post_id`   (`post_id`),
-            KEY `idx_post_type` (`post_type`)
+            KEY `idx_post_id`      (`post_id`),
+            KEY `idx_post_type`    (`post_type`),
+            KEY `idx_type`         (`type`),
+            KEY `idx_knowledge_id` (`knowledge_id`(36))
         ) $charset_collate;";
         dbDelta( $sql_embeddings );
+
+        // ── KB Items table ─────────────────────────────────────────────────────
+        // One row per KB item (not per chunk) — drives the list-table views.
+        $kb_items_table = $wpdb->prefix . 'sonoai_kb_items';
+        $sql_kb_items   = "CREATE TABLE IF NOT EXISTS `$kb_items_table` (
+            `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `knowledge_id`    VARCHAR(36)     NOT NULL,
+            `type`            VARCHAR(20)     NOT NULL DEFAULT 'wp',
+            `post_id`         BIGINT UNSIGNED NOT NULL DEFAULT 0,
+            `source_title`    VARCHAR(255)             DEFAULT NULL,
+            `source_url`      TEXT                     DEFAULT NULL,
+            `raw_content`     LONGTEXT                 DEFAULT NULL,
+            `image_urls`      LONGTEXT                 DEFAULT NULL,
+            `provider`        VARCHAR(20)     NOT NULL DEFAULT 'openai',
+            `embedding_model` VARCHAR(100)             DEFAULT NULL,
+            `chunk_count`     INT             NOT NULL DEFAULT 0,
+            `created_at`      DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `uniq_knowledge_id` (`knowledge_id`),
+            KEY `idx_type`    (`type`),
+            KEY `idx_post_id` (`post_id`)
+        ) $charset_collate;";
+        dbDelta( $sql_kb_items );
 
         // ── Sessions table ────────────────────────────────────────────────────
         $sessions_table = $wpdb->prefix . 'sonoai_sessions';

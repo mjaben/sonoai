@@ -171,7 +171,7 @@
                 clearMessages();
                 const msgs = session.messages || [];
                 msgs.forEach(function (m) {
-                    appendMessage(m.role, m.content, m.image_url || '');
+                    appendMessage(m.role, m.content, m.image_url || '', m.context_images || []);
                 });
                 updateHistoryActiveState();
                 scrollToBottom();
@@ -269,7 +269,7 @@
                     renderHistoryList();
                 }
 
-                appendMessage('assistant', data.reply || '');
+                appendMessage('assistant', data.reply || '', '', data.context_images || []);
                 updateHistoryActiveState();
                 scrollToBottom();
             })
@@ -282,7 +282,7 @@
     }
 
     // ── Message rendering ──────────────────────────────────────────────────
-    function appendMessage(role, content, imageUrl) {
+    function appendMessage(role, content, imageUrl, contextImages) {
         const isUser  = role === 'user';
         const wrapper = document.createElement('div');
         wrapper.className = 'sonoai-message ' + (isUser ? 'user' : 'assistant');
@@ -322,6 +322,32 @@
                 ? escapeHtml(content).replace(/\n/g, '<br>')
                 : markdownToHtml(content);
             body.appendChild(bubble);
+        }
+
+        // Context Images (if present).
+        if (contextImages && contextImages.length > 0) {
+            const gallery = document.createElement('div');
+            gallery.className = 'sonoai-context-gallery';
+            gallery.style.display = 'flex';
+            gallery.style.gap = '8px';
+            gallery.style.marginTop = '10px';
+            gallery.style.overflowX = 'auto';
+            gallery.style.paddingBottom = '4px';
+            contextImages.forEach(function (src) {
+                const a = document.createElement('a');
+                a.href = src;
+                a.target = '_blank';
+                const imgEl = document.createElement('img');
+                imgEl.src = src;
+                imgEl.alt = 'Reference manual';
+                imgEl.className = 'sonoai-context-image';
+                imgEl.style.maxHeight = '80px';
+                imgEl.style.borderRadius = '4px';
+                imgEl.style.border = '1px solid rgba(0,0,0,0.1)';
+                a.appendChild(imgEl);
+                gallery.appendChild(a);
+            });
+            body.appendChild(gallery);
         }
 
         wrapper.appendChild(avatarEl);

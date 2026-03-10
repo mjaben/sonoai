@@ -94,12 +94,12 @@ class RAG {
     }
 
     /**
-     * Build the full system prompt (static instructions + domain knowledge context).
+     * Build the full system prompt and return context images.
      *
      * @param string $query   User's question (used for context retrieval).
-     * @return string Complete system prompt.
+     * @return array{prompt: string, images: string[]}
      */
-    public static function build_system_prompt( string $query ): string {
+    public static function get_context_data( string $query ): array {
         $base_prompt = sonoai_option(
             'system_prompt',
             "You are SonoAI, an expert AI assistant specialising in ultrasound and sonography. " .
@@ -109,15 +109,38 @@ class RAG {
             "Use clear, professional medical terminology while remaining accessible."
         );
 
-        $context = self::get_context( $query );
+        $post_types = self::active_post_types();
+        $limit      = (int) sonoai_option( 'rag_results', 5 );
+        $chunks     = Embedding::search( $query, max( 1, $limit ), $post_types );
 
-        if ( ! empty( $context ) ) {
-            $base_prompt .= "\n\n---\n\n";
-            $base_prompt .= "Use the following knowledge base excerpts to inform your answer. " .
-                            "If they are relevant, reference them. If they are not, rely on your training data.\n\n";
-            $base_prompt .= "<KNOWLEDGE_BASE>\n" . $context . "\n</KNOWLEDGE_BASE>";
+        if ( empty( $chunks ) ) {
+            return [ 'prompt' => $base_prompt, 'images' => [] ];
         }
 
-        return $base_prompt;
+        $lines  = [];
+        $images = [];
+
+        foreach ( $chunks as $i => $chunk ) {
+            $source  = self::get_source_label( $chunk['post_id'], $chunk['post_type'] );
+            $lines[] = sprintf(
+                "## Source %d — %s\n%s",
+                $i + 1,
+                $source,
+                trim( $chunk['chunk_text'] )
+            );
+            if ( ! empty( $chunk['image_urls'] ) && is_array( $chunk['image_urls'] ) ) {
+                $images = array_merge( $images, $chunk['image_urls'] );
+            }
+        }
+
+        $base_prompt .= "\n\n---\n\n";
+        $base_prompt .= "Use the following knowledge base excerpts to inform your answer. " .
+                        "If they are relevant, reference them. If they are not, rely on your training data.\n\n";
+        $base_prompt .= "<KNOWLEDGE_BASE>\n" . implode( "\n\n", $lines ) . "\n</KNOWLEDGE_BASE>";
+
+        return [
+            'prompt' => $base_prompt,
+            'images' => array_values( array_unique( $images ) ),
+        ];
     }
 }

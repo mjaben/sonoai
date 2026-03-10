@@ -194,7 +194,7 @@ class Embedding {
         }
 
         // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-        $rows = $wpdb->get_results( "SELECT id, post_id, post_type, chunk_text, embedding FROM `$table` WHERE $where_sql", ARRAY_A );
+        $rows = $wpdb->get_results( "SELECT id, post_id, post_type, chunk_text, embedding, image_urls FROM `$table` WHERE $where_sql", ARRAY_A );
 
         if ( empty( $rows ) ) {
             return [];
@@ -212,6 +212,7 @@ class Embedding {
                 'chunk_text' => $row['chunk_text'],
                 'post_id'    => (int) $row['post_id'],
                 'post_type'  => $row['post_type'],
+                'image_urls' => $row['image_urls'] ? json_decode( $row['image_urls'], true ) : [],
                 'similarity' => $sim,
             ];
 

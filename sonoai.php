@@ -1,10 +1,10 @@
 <?php
 /**
- * Plugin Name: SonoAI
+ * Plugin Name: Sono AI
  * Description: AI-powered chat assistant for the ultrasound and sonography niche. Performs RAG over EazyDocs Cases and Forummax Topics. Supports image uploads for sonogram analysis.
  * Plugin URI:  #
  * Author:      MJA
- * Version:     1.0.11
+ * Version:     1.0.16
  * Requires at least: 5.8
  * Requires PHP: 7.4
  * Text Domain: sonoai
@@ -17,10 +17,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-define( 'SONOAI_VERSION',  '1.0.0' );
+define( 'SONOAI_VERSION',  '1.0.16' );
 define( 'SONOAI_DIR',      plugin_dir_path( __FILE__ ) );
 define( 'SONOAI_URL',      plugin_dir_url( __FILE__ ) );
 define( 'SONOAI_BASENAME', plugin_basename( __FILE__ ) );
+
+// ─── Vendor Autoload ─────────────────────────────────────────────────────────
+if ( file_exists( SONOAI_DIR . 'vendor/autoload.php' ) ) {
+    require_once SONOAI_DIR . 'vendor/autoload.php';
+}
 
 // ─── Autoload ────────────────────────────────────────────────────────────────
 spl_autoload_register( function ( $class ) {
@@ -66,6 +71,8 @@ final class SonoAI {
         require_once SONOAI_DIR . 'includes/hooks/ContentHooks.php';
         require_once SONOAI_DIR . 'includes/admin/Admin.php';
         require_once SONOAI_DIR . 'includes/admin/ApiConfig.php';
+        require_once SONOAI_DIR . 'includes/admin/KnowledgeBase.php';
+        require_once SONOAI_DIR . 'includes/admin/KnowledgeBaseAjax.php';
         require_once SONOAI_DIR . 'includes/Shortcode.php';
     }
 
@@ -73,12 +80,13 @@ final class SonoAI {
         // Maybe run DB migrations on plugin update.
         add_action( 'admin_init', [ $this, 'maybe_run_migrations' ] );
 
-        // Boot singletons.
         add_action( 'plugins_loaded', function () {
             SonoAI\RestAPI::instance();
             SonoAI\ContentHooks::instance();
             SonoAI\Admin::instance();
             SonoAI\ApiConfig::instance();
+            SonoAI\KnowledgeBase::instance();
+            SonoAI\KnowledgeBaseAjax::instance();
             SonoAI\Shortcode::instance();
         } );
     }
