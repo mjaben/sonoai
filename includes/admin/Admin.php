@@ -26,7 +26,6 @@ class Admin {
         add_action( 'admin_menu', [ $this, 'add_menu' ] );
         add_action( 'admin_init', [ $this, 'register_settings' ] );
         add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_admin_assets' ] );
-        add_action( 'admin_footer', [ $this, 'modify_menu_link' ] );
     }
 
     public function add_menu(): void {
@@ -35,32 +34,10 @@ class Admin {
             __( 'SonoAI', 'sonoai' ),
             'manage_options',
             'sonoai-settings',
-            [ $this, 'render_settings_page' ], // We keep a fallback rendering just in case JS fails
+            [ $this, 'render_settings_page' ],
             'dashicons-robot', // robotic icon for AI assistant
             58  // below Comments, above Appearance
         );
-    }
-
-    public function modify_menu_link(): void {
-        $page_id = get_option( 'sonoai_dashboard_page_id' );
-        if ( ! $page_id ) {
-            return;
-        }
-        $dashboard_url = get_permalink( $page_id );
-        if ( ! $dashboard_url ) {
-            return;
-        }
-        ?>
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                var sonoaiMenuLink = document.querySelector('a.toplevel_page_sonoai-settings');
-                if (sonoaiMenuLink) {
-                    sonoaiMenuLink.href = <?php echo json_encode( esc_url( $dashboard_url ) ); ?>;
-                    sonoaiMenuLink.target = '_blank';
-                }
-            });
-        </script>
-        <?php
     }
 
     public function register_settings(): void {

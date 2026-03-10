@@ -19,7 +19,6 @@ class Activator {
     public static function run(): void {
         self::create_tables();
         self::create_upload_dir();
-        self::create_dashboard_page();
         // Flush rewrite rules after CPT/shortcode registration.
         flush_rewrite_rules();
     }
@@ -29,27 +28,6 @@ class Activator {
      */
     public static function deactivate(): void {
         flush_rewrite_rules();
-    }
-
-    /**
-     * Create the dashboard page if it doesn't exist.
-     */
-    public static function create_dashboard_page(): void {
-        $page_id = get_option( 'sonoai_dashboard_page_id' );
-        if ( $page_id && get_post( $page_id ) ) {
-            return; // Page already exists
-        }
-
-        $page_id = wp_insert_post( [
-            'post_title'   => 'SonoAI Dashboard',
-            'post_content' => '[sonoai_admin]',
-            'post_status'  => 'publish',
-            'post_type'    => 'page',
-        ] );
-
-        if ( ! is_wp_error( $page_id ) ) {
-            update_option( 'sonoai_dashboard_page_id', $page_id );
-        }
     }
 
     /**
