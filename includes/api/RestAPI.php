@@ -165,6 +165,11 @@ class RestAPI {
                 echo "event: error\ndata: " . wp_json_encode( [ 'error' => $reply->get_error_message() ] ) . "\n\n";
             } else {
                 Chat::add_message( $session_uuid, 'assistant', $reply );
+                
+                if ( str_contains( $reply, 'I cannot answer this question because I have not yet been trained' ) ) {
+                    Chat::log_unanswered_query( $user_id, $message, $reply );
+                }
+
                 echo "event: done\ndata: {}\n\n";
             }
             exit;
@@ -178,6 +183,10 @@ class RestAPI {
 
         // ── Store AI reply ───────────────────────────────────────────────────
         Chat::add_message( $session_uuid, 'assistant', $reply );
+
+        if ( str_contains( $reply, 'I cannot answer this question because I have not yet been trained' ) ) {
+            Chat::log_unanswered_query( $user_id, $message, $reply );
+        }
 
         return new \WP_REST_Response( [
             'reply'          => $reply,

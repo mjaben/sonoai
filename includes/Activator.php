@@ -112,6 +112,19 @@ class Activator {
             KEY `idx_user_id` (`user_id`)
         ) $charset_collate;";
         dbDelta( $sql_sessions );
+
+        // ── Query Logs table ──────────────────────────────────────────────────
+        $logs_table = $wpdb->prefix . 'sonoai_query_logs';
+        $sql_logs   = "CREATE TABLE IF NOT EXISTS `$logs_table` (
+            `id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `user_id`      BIGINT UNSIGNED NOT NULL DEFAULT 0,
+            `query_text`   LONGTEXT        NOT NULL,
+            `response`     LONGTEXT        NOT NULL,
+            `created_at`   DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            KEY `idx_user_id` (`user_id`)
+        ) $charset_collate;";
+        dbDelta( $sql_logs );
     }
 
     /**

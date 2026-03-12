@@ -34,10 +34,9 @@ class RAG {
      * @return string Context block ready for injection; empty string if nothing found.
      */
     public static function get_context( string $query ): string {
-        $post_types = self::active_post_types();
         $limit      = (int) sonoai_option( 'rag_results', 5 );
 
-        $chunks = Embedding::search( $query, max( 1, $limit ), $post_types );
+        $chunks = Embedding::search( $query, max( 1, $limit ), [] );
 
         if ( empty( $chunks ) ) {
             return '';
@@ -57,21 +56,7 @@ class RAG {
         return implode( "\n\n", $lines );
     }
 
-    /**
-     * Return the list of CPT slugs currently enabled for RAG context.
-     *
-     * @return string[]
-     */
-    private static function active_post_types(): array {
-        $types = [];
-        if ( sonoai_option( 'rag_use_docs', '1' ) === '1' ) {
-            $types[] = 'docs';
-        }
-        if ( sonoai_option( 'rag_use_topics', '1' ) === '1' ) {
-            $types[] = 'topic';
-        }
-        return $types;
-    }
+
 
     /**
      * Get a human-readable source label for a chunk.
@@ -106,12 +91,14 @@ class RAG {
             "You help sonographers, radiologists, and medical students understand ultrasound images and clinical cases. " .
             "When analysing sonogram images, describe what you observe, relevant anatomy, and educational notes. " .
             "Always remind users that your responses are for educational purposes only and not a substitute for professional clinical judgment. " .
-            "Use clear, professional medical terminology while remaining accessible."
+            "Use clear, professional medical terminology while remaining accessible.\n\n" .
+            "CRITICAL INSTRUCTION: You MUST ONLY answer questions using the information provided in the <KNOWLEDGE_BASE> block below. " .
+            "If the answer to the user's question cannot be found entirely within the provided context, or if the context is empty, you must reply EXACTLY with the following phrase, and nothing else:\n\n" .
+            "I cannot answer this question because I have not yet been trained on this topic."
         );
 
-        $post_types = self::active_post_types();
         $limit      = (int) sonoai_option( 'rag_results', 5 );
-        $chunks     = Embedding::search( $query, max( 1, $limit ), $post_types );
+        $chunks     = Embedding::search( $query, max( 1, $limit ), [] );
 
         if ( empty( $chunks ) ) {
             return [ 'prompt' => $base_prompt, 'images' => [] ];
@@ -135,7 +122,7 @@ class RAG {
 
         $base_prompt .= "\n\n---\n\n";
         $base_prompt .= "Use the following knowledge base excerpts to inform your answer. " .
-                        "If they are relevant, reference them. If they are not, rely on your training data.\n\n";
+                        "If the answer is not contained here, you MUST output the exact fallback phrase mentioned above.\n\n";
         $base_prompt .= "<KNOWLEDGE_BASE>\n" . implode( "\n\n", $lines ) . "\n</KNOWLEDGE_BASE>";
 
         return [

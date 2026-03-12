@@ -241,6 +241,29 @@ class Chat {
     }
 
     // ── Internal ──────────────────────────────────────────────────────────────
+    
+    /**
+     * Log a query that the AI could not answer.
+     *
+     * @param int    $user_id
+     * @param string $query
+     * @param string $response
+     * @return bool
+     */
+    public static function log_unanswered_query( int $user_id, string $query, string $response ): bool {
+        global $wpdb;
+        $table = $wpdb->prefix . 'sonoai_query_logs';
+
+        return (bool) $wpdb->insert(
+            $table,
+            [
+                'user_id'    => $user_id,
+                'query_text' => wp_kses_post( $query ),
+                'response'   => wp_kses_post( $response ),
+            ],
+            [ '%d', '%s', '%s' ]
+        );
+    }
 
     private static function get_raw( string $session_uuid ): ?\stdClass {
         global $wpdb;

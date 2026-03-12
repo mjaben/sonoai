@@ -4,7 +4,7 @@
  * Description: AI-powered chat assistant for the ultrasound and sonography niche. Performs RAG over EazyDocs Cases and Forummax Topics. Supports image uploads for sonogram analysis.
  * Plugin URI:  #
  * Author:      MJA
- * Version:     1.1.3
+ * Version:     1.1.1
  * Requires at least: 5.8
  * Requires PHP: 7.4
  * Text Domain: sonoai
@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-define( 'SONOAI_VERSION',  '1.1.3' );
+define( 'SONOAI_VERSION',  '1.1.1' );
 define( 'SONOAI_DIR',      plugin_dir_path( __FILE__ ) );
 define( 'SONOAI_URL',      plugin_dir_url( __FILE__ ) );
 define( 'SONOAI_BASENAME', plugin_basename( __FILE__ ) );
@@ -73,6 +73,7 @@ final class SonoAI {
         require_once SONOAI_DIR . 'includes/admin/ApiConfig.php';
         require_once SONOAI_DIR . 'includes/admin/KnowledgeBase.php';
         require_once SONOAI_DIR . 'includes/admin/KnowledgeBaseAjax.php';
+        require_once SONOAI_DIR . 'includes/admin/QueryLogs.php';
         require_once SONOAI_DIR . 'includes/Shortcode.php';
     }
 
@@ -87,6 +88,7 @@ final class SonoAI {
             SonoAI\ApiConfig::instance();
             SonoAI\KnowledgeBase::instance();
             SonoAI\KnowledgeBaseAjax::instance();
+            SonoAI\QueryLogs::instance();
             SonoAI\Shortcode::instance();
         } );
     }

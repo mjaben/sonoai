@@ -63,8 +63,6 @@ class Admin {
         $clean['system_prompt']       = sanitize_textarea_field( $input['system_prompt'] ?? '' );
         $clean['history_limit']       = max( 1, min( 500, absint( $input['history_limit'] ?? 50 ) ) );
         $clean['rag_results']         = max( 1, min( 20, absint( $input['rag_results'] ?? 5 ) ) );
-        $clean['rag_use_docs']        = ! empty( $input['rag_use_docs'] ) ? '1' : '0';
-        $clean['rag_use_topics']      = ! empty( $input['rag_use_topics'] ) ? '1' : '0';
         $clean['delete_on_uninstall'] = ! empty( $input['delete_on_uninstall'] ) ? '1' : '0';
 
         return $clean;
@@ -116,26 +114,6 @@ class Admin {
                     <div class="sonoai-card">
                         <h2><?php esc_html_e( 'Knowledge Base (RAG)', 'sonoai' ); ?></h2>
                         <table class="form-table">
-                            <tr>
-                                <th><?php esc_html_e( 'Use EazyDocs Cases', 'sonoai' ); ?></th>
-                                <td>
-                                    <label>
-                                        <input type="checkbox" name="sonoai_settings[rag_use_docs]" value="1" <?php checked( $opts['rag_use_docs'] ?? '1', '1' ); ?>>
-                                        <?php esc_html_e( 'Include published docs (docs CPT) in context', 'sonoai' ); ?>
-                                    </label>
-                                    <p class="description"><?php echo esc_html( sprintf( __( 'Indexed: %d case(s)', 'sonoai' ), $counts['docs'] ?? 0 ) ); ?></p>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th><?php esc_html_e( 'Use Forummax Topics', 'sonoai' ); ?></th>
-                                <td>
-                                    <label>
-                                        <input type="checkbox" name="sonoai_settings[rag_use_topics]" value="1" <?php checked( $opts['rag_use_topics'] ?? '1', '1' ); ?>>
-                                        <?php esc_html_e( 'Include forum topics (topic CPT) in context', 'sonoai' ); ?>
-                                    </label>
-                                    <p class="description"><?php echo esc_html( sprintf( __( 'Indexed: %d topic(s)', 'sonoai' ), $counts['topic'] ?? 0 ) ); ?></p>
-                                </td>
-                            </tr>
                             <tr>
                                 <th><?php esc_html_e( 'RAG Context Results', 'sonoai' ); ?></th>
                                 <td>
