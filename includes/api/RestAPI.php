@@ -166,7 +166,7 @@ class RestAPI {
             } else {
                 Chat::add_message( $session_uuid, 'assistant', $reply );
                 
-                if ( str_contains( $reply, 'I cannot answer this question because I have not yet been trained' ) ) {
+                if ( str_contains( $reply, 'I cannot answer this question because I have not yet been trained' ) || str_contains( $reply, 'I cannot answer questions or discuss topics outside of this medical domain' ) ) {
                     Chat::log_unanswered_query( $user_id, $message, $reply );
                 }
 
@@ -184,7 +184,7 @@ class RestAPI {
         // ── Store AI reply ───────────────────────────────────────────────────
         Chat::add_message( $session_uuid, 'assistant', $reply );
 
-        if ( str_contains( $reply, 'I cannot answer this question because I have not yet been trained' ) ) {
+        if ( str_contains( $reply, 'I cannot answer this question because I have not yet been trained' ) || str_contains( $reply, 'I cannot answer questions or discuss topics outside of this medical domain' ) ) {
             Chat::log_unanswered_query( $user_id, $message, $reply );
         }
 

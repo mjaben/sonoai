@@ -43,7 +43,7 @@ class KnowledgeBase {
     // ── Assets ────────────────────────────────────────────────────────────────
 
     public function enqueue_assets( string $hook ): void {
-        if ( false === strpos( $hook, 'sonoai-kb' ) ) {
+        if ( false === strpos( $hook, 'sonoai-kb' ) && false === strpos( $hook, 'sonoai-query-logs' ) ) {
             return;
         }
         // Classic editor (TinyMCE) for Custom Text tab.

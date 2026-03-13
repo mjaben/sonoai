@@ -25,12 +25,16 @@ class QueryLogsTable extends \WP_List_Table {
         ] );
     }
 
+    protected function get_table_classes() {
+        return [ 'kb-table' ];
+    }
+
     public function get_columns(): array {
         return [
             'cb'         => '<input type="checkbox" />',
             'id'         => __( 'ID', 'sonoai' ),
             'user'       => __( 'User', 'sonoai' ),
-            'query'      => __( 'Query Text', 'sonoai' ),
+            'query_text' => __( 'Query Text', 'sonoai' ),
             'response'   => __( 'AI Response', 'sonoai' ),
             'created_at' => __( 'Date', 'sonoai' ),
         ];
@@ -51,11 +55,16 @@ class QueryLogsTable extends \WP_List_Table {
             case 'user':
                 $user = get_userdata( $item['user_id'] );
                 return $user ? esc_html( $user->display_name ) : __( 'Guest', 'sonoai' );
-            case 'query':
+            case 'query_text':
             case 'response':
-                return wp_trim_words( esc_html( $item[ $column_name ] ), 20, '...' ) . 
-                       '<br><small style="color:#0071a1; cursor:pointer; text-decoration: underline;" onclick="alert(this.nextSibling.innerText)">View full</small><span style="display:none;">' . esc_html( $item[ $column_name ] ) . '</span>';
-            default:
+                $trimmed = wp_trim_words( esc_html( $item[ $column_name ] ), 15, '...' );
+                $full    = esc_html( $item[ $column_name ] );
+                return sprintf(
+                    '%s <br><button type="button" class="kb-action-link kb-view-txt-btn" data-content="%s" style="margin-top: 5px;">👁 %s</button>',
+                    $trimmed,
+                    esc_attr( $full ),
+                    __( 'View', 'sonoai' )
+                );
                 return '';
         }
     }
@@ -165,13 +174,43 @@ class QueryLogs {
         $table = new QueryLogsTable();
         $table->prepare_items();
         ?>
-        <div class="wrap">
-            <h1 class="wp-heading-inline">🔬 <?php esc_html_e( 'SonoAI Query Logs', 'sonoai' ); ?></h1>
-            <p><?php esc_html_e( 'These are unanswered queries from users, logged because the AI was explicitly unable to answer based on the provided knowledge base.', 'sonoai' ); ?></p>
-            <form id="query-logs-filter" method="post">
-                <input type="hidden" name="page" value="sonoai-query-logs" />
-                <?php $table->display(); ?>
-            </form>
+        <div class="kb-wrap" id="sonoai-query-logs-page">
+            
+            <!-- Hero Header -->
+            <div class="kb-header">
+                <div class="kb-header-left">
+                    <div class="kb-header-icon">🔬</div>
+                    <div>
+                        <h1 class="kb-title"><?php esc_html_e( 'Query Logs', 'sonoai' ); ?></h1>
+                        <p class="kb-subtitle"><?php esc_html_e( 'Review queries the AI lacked the knowledge to answer.', 'sonoai' ); ?></p>
+                    </div>
+                </div>
+                <div class="kb-header-right">
+                    <button type="button" id="kb-theme-toggle" class="kb-theme-btn" title="Toggle dark / light mode">
+                        <span class="kb-icon-dark">🌙</span>
+                        <span class="kb-icon-light">☀️</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Panel Wrap -->
+            <div class="kb-panel-wrap" style="border-radius: 12px; margin-top: 20px;">
+                <form id="query-logs-filter" method="post">
+                    <input type="hidden" name="page" value="sonoai-query-logs" />
+                    <?php $table->display(); ?>
+                </form>
+            </div>
+
+            <!-- SonoAI Lightbox Modal -->
+            <div id="kb-view-modal" class="kb-modal" style="display:none;">
+                <div class="kb-modal-inner" style="max-width: 600px;">
+                    <div class="kb-modal-header">
+                        <strong><?php esc_html_e( 'Log Details', 'sonoai' ); ?></strong>
+                        <button type="button" class="kb-modal-close" id="sonoai-modal-close">✕</button>
+                    </div>
+                    <div id="kb-modal-body" class="kb-modal-body" style="white-space: pre-wrap;"></div>
+                </div>
+            </div>
         </div>
         <?php
     }

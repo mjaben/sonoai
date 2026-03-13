@@ -92,38 +92,42 @@ class RAG {
             "When analysing sonogram images, describe what you observe, relevant anatomy, and educational notes. " .
             "Always remind users that your responses are for educational purposes only and not a substitute for professional clinical judgment. " .
             "Use clear, professional medical terminology while remaining accessible.\n\n" .
-            "CRITICAL INSTRUCTION: You MUST ONLY answer questions using the information provided in the <KNOWLEDGE_BASE> block below. " .
-            "If the answer to the user's question cannot be found entirely within the provided context, or if the context is empty, you must reply EXACTLY with the following phrase, and nothing else:\n\n" .
-            "I cannot answer this question because I have not yet been trained on this topic."
+            "You MUST classify the user's message before responding and strictly follow these rules:\n\n" .
+            "1. OUT-OF-DOMAIN: If the user asks a question, makes a request, or attempts to discuss a topic outside the domain of ultrasound, sonography, radiology, or relevant medicine, you MUST reply EXACTLY with the following phrase, and nothing else:\n\n" .
+            "I am SonoAI, an assistant specializing in ultrasound and sonography. I cannot answer questions or discuss topics outside of this medical domain.\n\n" .
+            "2. CONVERSATIONAL: If the user is greeting you, asking about your capabilities, or engaging in light, relevant conversation, respond naturally but concisely. Do not provide facts or instructions on out-of-domain topics.\n\n" .
+            "3. DOMAIN-SPECIFIC: If the user is asking a domain-specific, factual, or medical question, you MUST ONLY answer using the EXACT information provided in the <KNOWLEDGE_BASE> block. You are STRICTLY FORBIDDEN from using your pre-trained internal memory to answer these questions. If the answer is not explicitly written in the provided knowledge base, you cannot answer it.\n\n" .
+            "4. MISSING KNOWLEDGE: If the user asks a factual question within your domain, but the answer cannot be found entirely within the provided context, or if the context is empty, you MUST reply EXACTLY with the following phrase, and nothing else:\n\n" .
+            "I cannot answer this question because I have not yet been trained on this specific topic."
         );
 
         $limit      = (int) sonoai_option( 'rag_results', 5 );
         $chunks     = Embedding::search( $query, max( 1, $limit ), [] );
 
-        if ( empty( $chunks ) ) {
-            return [ 'prompt' => $base_prompt, 'images' => [] ];
-        }
-
         $lines  = [];
         $images = [];
 
-        foreach ( $chunks as $i => $chunk ) {
-            $source  = self::get_source_label( $chunk['post_id'], $chunk['post_type'] );
-            $lines[] = sprintf(
-                "## Source %d — %s\n%s",
-                $i + 1,
-                $source,
-                trim( $chunk['chunk_text'] )
-            );
-            if ( ! empty( $chunk['image_urls'] ) && is_array( $chunk['image_urls'] ) ) {
-                $images = array_merge( $images, $chunk['image_urls'] );
+        if ( ! empty( $chunks ) ) {
+            foreach ( $chunks as $i => $chunk ) {
+                $source  = self::get_source_label( $chunk['post_id'], $chunk['post_type'] );
+                $lines[] = sprintf(
+                    "## Source %d — %s\n%s",
+                    $i + 1,
+                    $source,
+                    trim( $chunk['chunk_text'] )
+                );
+                if ( ! empty( $chunk['image_urls'] ) && is_array( $chunk['image_urls'] ) ) {
+                    $images = array_merge( $images, $chunk['image_urls'] );
+                }
             }
         }
 
         $base_prompt .= "\n\n---\n\n";
         $base_prompt .= "Use the following knowledge base excerpts to inform your answer. " .
                         "If the answer is not contained here, you MUST output the exact fallback phrase mentioned above.\n\n";
-        $base_prompt .= "<KNOWLEDGE_BASE>\n" . implode( "\n\n", $lines ) . "\n</KNOWLEDGE_BASE>";
+        
+        $kb_content = empty( $lines ) ? "No external knowledge provided for this query." : implode( "\n\n", $lines );
+        $base_prompt .= "<KNOWLEDGE_BASE>\n" . $kb_content . "\n</KNOWLEDGE_BASE>";
 
         return [
             'prompt' => $base_prompt,
