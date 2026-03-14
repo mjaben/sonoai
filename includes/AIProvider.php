@@ -101,31 +101,30 @@ class AIProvider {
     /**
      * Stream a chat reply from the AI.
      */
-    public static function stream_reply( array $messages, string $image_b64, callable $chunk_callback ) {
+    public static function stream_reply( array $messages, callable $chunk_callback ) {
         if ( ! self::has_api_key() ) {
             return new \WP_Error( 'no_api_key', __( 'AI API key is not configured.', 'sonoai' ) );
         }
 
         return self::is_gemini()
-            ? self::gemini_chat_stream( $messages, $image_b64, $chunk_callback )
-            : self::openai_chat_stream( $messages, $image_b64, $chunk_callback );
+            ? self::gemini_chat_stream( $messages, $chunk_callback )
+            : self::openai_chat_stream( $messages, $chunk_callback );
     }
 
     /**
-     * Get a chat reply from the AI, optionally with an image.
+     * Get a chat reply from the AI.
      *
      * @param array  $messages Array of {role, content} objects.
-     * @param string $image_b64 Base64-encoded image (optional).
      * @return string|\WP_Error
      */
-    public static function get_reply( array $messages, string $image_b64 = '' ) {
+    public static function get_reply( array $messages ) {
         if ( ! self::has_api_key() ) {
             return new \WP_Error( 'no_api_key', __( 'AI API key is not configured.', 'sonoai' ) );
         }
 
         return self::is_gemini()
-            ? self::gemini_chat( $messages, $image_b64 )
-            : self::openai_chat( $messages, $image_b64 );
+            ? self::gemini_chat( $messages )
+            : self::openai_chat( $messages );
     }
 
     // ── OpenAI internals ──────────────────────────────────────────────────────
@@ -159,23 +158,7 @@ class AIProvider {
         return $body['data'][0]['embedding'];
     }
 
-    private static function openai_chat( array $messages, string $image_b64 = '' ) {
-        // If an image is supplied, attach it to the LAST user message as a vision payload.
-        if ( ! empty( $image_b64 ) ) {
-            foreach ( array_reverse( array_keys( $messages ) ) as $idx ) {
-                if ( ( $messages[ $idx ]['role'] ?? '' ) === 'user' ) {
-                    $text_content = $messages[ $idx ]['content'];
-                    $messages[ $idx ]['content'] = [
-                        [ 'type' => 'text', 'text' => $text_content ],
-                        [
-                            'type'      => 'image_url',
-                            'image_url' => [ 'url' => 'data:image/jpeg;base64,' . $image_b64 ],
-                        ],
-                    ];
-                    break;
-                }
-            }
-        }
+    private static function openai_chat( array $messages ) {
 
         $response = wp_remote_post(
             'https://api.openai.com/v1/chat/completions',
@@ -237,7 +220,7 @@ class AIProvider {
         return $body['embedding']['values'];
     }
 
-    private static function gemini_chat( array $messages, string $image_b64 = '' ) {
+    private static function gemini_chat( array $messages ) {
         $api_key  = self::get_api_key();
         $model    = self::get_chat_model();
         $endpoint = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$api_key}";
@@ -256,17 +239,6 @@ class AIProvider {
             }
 
             $parts = [ [ 'text' => $content ] ];
-
-            // Attach image to the last user message.
-            if ( 'user' === $role && ! empty( $image_b64 ) ) {
-                $parts[] = [
-                    'inline_data' => [
-                        'mime_type' => 'image/jpeg',
-                        'data'      => $image_b64,
-                    ],
-                ];
-                $image_b64 = ''; // Only attach once.
-            }
 
             $gemini_contents[] = [
                 'role'  => 'user' === $role ? 'user' : 'model',
@@ -343,19 +315,7 @@ class AIProvider {
         return $full_text;
     }
 
-    private static function openai_chat_stream( array $messages, string $image_b64, callable $callback ) {
-        if ( ! empty( $image_b64 ) ) {
-            foreach ( array_reverse( array_keys( $messages ) ) as $idx ) {
-                if ( ( $messages[ $idx ]['role'] ?? '' ) === 'user' ) {
-                    $text_content = $messages[ $idx ]['content'];
-                    $messages[ $idx ]['content'] = [
-                        [ 'type' => 'text', 'text' => $text_content ],
-                        [ 'type' => 'image_url', 'image_url' => [ 'url' => 'data:image/jpeg;base64,' . $image_b64 ] ],
-                    ];
-                    break;
-                }
-            }
-        }
+    private static function openai_chat_stream( array $messages, callable $callback ) {
 
         $url = 'https://api.openai.com/v1/chat/completions';
         $payload = wp_json_encode( [
@@ -384,7 +344,7 @@ class AIProvider {
         } );
     }
 
-    private static function gemini_chat_stream( array $messages, string $image_b64, callable $callback ) {
+    private static function gemini_chat_stream( array $messages, callable $callback ) {
         $api_key  = self::get_api_key();
         $model    = self::get_chat_model();
         $endpoint = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:streamGenerateContent?alt=sse&key={$api_key}";
@@ -402,16 +362,6 @@ class AIProvider {
             }
 
             $parts = [ [ 'text' => $content ] ];
-
-            if ( 'user' === $role && ! empty( $image_b64 ) ) {
-                $parts[] = [
-                    'inline_data' => [
-                        'mime_type' => 'image/jpeg',
-                        'data'      => $image_b64,
-                    ],
-                ];
-                $image_b64 = '';
-            }
 
             $gemini_contents[] = [
                 'role'  => 'user' === $role ? 'user' : 'model',

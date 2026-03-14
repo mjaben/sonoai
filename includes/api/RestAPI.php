@@ -95,19 +95,7 @@ class RestAPI {
             return new \WP_REST_Response( [ 'error' => __( 'Message cannot be empty.', 'sonoai' ) ], 400 );
         }
 
-        // ── Handle image upload ──────────────────────────────────────────────
-        $image_b64  = '';
-        $image_url  = '';
-        $files      = $request->get_file_params();
 
-        if ( ! empty( $files['image']['tmp_name'] ) ) {
-            $saved = ImageHandler::save( $files['image'] );
-            if ( is_wp_error( $saved ) ) {
-                return new \WP_REST_Response( [ 'error' => $saved->get_error_message() ], 422 );
-            }
-            $image_url = $saved['url'];
-            $image_b64 = ImageHandler::encode_base64( $saved['path'] ) ?: '';
-        }
 
         // ── Session management ───────────────────────────────────────────────
         $is_new_session = false;
@@ -123,7 +111,7 @@ class RestAPI {
         }
 
         // ── Store user message ───────────────────────────────────────────────
-        Chat::add_message( $session_uuid, 'user', $message, $image_url );
+        Chat::add_message( $session_uuid, 'user', $message, '' );
 
         // ── Build prompt + history ───────────────────────────────────────────
         $context_data  = RAG::get_context_data( $message );
@@ -149,14 +137,7 @@ class RestAPI {
             header( 'Connection: keep-alive' );
             header( 'X-Accel-Buffering: no' );
 
-            echo "event: meta\ndata: " . wp_json_encode( [
-                'session_uuid'   => $session_uuid,
-                'is_new_session' => $is_new_session,
-                'context_images' => $context_imgs,
-            ] ) . "\n\n";
-            @ob_flush(); flush();
-
-            $reply = AIProvider::stream_reply( $ai_messages, $image_b64, function( $chunk ) {
+            $reply = AIProvider::stream_reply( $ai_messages, function( $chunk ) {
                 echo "event: chunk\ndata: " . wp_json_encode( [ 'chunk' => $chunk ] ) . "\n\n";
                 @ob_flush(); flush();
             } );
@@ -175,7 +156,7 @@ class RestAPI {
             exit;
         }
 
-        $reply = AIProvider::get_reply( $ai_messages, $image_b64 );
+        $reply = AIProvider::get_reply( $ai_messages );
 
         if ( is_wp_error( $reply ) ) {
             return new \WP_REST_Response( [ 'error' => $reply->get_error_message() ], 502 );

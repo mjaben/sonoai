@@ -18,7 +18,6 @@
     // ── State ──────────────────────────────────────────────────────────────
     const state = {
         sessionUuid : null,
-        pendingImage: null,   // { file: File, b64preview: string }
         sending     : false,
         sessions    : [],
     };
@@ -32,11 +31,6 @@
     const welcome       = document.getElementById('sonoai-welcome');
     const textarea      = document.getElementById('sonoai-input');
     const sendBtn       = document.getElementById('sonoai-send-btn');
-    const fileInput     = document.getElementById('sonoai-file-input');
-    const uploadBtn     = document.getElementById('sonoai-upload-btn');
-    const imagePreview  = document.getElementById('sonoai-image-preview');
-    const previewImg    = document.getElementById('sonoai-preview-img');
-    const removeImg     = document.getElementById('sonoai-remove-image');
     const sidebarToggle = document.getElementById('sonoai-sidebar-toggle');
     const newChatBtn    = document.getElementById('sonoai-new-chat');
     const newChatMobile = document.getElementById('sonoai-new-chat-mobile');
@@ -61,7 +55,7 @@
 
         // Enable send button when textarea has content.
         textarea.addEventListener('input', function () {
-            sendBtn.disabled = textarea.value.trim().length === 0 && !state.pendingImage;
+            sendBtn.disabled = textarea.value.trim().length === 0;
             autoResizeTextarea();
         });
 
@@ -72,11 +66,6 @@
                 textarea.focus();
             }
         });
-
-        // Image upload.
-        uploadBtn.addEventListener('click', function () { fileInput.click(); });
-        fileInput.addEventListener('change', handleFileSelect);
-        removeImg.addEventListener('click', clearImage);
 
         // Suggestion chips.
         document.querySelectorAll('.sonoai-suggestion').forEach(function (btn) {
@@ -208,14 +197,13 @@
         if (welcome) welcome.style.display = '';
         textarea.value = '';
         textarea.dispatchEvent(new Event('input'));
-        clearImage();
         closeSidebar();
     }
 
     // ── Send message ───────────────────────────────────────────────────────
     function handleSend() {
         const text = textarea.value.trim();
-        if ((!text && !state.pendingImage) || state.sending) {
+        if (!text || state.sending) {
             return;
         }
 
@@ -223,23 +211,19 @@
         if (welcome) welcome.style.display = 'none';
 
         // Show user message immediately.
-        const imageUrl = state.pendingImage ? state.pendingImage.b64preview : '';
+        const imageUrl = '';
         appendMessage('user', text, imageUrl);
 
-        // Build form data (supports image upload).
+        // Build form data.
         const formData = new FormData();
         formData.append('message', text);
         if (state.sessionUuid) {
             formData.append('session_uuid', state.sessionUuid);
         }
-        if (state.pendingImage && state.pendingImage.file) {
-            formData.append('image', state.pendingImage.file);
-        }
 
         // Reset input.
         textarea.value = '';
         textarea.dispatchEvent(new Event('input'));
-        clearImage();
 
         // Show typing indicator.
         const typingEl = appendTyping();
@@ -462,32 +446,7 @@
         scrollToBottom();
     }
 
-    // ── Image handling ─────────────────────────────────────────────────────
-    function handleFileSelect() {
-        const file = fileInput.files[0];
-        if (!file) { return; }
 
-        if (file.size > 10 * 1024 * 1024) {
-            showError('Image must be smaller than 10 MB.');
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = function (e) {
-            state.pendingImage = { file: file, b64preview: e.target.result };
-            previewImg.src     = e.target.result;
-            imagePreview.hidden = false;
-            sendBtn.disabled    = false;
-        };
-        reader.readAsDataURL(file);
-    }
-
-    function clearImage() {
-        state.pendingImage  = null;
-        fileInput.value     = '';
-        imagePreview.hidden = true;
-        previewImg.src      = '';
-    }
 
     // ── Utilities ──────────────────────────────────────────────────────────
     function scrollToBottom() {

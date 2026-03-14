@@ -596,7 +596,7 @@ body.sonoai-fullscreen #sonoai-app {
     resize: none;
     color: var(--sono-text);
     font-family: var(--sono-font);
-    font-size: 14.5px;
+    font-size: 16px;
     line-height: 1.6;
     min-height: 24px;
     max-height: 180px;

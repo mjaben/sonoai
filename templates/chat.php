@@ -80,7 +80,7 @@ defined( 'ABSPATH' ) || exit;
                         }
                         ?>
                     </h2>
-                    <p class="sonoai-welcome-subtitle"><?php esc_html_e( 'Your AI-powered sonography assistant. Ask a clinical question or upload a scan to get started.', 'sonoai' ); ?></p>
+                    <p class="sonoai-welcome-subtitle"><?php esc_html_e( 'Your educational AI-powered sonography assistant. Ask a clinical question to get started.', 'sonoai' ); ?></p>
                     <div class="sonoai-suggestion-grid">
                         <button class="sonoai-suggestion" data-query="<?php esc_attr_e( 'What is the difference between B-mode and M-mode ultrasound?', 'sonoai' ); ?>">B-mode vs M-mode</button>
                         <button class="sonoai-suggestion" data-query="<?php esc_attr_e( 'How do I identify free fluid in the abdomen on ultrasound?', 'sonoai' ); ?>">Free fluid detection</button>
@@ -90,28 +90,13 @@ defined( 'ABSPATH' ) || exit;
                 </div>
             </div>
 
-            <!-- Image preview strip -->
-            <div id="sonoai-image-preview" class="sonoai-image-preview" hidden>
-                <img id="sonoai-preview-img" src="" alt="<?php esc_attr_e( 'Sonogram preview', 'sonoai' ); ?>">
-                <button id="sonoai-remove-image" class="sonoai-remove-image" aria-label="<?php esc_attr_e( 'Remove image', 'sonoai' ); ?>">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                </button>
-            </div>
-
             <!-- Input area -->
             <div class="sonoai-input-area">
                 <div class="sonoai-input-box">
-                    <!-- Hidden file input -->
-                    <input type="file" id="sonoai-file-input" accept="image/jpeg,image/png,image/webp,image/gif" hidden aria-label="<?php esc_attr_e( 'Upload sonogram image', 'sonoai' ); ?>">
-
-                    <button id="sonoai-upload-btn" class="sonoai-input-action" title="<?php esc_attr_e( 'Upload sonogram image', 'sonoai' ); ?>" aria-label="<?php esc_attr_e( 'Upload sonogram image', 'sonoai' ); ?>">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                    </button>
-
                     <textarea
                         id="sonoai-input"
                         class="sonoai-textarea"
-                        placeholder="<?php esc_attr_e( 'Ask about ultrasound, sonography, or upload a scan…', 'sonoai' ); ?>"
+                        placeholder="<?php esc_attr_e( 'Ask a question about ultrasound or sonography…', 'sonoai' ); ?>"
                         rows="1"
                         aria-label="<?php esc_attr_e( 'Type your message', 'sonoai' ); ?>"
                         aria-multiline="true"

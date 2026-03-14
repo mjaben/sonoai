@@ -1,10 +1,10 @@
 <?php
 /**
  * Plugin Name: Sono AI
- * Description: AI-powered chat assistant for the ultrasound and sonography niche. Performs RAG over EazyDocs Cases and Forummax Topics. Supports image uploads for sonogram analysis.
+ * Description: Educational AI-powered chat assistant for the ultrasound and sonography niche. Performs RAG over EazyDocs Cases and Forummax Topics.
  * Plugin URI:  #
  * Author:      MJA
- * Version:     1.1.7.beta
+ * Version:     1.1.8.beta
  * Requires at least: 5.8
  * Requires PHP: 7.4
  * Text Domain: sonoai
@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-define( 'SONOAI_VERSION',  '1.1.6' );
+define( 'SONOAI_VERSION',  '1.1.8' );
 define( 'SONOAI_DIR',      plugin_dir_path( __FILE__ ) );
 define( 'SONOAI_URL',      plugin_dir_url( __FILE__ ) );
 define( 'SONOAI_BASENAME', plugin_basename( __FILE__ ) );
@@ -65,7 +65,6 @@ final class SonoAI {
         require_once SONOAI_DIR . 'includes/AIProvider.php';
         require_once SONOAI_DIR . 'includes/Embedding.php';
         require_once SONOAI_DIR . 'includes/RAG.php';
-        require_once SONOAI_DIR . 'includes/ImageHandler.php';
         require_once SONOAI_DIR . 'includes/Chat.php';
         require_once SONOAI_DIR . 'includes/api/RestAPI.php';
         require_once SONOAI_DIR . 'includes/hooks/ContentHooks.php';
