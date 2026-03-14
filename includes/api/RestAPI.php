@@ -137,6 +137,13 @@ class RestAPI {
             header( 'Connection: keep-alive' );
             header( 'X-Accel-Buffering: no' );
 
+            echo "event: meta\ndata: " . wp_json_encode( [
+                'session_uuid'   => $session_uuid,
+                'is_new_session' => $is_new_session,
+                'context_images' => $context_imgs,
+            ] ) . "\n\n";
+            @ob_flush(); flush();
+
             $reply = AIProvider::stream_reply( $ai_messages, function( $chunk ) {
                 echo "event: chunk\ndata: " . wp_json_encode( [ 'chunk' => $chunk ] ) . "\n\n";
                 @ob_flush(); flush();
