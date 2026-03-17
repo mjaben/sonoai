@@ -472,17 +472,25 @@
      * A full implementation would use a library; this handles the most common cases.
      */
     function markdownToHtml(text) {
-        // Escape user-injected content that may appear verbatim.
-        let html = text;
+        // First, escape all existing HTML tags to prevent DOM XSS.
+        let html = escapeHtml(text);
 
-        // Code blocks first (before other processing).
+        // Code blocks: Use a placeholder to protect them from further processing.
+        const codeBlocks = [];
         html = html.replace(/```[\w]*\n?([\s\S]*?)```/g, function(_, code) {
-            return '<pre><code>' + escapeHtml(code.trim()) + '</code></pre>';
+            const id = '___CODEBLOCK' + codeBlocks.length + '___';
+            codeBlocks.push('<pre><code>' + code.trim() + '</code></pre>');
+            return id;
         });
-        // Inline code.
+
+        // Inline code placeholders.
+        const inlineCodes = [];
         html = html.replace(/`([^`]+)`/g, function(_, code) {
-            return '<code>' + escapeHtml(code) + '</code>';
+            const id = '___INLINECODE' + inlineCodes.length + '___';
+            inlineCodes.push('<code>' + code + '</code>');
+            return id;
         });
+
         // Bold.
         html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
         // Italic.
@@ -491,20 +499,34 @@
         html = html.replace(/^### (.+)/gm, '<h4>$1</h4>');
         html = html.replace(/^## (.+)/gm,  '<h3>$1</h3>');
         html = html.replace(/^# (.+)/gm,   '<h2>$1</h2>');
+        
         // Unordered list items.
         html = html.replace(/^\s*[-*] (.+)/gm, '<li>$1</li>');
         html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+        
         // Numbered list items.
         html = html.replace(/^\s*\d+\. (.+)/gm, '<li>$1</li>');
+        
         // Paragraphs (double newline).
         html = html.replace(/\n{2,}/g, '</p><p>');
         // Single newlines to <br>.
         html = html.replace(/\n/g, '<br>');
         // Wrap in paragraph.
         html = '<p>' + html + '</p>';
-        // Fix <pre> wrapped in <p>.
-        html = html.replace(/<p><pre>/g, '<pre>').replace(/<\/pre><\/p>/g, '</pre>');
+        
+        // Restore code blocks/inline code.
+        codeBlocks.forEach(function(code, i) {
+            html = html.replace('___CODEBLOCK' + i + '___', code);
+        });
+        inlineCodes.forEach(function(code, i) {
+            html = html.replace('___INLINECODE' + i + '___', code);
+        });
+
+        // Clean up empty paragraphs.
+        html = html.replace(/<p>\s*<\/p>/g, '');
+        // Restore layout for lists/pre.
         html = html.replace(/<p><ul>/g, '<ul>').replace(/<\/ul><\/p>/g, '</ul>');
+        html = html.replace(/<p><pre>/g, '<pre>').replace(/<\/pre><\/p>/g, '</pre>');
 
         return html;
     }

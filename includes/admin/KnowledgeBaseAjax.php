@@ -98,51 +98,36 @@ class KnowledgeBaseAjax {
     private function embed_and_store( array $args ): array|\WP_Error {
         global $wpdb;
 
-        $type        = $args['type'];
-        $plain_text  = sonoai_clean_content( $args['text'] ?? '' );
-        $raw_content = $args['raw_content'] ?? $plain_text;
-        $source_url  = $args['source_url']  ?? '';
+        $type         = $args['type'];
+        $plain_text   = sonoai_clean_content( $args['text'] ?? '' );
+        $raw_content  = $args['raw_content'] ?? $plain_text;
+        $source_url   = $args['source_url']  ?? '';
         $source_title = $args['source_title'] ?? '';
-        $post_id     = $args['post_id']     ?? 0;
-        $image_urls  = $args['image_urls']  ?? [];
+        $post_id      = $args['post_id']      ?? 0;
+        $image_urls   = $args['image_urls']   ?? [];
 
         if ( empty( $plain_text ) ) {
             return new \WP_Error( 'empty_content', __( 'Content is empty.', 'sonoai' ) );
         }
 
+        // Use the centralized Embedding class for actual vector storage.
+        $result = Embedding::insert( (int) $post_id, $type, $plain_text, $image_urls );
+        
+        if ( is_wp_error( $result ) ) {
+            return $result;
+        }
+
+        // We need to retrieve the knowledge_id from the embeddings table since Embedding::insert generates a new one.
+        $knowledge_id = $wpdb->get_var( $wpdb->prepare(
+            "SELECT knowledge_id FROM {$this->emb_table()} WHERE post_id = %d AND type = %s ORDER BY id DESC LIMIT 1",
+            $post_id,
+            $type
+        ) );
+
         $provider        = sonoai_option( 'active_provider', 'openai' );
         $embedding_model = sonoai_option( $provider . '_embedding_model', 'text-embedding-3-small' );
-        $knowledge_id    = wp_generate_uuid4();
         $chunks          = $this->chunk( $plain_text );
         $image_json      = ! empty( $image_urls ) ? wp_json_encode( $image_urls ) : null;
-
-        try {
-            foreach ( $chunks as $idx => $chunk ) {
-                $embedding = AIProvider::generate_embedding( $chunk );
-                if ( is_wp_error( $embedding ) ) {
-                    return $embedding;
-                }
-                $wpdb->insert(
-                    $this->emb_table(),
-                    [
-                        'knowledge_id'    => $knowledge_id,
-                        'post_id'         => (int) $post_id,
-                        'type'            => $type,
-                        'source_url'      => $source_url,
-                        'source_title'    => $source_title,
-                        'image_urls'      => $image_json,
-                        'chunk_index'     => $idx,
-                        'chunk_text'      => $chunk,
-                        'embedding'       => wp_json_encode( $embedding ),
-                        'provider'        => $provider,
-                        'embedding_model' => $embedding_model,
-                    ],
-                    [ '%s','%d','%s','%s','%s','%s','%d','%s','%s','%s','%s' ]
-                );
-            }
-        } catch ( \Exception $e ) {
-            return new \WP_Error( 'embedding_failed', $e->getMessage() );
-        }
 
         $wpdb->insert(
             $this->kb_table(),

@@ -234,8 +234,14 @@ class RestAPI {
             return new \WP_REST_Response( [ 'error' => 'Post not found or not published.' ], 404 );
         }
 
-        $content = sonoai_clean_content( $post->post_content );
-        $result  = Embedding::insert( $post_id, $post->post_type, $content );
+        $content    = $post->post_content;
+        $image_urls = [];
+        if ( preg_match_all( '/<img[^>]+src=["\']([^"\']+)["\']/', $content, $m ) ) {
+            $image_urls = array_values( array_unique( $m[1] ) );
+        }
+
+        $clean_content = sonoai_clean_content( $content );
+        $result        = Embedding::insert( $post_id, $post->post_type, $clean_content, $image_urls );
 
         if ( is_wp_error( $result ) ) {
             return new \WP_REST_Response( [ 'error' => $result->get_error_message() ], 500 );

@@ -67,12 +67,13 @@ class Embedding {
     /**
      * Embed a post's content and store all chunks.
      *
-     * @param int    $post_id   WordPress post ID.
-     * @param string $post_type CPT slug (e.g. 'docs', 'topic').
-     * @param string $content   Plain-text content.
+     * @param int      $post_id    WordPress post ID.
+     * @param string   $post_type  CPT slug (e.g. 'docs', 'topic').
+     * @param string   $content    Plain-text content.
+     * @param string[] $image_urls Optional array of image source URLs.
      * @return true|\WP_Error
      */
-    public static function insert( int $post_id, string $post_type, string $content ) {
+    public static function insert( int $post_id, string $post_type, string $content, array $image_urls = [] ) {
         $content = trim( $content );
         if ( empty( $content ) ) {
             return new \WP_Error( 'empty_content', __( 'Content is empty.', 'sonoai' ) );
@@ -89,6 +90,7 @@ class Embedding {
         $model        = AIProvider::get_embedding_model();
         $chunks       = self::split_into_chunks( $content );
         $modified_gmt = current_time( 'mysql', true );
+        $image_json   = ! empty( $image_urls ) ? wp_json_encode( array_values( array_unique( $image_urls ) ) ) : null;
         $errors       = 0;
 
         foreach ( $chunks as $idx => $chunk_text ) {
@@ -106,6 +108,7 @@ class Embedding {
                     'knowledge_id'      => $knowledge_id,
                     'post_id'           => $post_id,
                     'post_type'         => $post_type,
+                    'image_urls'        => $image_json,
                     'chunk_index'       => $idx,
                     'chunk_text'        => $chunk_text,
                     'embedding'         => wp_json_encode( $embedding ),
@@ -113,7 +116,7 @@ class Embedding {
                     'embedding_model'   => $model,
                     'post_modified_gmt' => $modified_gmt,
                 ],
-                [ '%s', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s' ]
+                [ '%s', '%d', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s' ]
             );
 
             if ( false === $result ) {
