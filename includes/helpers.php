@@ -35,25 +35,21 @@ function sonoai_set_option( string $key, $value ): void {
 
 /**
  * Compute cosine similarity between two float vectors.
+ * Optimized as a dot product (requires normalized vectors like OpenAI's).
  *
  * @param float[] $a
  * @param float[] $b
  * @return float Similarity score in [-1, 1].
  */
 function sonoai_cosine_similarity( array $a, array $b ): float {
-    $dot  = 0.0;
-    $normA = 0.0;
-    $normB = 0.0;
-
+    $dot = 0.0;
     $len = min( count( $a ), count( $b ) );
+
     for ( $i = 0; $i < $len; $i++ ) {
-        $dot   += $a[ $i ] * $b[ $i ];
-        $normA += $a[ $i ] ** 2;
-        $normB += $b[ $i ] ** 2;
+        $dot += $a[ $i ] * $b[ $i ];
     }
 
-    $denom = sqrt( $normA ) * sqrt( $normB );
-    return $denom > 0.0 ? $dot / $denom : 0.0;
+    return $dot;
 }
 
 /**

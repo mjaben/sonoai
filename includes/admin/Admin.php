@@ -63,6 +63,7 @@ class Admin {
         $clean['system_prompt']       = sanitize_textarea_field( $input['system_prompt'] ?? '' );
         $clean['history_limit']       = max( 1, min( 500, absint( $input['history_limit'] ?? 50 ) ) );
         $clean['rag_results']         = max( 1, min( 20, absint( $input['rag_results'] ?? 5 ) ) );
+        $clean['rag_min_similarity']  = max( 0, min( 100, (int) ( ( $input['rag_min_similarity'] ?? 0.70 ) * 100 ) ) ) / 100;
         $clean['delete_on_uninstall'] = ! empty( $input['delete_on_uninstall'] ) ? '1' : '0';
 
         return $clean;
@@ -119,6 +120,13 @@ class Admin {
                                 <td>
                                     <input type="number" name="sonoai_settings[rag_results]" value="<?php echo esc_attr( $opts['rag_results'] ?? 5 ); ?>" min="1" max="20" class="small-text">
                                     <p class="description"><?php esc_html_e( 'Number of knowledge chunks to inject per query (1–20).', 'sonoai' ); ?></p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th><?php esc_html_e( 'Min Similarity Threshold', 'sonoai' ); ?></th>
+                                <td>
+                                    <input type="number" name="sonoai_settings[rag_min_similarity]" value="<?php echo esc_attr( $opts['rag_min_similarity'] ?? 0.70 ); ?>" min="0" max="1" step="0.01" class="small-text">
+                                    <p class="description"><?php esc_html_e( 'Minimum relevance score (0.00 to 1.00). Recommended: 0.70. Lower values include more noise; higher values may cause "Missing Knowledge" fallbacks.', 'sonoai' ); ?></p>
                                 </td>
                             </tr>
                         </table>

@@ -35,8 +35,9 @@ class RAG {
      */
     public static function get_context( string $query ): string {
         $limit      = (int) sonoai_option( 'rag_results', 5 );
+        $min_sim    = (float) sonoai_option( 'rag_min_similarity', 0.70 );
 
-        $chunks = Embedding::search( $query, max( 1, $limit ), [] );
+        $chunks = Embedding::search( $query, max( 1, $limit ), [], $min_sim );
 
         if ( empty( $chunks ) ) {
             return '';
@@ -102,7 +103,8 @@ class RAG {
         );
 
         $limit      = (int) sonoai_option( 'rag_results', 5 );
-        $chunks     = Embedding::search( $query, max( 1, $limit ), [] );
+        $min_sim    = (float) sonoai_option( 'rag_min_similarity', 0.70 );
+        $chunks     = Embedding::search( $query, max( 1, $limit ), [], $min_sim );
 
         $lines  = [];
         $images = [];

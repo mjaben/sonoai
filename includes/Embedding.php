@@ -158,12 +158,13 @@ class Embedding {
     /**
      * Find the top-N most relevant chunks for a query string.
      *
-     * @param string   $query      User's question.
-     * @param int      $limit      Number of results.
-     * @param string[] $post_types Filter by CPT; empty array = all types.
+     * @param string   $query          User's question.
+     * @param int      $limit          Number of results.
+     * @param string[] $post_types     Filter by CPT; empty array = all types.
+     * @param float    $min_similarity Minimum similarity score to include (0.0 to 1.0).
      * @return array{chunk_text: string, post_id: int, post_type: string, similarity: float}[]
      */
-    public static function search( string $query, int $limit = 5, array $post_types = [] ) {
+    public static function search( string $query, int $limit = 5, array $post_types = [], float $min_similarity = 0.0 ) {
         if ( ! AIProvider::has_api_key() ) {
             return [];
         }
@@ -211,6 +212,12 @@ class Embedding {
                 continue;
             }
             $sim        = sonoai_cosine_similarity( $query_vector, $vec );
+            
+            // Filter by minimum similarity.
+            if ( $sim < $min_similarity ) {
+                continue;
+            }
+
             $candidate  = [
                 'chunk_text' => $row['chunk_text'],
                 'post_id'    => (int) $row['post_id'],
