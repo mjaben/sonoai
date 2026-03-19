@@ -230,7 +230,7 @@ class KnowledgeBase {
                 'desc'    => __( 'Add your existing WordPress posts, pages, and custom post types to train your AI assistant.', 'sonoai' ),
                 'bullets' => [
                     __( 'Blog posts & pages', 'sonoai' ),
-                    __( 'EazyDocs & custom post types', 'sonoai' ),
+                    __( 'Other custom post types', 'sonoai' ),
                     __( 'Auto-update on changes', 'sonoai' ),
                 ],
                 'use'   => __( 'Best for: blog content, documentation, product pages.', 'sonoai' ),

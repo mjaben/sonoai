@@ -2,8 +2,8 @@
 /**
  * SonoAI — Content hooks.
  *
- * Automatically generates and stores embeddings when EazyDocs Cases (docs CPT)
- * or Forummax Topics (topic CPT) are published or updated.
+ * Automatically generates and stores embeddings when eligible WordPress posts
+ * are published or updated.
  *
  * Uses WP-Cron to run embedding in the background so saves aren't blocked.
  *
@@ -19,9 +19,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 class ContentHooks {
 
     private static ?ContentHooks $instance = null;
-
-    /** CPT slugs that SonoAI should auto-embed. */
-    private const WATCHED_POST_TYPES = [ 'docs', 'topic' ];
 
     public static function instance(): ContentHooks {
         if ( null === self::$instance ) {
@@ -44,6 +41,17 @@ class ContentHooks {
     // ── Status transition ─────────────────────────────────────────────────────
 
     /**
+     * Check if a post type is publicly queryable and supports the editor.
+     *
+     * @param string $post_type The post type to check.
+     * @return bool
+     */
+    private function is_eligible_post_type( string $post_type ): bool {
+        $pt_obj = get_post_type_object( $post_type );
+        return $pt_obj && $pt_obj->public && post_type_supports( $post_type, 'editor' );
+    }
+
+    /**
      * Fired whenever a post's status changes.
      *
      * @param string   $new_status New post status.
@@ -56,7 +64,7 @@ class ContentHooks {
             return;
         }
 
-        if ( ! in_array( $post->post_type, self::WATCHED_POST_TYPES, true ) ) {
+        if ( ! $this->is_eligible_post_type( $post->post_type ) ) {
             return;
         }
 
@@ -115,7 +123,7 @@ class ContentHooks {
      */
     public function on_post_delete( int $post_id ): void {
         $post = get_post( $post_id );
-        if ( $post && in_array( $post->post_type, self::WATCHED_POST_TYPES, true ) ) {
+        if ( $post && $this->is_eligible_post_type( $post->post_type ) ) {
             Embedding::delete_by_post( $post_id );
         }
     }

@@ -111,18 +111,11 @@ class KnowledgeBaseAjax {
         }
 
         // Use the centralized Embedding class for actual vector storage.
-        $result = Embedding::insert( (int) $post_id, $type, $plain_text, $image_urls );
+        $knowledge_id = Embedding::insert( (int) $post_id, $type, $plain_text, $image_urls );
         
-        if ( is_wp_error( $result ) ) {
-            return $result;
+        if ( is_wp_error( $knowledge_id ) ) {
+            return $knowledge_id;
         }
-
-        // We need to retrieve the knowledge_id from the embeddings table since Embedding::insert generates a new one.
-        $knowledge_id = $wpdb->get_var( $wpdb->prepare(
-            "SELECT knowledge_id FROM {$this->emb_table()} WHERE post_id = %d AND type = %s ORDER BY id DESC LIMIT 1",
-            $post_id,
-            $type
-        ) );
 
         $provider        = sonoai_option( 'active_provider', 'openai' );
         $embedding_model = sonoai_option( $provider . '_embedding_model', 'text-embedding-3-small' );

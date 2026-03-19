@@ -1,10 +1,10 @@
 <?php
 /**
  * Plugin Name: Sono AI
- * Description: Educational AI-powered chat assistant for the ultrasound and sonography niche. Performs RAG over EazyDocs Cases and Forummax Topics.
+ * Description: Educational AI-powered chat assistant for the ultrasound and sonography niche. Performs RAG over WordPress Knowledge Base.
  * Plugin URI:  #
  * Author:      MJA
- * Version:     1.1.8.beta
+ * Version:     1.1.9.beta
  * Requires at least: 5.8
  * Requires PHP: 7.4
  * Text Domain: sonoai
@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-define( 'SONOAI_VERSION',  '1.1.8' );
+define( 'SONOAI_VERSION',  '1.1.9' );
 define( 'SONOAI_DIR',      plugin_dir_path( __FILE__ ) );
 define( 'SONOAI_URL',      plugin_dir_url( __FILE__ ) );
 define( 'SONOAI_BASENAME', plugin_basename( __FILE__ ) );

@@ -3,7 +3,7 @@
  * SonoAI — Embedding management.
  *
  * Handles creation, storage, and cosine-similarity retrieval of vector
- * embeddings for EazyDocs cases (docs CPT) and Forummax topics (topic CPT).
+ * embeddings for eligible WordPress post types.
  * Adapted from the Antimanual Embedding class pattern.
  *
  * @package SonoAI
@@ -71,7 +71,7 @@ class Embedding {
      * @param string   $post_type  CPT slug (e.g. 'docs', 'topic').
      * @param string   $content    Plain-text content.
      * @param string[] $image_urls Optional array of image source URLs.
-     * @return true|\WP_Error
+     * @return string|\WP_Error
      */
     public static function insert( int $post_id, string $post_type, string $content, array $image_urls = [] ) {
         $content = trim( $content );
@@ -125,21 +125,23 @@ class Embedding {
             }
         }
 
-        // Remove old chunks for this post (different knowledge_id).
-        $wpdb->query(
-            $wpdb->prepare(
-                "DELETE FROM `$table` WHERE post_id = %d AND knowledge_id != %s AND provider = %s",
-                $post_id,
-                $knowledge_id,
-                $provider
-            )
-        );
+        if ( $post_id > 0 ) {
+            // Remove old chunks for this post (different knowledge_id).
+            $wpdb->query(
+                $wpdb->prepare(
+                    "DELETE FROM `$table` WHERE post_id = %d AND knowledge_id != %s AND provider = %s",
+                    $post_id,
+                    $knowledge_id,
+                    $provider
+                )
+            );
+        }
 
         if ( $errors === count( $chunks ) ) {
             return new \WP_Error( 'all_chunks_failed', __( 'All embedding chunks failed.', 'sonoai' ) );
         }
 
-        return true;
+        return $knowledge_id;
     }
 
     // ── Delete ────────────────────────────────────────────────────────────────

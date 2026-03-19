@@ -3,7 +3,7 @@
  * SonoAI — RAG context builder.
  *
  * Retrieves the most semantically relevant content chunks from the knowledge
- * base (EazyDocs + Forummax) and assembles them into a system-prompt block.
+ * base and assembles them into a system-prompt block.
  *
  * @package SonoAI
  */
@@ -70,10 +70,9 @@ class RAG {
         $title = get_the_title( $post_id );
         $label = $title ?: sprintf( '%s #%d', ucfirst( $post_type ), $post_id );
 
-        if ( 'docs' === $post_type ) {
-            $label = '[Case] ' . $label;
-        } elseif ( 'topic' === $post_type ) {
-            $label = '[Forum Topic] ' . $label;
+        $pt_obj = get_post_type_object( $post_type );
+        if ( $pt_obj && ! empty( $pt_obj->labels->singular_name ) ) {
+            $label = '[' . $pt_obj->labels->singular_name . '] ' . $label;
         }
 
         return $label;
