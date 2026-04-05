@@ -1,0 +1,90 @@
+.antimanual-embeded-chat-toggle{
+    position: fixed;
+    right: 25px;
+    bottom: 25px;
+    padding: 16px;
+    border-radius: 200px;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.175);
+    z-index: 9999;
+    border: 0;
+    cursor: pointer;
+    transition-duration: 300ms;
+
+    & div {
+        height: 20px;
+        min-width: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+
+        & .help-icon {
+            & .antimanual-icon {
+                width: 20px;
+            }
+        }
+
+        & .close-icon {
+            display: none;
+
+            & .antimanual-icon {
+                width: 14px;
+            }
+        }
+    }
+
+    &:hover {
+        scale: 110%;
+    }
+
+    &:active {
+        scale: 100%;
+    }
+}
+
+
+
+
+.antimanual-chatbox-iframe-wraper {
+    display: block;
+    opacity: 0;
+    visibility: hidden;
+    width: 400px;
+    height: 600px;
+    max-height: 77vh;
+    overflow: hidden;
+    position: fixed;
+    z-index: 999;
+    right: 16px;
+    bottom: 92px;
+    border-radius: 10px;
+    transform: translateY(20px);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.175);
+    transition:all 0.3s ease-in-out;
+
+
+    @media(max-width: 480px){
+        max-height: 100%;
+        max-width: 100%;
+        height: 100%;
+        width: 100%;
+        top: 32px;
+        right: 0;
+        bottom: inherit;
+        left: 0;
+    }
+}
+
+
+
+.antimanual-chatbox-iframe-wraper.show-chatbox {
+    visibility: visible;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.antimanual-chatbox-iframe-wraper iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}

@@ -40,7 +40,7 @@ class Chat {
      * @param string $first_message The first user message (used as title).
      * @return string Session UUID.
      */
-    public static function create_session( int $user_id, string $first_message ): string {
+    public static function create_session( int $user_id, string $first_message, string $mode = 'guideline' ): string {
         global $wpdb;
         $table = self::table();
         $uuid  = wp_generate_uuid4();
@@ -52,9 +52,10 @@ class Chat {
                 'session_uuid' => $uuid,
                 'user_id'      => $user_id,
                 'title'        => $title,
+                'mode'         => in_array( $mode, [ 'guideline', 'research' ], true ) ? $mode : 'guideline',
                 'messages'     => wp_json_encode( [] ),
             ],
-            [ '%s', '%d', '%s', '%s' ]
+            [ '%s', '%d', '%s', '%s', '%s' ]
         );
 
         // Enforce history limit (prune oldest sessions beyond the limit).
@@ -120,11 +121,21 @@ class Chat {
             return null;
         }
 
-        $messages = json_decode( $session->messages, true );
+        $messages  = json_decode( $session->messages, true );
+        $messages  = is_array( $messages ) ? $messages : [];
+        $saved_map = SavedResponses::get_saved_ids_for_session( $session_uuid, $user_id );
+
+        foreach ( $messages as $idx => &$m ) {
+            if ( $m['role'] === 'assistant' && isset( $saved_map[ $idx ] ) ) {
+                $m['saved_id'] = (int) $saved_map[ $idx ]->id;
+            }
+        }
+
         return [
             'uuid'       => $session->session_uuid,
             'title'      => $session->title,
-            'messages'   => is_array( $messages ) ? $messages : [],
+            'mode'       => $session->mode ?? 'guideline',
+            'messages'   => $messages,
             'created_at' => $session->created_at,
             'updated_at' => $session->updated_at,
         ];
@@ -143,7 +154,7 @@ class Chat {
 
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                "SELECT session_uuid, title, created_at, updated_at FROM `$table` WHERE user_id = %d ORDER BY updated_at DESC LIMIT %d",
+                "SELECT session_uuid, title, mode, created_at, updated_at FROM `$table` WHERE user_id = %d ORDER BY updated_at DESC LIMIT %d",
                 $user_id,
                 $limit
             ),
@@ -166,6 +177,11 @@ class Chat {
             [ '%s', '%d' ]
         );
 
+        if ( $deleted > 0 ) {
+            $wpdb->delete( $wpdb->prefix . 'sonoai_saved_responses', [ 'session_uuid' => $session_uuid ], [ '%s' ] );
+            $wpdb->delete( $wpdb->prefix . 'sonoai_feedback', [ 'session_uuid' => $session_uuid ], [ '%s' ] );
+        }
+
         return $deleted > 0;
     }
 
@@ -175,7 +191,20 @@ class Chat {
     public static function delete_all_sessions( int $user_id ): bool {
         global $wpdb;
         $table = self::table();
-        return $wpdb->delete( $table, [ 'user_id' => $user_id ], [ '%d' ] ) !== false;
+        
+        // Find all session UUIDs for this user to delete cascades.
+        $sessions = self::list_sessions( $user_id );
+        $deleted_sessions = $wpdb->delete( $table, [ 'user_id' => $user_id ], [ '%d' ] ) !== false;
+        
+        if ( $deleted_sessions && ! empty( $sessions ) ) {
+            foreach ( $sessions as $session ) {
+                $uuid = $session['session_uuid'];
+                $wpdb->delete( $wpdb->prefix . 'sonoai_saved_responses', [ 'session_uuid' => $uuid ], [ '%s' ] );
+                $wpdb->delete( $wpdb->prefix . 'sonoai_feedback', [ 'session_uuid' => $uuid ], [ '%s' ] );
+            }
+        }
+        
+        return $deleted_sessions;
     }
 
     /**

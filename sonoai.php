@@ -3,8 +3,8 @@
  * Plugin Name: Sono AI
  * Description: Educational AI-powered chat assistant for the ultrasound and sonography niche. Performs RAG over WordPress Knowledge Base.
  * Plugin URI:  #
- * Author:      MJA
- * Version:     1.1.9.beta
+ * Author:      Sonohive
+ * Version:     1.3.0
  * Requires at least: 5.8
  * Requires PHP: 7.4
  * Text Domain: sonoai
@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-define( 'SONOAI_VERSION',  '1.1.9' );
+define( 'SONOAI_VERSION',  '1.3.0' );
 define( 'SONOAI_DIR',      plugin_dir_path( __FILE__ ) );
 define( 'SONOAI_URL',      plugin_dir_url( __FILE__ ) );
 define( 'SONOAI_BASENAME', plugin_basename( __FILE__ ) );
@@ -66,12 +66,17 @@ final class SonoAI {
         require_once SONOAI_DIR . 'includes/Embedding.php';
         require_once SONOAI_DIR . 'includes/RAG.php';
         require_once SONOAI_DIR . 'includes/Chat.php';
+        require_once SONOAI_DIR . 'includes/Topics.php';
+        require_once SONOAI_DIR . 'includes/RedisManager.php';
+        require_once SONOAI_DIR . 'includes/SavedResponses.php';
         require_once SONOAI_DIR . 'includes/api/RestAPI.php';
         require_once SONOAI_DIR . 'includes/hooks/ContentHooks.php';
         require_once SONOAI_DIR . 'includes/admin/Admin.php';
         require_once SONOAI_DIR . 'includes/admin/ApiConfig.php';
         require_once SONOAI_DIR . 'includes/admin/KnowledgeBase.php';
+        require_once SONOAI_DIR . 'includes/admin/TopicsAdmin.php';
         require_once SONOAI_DIR . 'includes/admin/KnowledgeBaseAjax.php';
+        require_once SONOAI_DIR . 'includes/admin/FeedbackAnalytics.php';
         require_once SONOAI_DIR . 'includes/admin/QueryLogs.php';
         require_once SONOAI_DIR . 'includes/Shortcode.php';
     }
@@ -86,7 +91,9 @@ final class SonoAI {
             SonoAI\Admin::instance();
             SonoAI\ApiConfig::instance();
             SonoAI\KnowledgeBase::instance();
+            SonoAI\TopicsAdmin::instance();
             SonoAI\KnowledgeBaseAjax::instance();
+            SonoAI\FeedbackAnalytics::instance();
             SonoAI\QueryLogs::instance();
             SonoAI\Shortcode::instance();
         } );

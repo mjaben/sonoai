@@ -1,0 +1,303 @@
+/**
+ * EazyDocs Grid Block - Enhanced Frontend Styles
+ *
+ * @package EazyDocs Pro
+ * @since 2.9.0
+ */
+
+/* ===================================
+   CSS Custom Properties
+   =================================== */
+
+:root {
+  --ezd-grid-primary: var(--ezd_brand_color, #0866ff);
+  --ezd-grid-primary-light: rgba(8, 102, 255, 0.1);
+  --ezd-grid-text: #1f2937;
+  --ezd-grid-text-secondary: #6b7280;
+  --ezd-grid-border: #e5e7eb;
+  --ezd-grid-bg: #ffffff;
+  --ezd-grid-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  --ezd-grid-shadow-hover: 0 12px 40px rgba(0, 0, 0, 0.15);
+  --ezd-grid-radius: 12px;
+}
+
+/* ===================================
+   Responsive Grid Classes
+   =================================== */
+
+.ezd-grid {
+  display: grid;
+  gap: 24px;
+  
+  @for $i from 1 through 6 {
+    &.ezd-column-#{$i} {
+      grid-template-columns: repeat($i, 1fr);
+    }
+  }
+}
+
+/* Tablet Responsive (768px - 1024px) */
+@media (max-width: 1024px) and (min-width: 768px) {
+  .ezd-grid {
+    @for $i from 1 through 4 {
+      &.ezd-tablet-column-#{$i} {
+        grid-template-columns: repeat($i, 1fr);
+      }
+    }
+  }
+}
+
+/* Mobile Responsive (below 768px) */
+@media (max-width: 767px) {
+  .ezd-grid {
+    @for $i from 1 through 2 {
+      &.ezd-mobile-column-#{$i} {
+        grid-template-columns: repeat($i, 1fr);
+      }
+    }
+  }
+}
+
+/* ===================================
+   Card Style Variants
+   =================================== */
+
+/* Elevated (Shadow) - Default */
+.card-style-elevated {
+  background: var(--ezd-grid-bg);
+  box-shadow: var(--ezd-grid-shadow);
+  border: none;
+  border-radius: var(--ezd-grid-radius);
+}
+
+/* Bordered */
+.card-style-bordered {
+  background: var(--ezd-grid-bg);
+  box-shadow: none;
+  border: 2px solid var(--ezd-grid-border);
+  border-radius: var(--ezd-grid-radius);
+}
+
+/* Flat */
+.card-style-flat {
+  background: #f8fafc;
+  box-shadow: none;
+  border: none;
+  border-radius: var(--ezd-grid-radius);
+}
+
+/* Glassmorphism */
+.card-style-glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--ezd-grid-radius);
+}
+
+/* ===================================
+   Hover Animation
+   =================================== */
+
+.hover-animation-enabled {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  &:hover {
+    transform: translateY(-6px);
+    box-shadow: var(--ezd-grid-shadow-hover);
+  }
+}
+
+/* ===================================
+   Enhanced Badge Styles
+   =================================== */
+
+.ezd-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ezd-grid-primary);
+  background: var(--ezd-grid-primary-light);
+  border-radius: 20px;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  
+  &.ezd-circle {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+  }
+}
+
+/* ===================================
+   Enhanced Button Styles
+   =================================== */
+
+.doc_border_btn,
+.text_btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ezd-grid-primary);
+  text-decoration: none;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    gap: 12px;
+    color: var(--ezd-grid-primary);
+    
+    i {
+      transform: translateX(4px);
+    }
+  }
+  
+  i {
+    transition: transform 0.2s ease;
+  }
+}
+
+.action_btn.all_doc_btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 28px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--ezd-grid-primary);
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px var(--ezd-grid-primary-light);
+    
+    i {
+      transform: translateX(4px);
+    }
+  }
+  
+  i {
+    transition: transform 0.2s ease;
+  }
+}
+
+/* ===================================
+   Section Button Wrapper
+   =================================== */
+
+.ezd-section-btn-wrap {
+  margin-top: 40px;
+  text-align: center;
+}
+
+/* ===================================
+   Enhanced List Styles
+   =================================== */
+
+.ezd-list-unstyled.tag_list {
+  li {
+    position: relative;
+    padding-left: 0;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    
+    i {
+      flex-shrink: 0;
+      width: 18px;
+      height: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: var(--ezd-grid-primary);
+      transition: all 0.2s ease;
+    }
+    
+    a {
+      color: var(--ezd-grid-text-secondary);
+      font-size: 15px;
+      line-height: 1.5;
+      text-decoration: none;
+      transition: color 0.2s ease;
+      
+      &:hover {
+        color: var(--ezd-grid-primary);
+      }
+    }
+  }
+}
+
+/* ===================================
+   Featured Image Styles
+   =================================== */
+
+.doc-thumbnail {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+/* ===================================
+   Title Styles
+   =================================== */
+
+.categories_guide_item,
+.topic_list_item {
+  .title,
+  .ct-heading-text {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ezd-grid-text);
+    margin: 0 0 4px;
+    line-height: 1.4;
+    transition: color 0.2s ease;
+  }
+  
+  .doc_tag_title:hover .title,
+  .topic-title:hover .ct-heading-text {
+    color: var(--ezd-grid-primary);
+  }
+}
+
+/* ===================================
+   Animations
+   =================================== */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.box-item.wow.fadeInUp {
+  animation: fadeInUp 0.5s ease forwards;
+}
+
+/* ===================================
+   Print Styles
+   =================================== */
+
+@media print {
+  .hover-animation-enabled:hover {
+    transform: none;
+    box-shadow: none;
+  }
+}
+

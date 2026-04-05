@@ -8,6 +8,9 @@
  *  GET  /history/{uuid}  — get single session messages
  *  DELETE /history/{uuid} — delete a session
  *  POST /embed-post      — manually trigger KB embedding (admin only)
+ *  POST /saved           — save an assistant message
+ *  GET  /saved           — list user's saved responses
+ *  DELETE /saved/{id}    — delete a saved response
  *
  * @package SonoAI
  */
@@ -66,6 +69,33 @@ class RestAPI {
             'callback'            => [ $this, 'handle_embed_post' ],
             'permission_callback' => [ $this, 'require_admin' ],
         ] );
+
+        // ── Saved responses ───────────────────────────────────────────────────
+        register_rest_route( $ns, '/saved', [
+            [
+                'methods'             => 'POST',
+                'callback'            => [ $this, 'handle_save_response' ],
+                'permission_callback' => [ $this, 'require_logged_in' ],
+            ],
+            [
+                'methods'             => 'GET',
+                'callback'            => [ $this, 'handle_list_saved' ],
+                'permission_callback' => [ $this, 'require_logged_in' ],
+            ],
+        ] );
+
+        register_rest_route( $ns, '/saved/(?P<id>\d+)', [
+            'methods'             => 'DELETE',
+            'callback'            => [ $this, 'handle_delete_saved' ],
+            'permission_callback' => [ $this, 'require_logged_in' ],
+        ] );
+
+        // ── Feedback ──────────────────────────────────────────────────────────
+        register_rest_route( $ns, '/feedback', [
+            'methods'             => 'POST',
+            'callback'            => [ $this, 'handle_feedback' ],
+            'permission_callback' => [ $this, 'require_logged_in' ],
+        ] );
     }
 
     // ── Permission callbacks ──────────────────────────────────────────────────
@@ -87,9 +117,11 @@ class RestAPI {
     // ── POST /chat ────────────────────────────────────────────────────────────
 
     public function handle_chat( \WP_REST_Request $request ): \WP_REST_Response {
-        $user_id     = get_current_user_id();
-        $message     = sanitize_textarea_field( $request->get_param( 'message' ) ?? '' );
+        $user_id      = get_current_user_id();
+        $message      = sanitize_textarea_field( $request->get_param( 'message' ) ?? '' );
         $session_uuid = sanitize_text_field( $request->get_param( 'session_uuid' ) ?? '' );
+        $mode         = sanitize_key( $request->get_param( 'mode' ) ?? 'guideline' );
+        $mode         = in_array( $mode, [ 'guideline', 'research' ], true ) ? $mode : 'guideline';
 
         if ( empty( $message ) ) {
             return new \WP_REST_Response( [ 'error' => __( 'Message cannot be empty.', 'sonoai' ) ], 400 );
@@ -100,7 +132,7 @@ class RestAPI {
         // ── Session management ───────────────────────────────────────────────
         $is_new_session = false;
         if ( empty( $session_uuid ) ) {
-            $session_uuid   = Chat::create_session( $user_id, $message );
+            $session_uuid   = Chat::create_session( $user_id, $message, $mode );
             $is_new_session = true;
         } else {
             // Verify ownership.
@@ -112,9 +144,10 @@ class RestAPI {
 
         // ── Store user message ───────────────────────────────────────────────
         Chat::add_message( $session_uuid, 'user', $message, '' );
+        RedisManager::instance()->store_memory( $session_uuid, [ 'role' => 'user', 'content' => $message ] );
 
         // ── Build prompt + history ───────────────────────────────────────────
-        $context_data  = RAG::get_context_data( $message );
+        $context_data  = RAG::get_context_data( $message, $mode, $session_uuid );
         $system_prompt = $context_data['prompt'];
         $context_imgs  = $context_data['images'];
         $history       = Chat::get_messages_for_ai( $session_uuid );
@@ -141,6 +174,7 @@ class RestAPI {
                 'session_uuid'   => $session_uuid,
                 'is_new_session' => $is_new_session,
                 'context_images' => $context_imgs,
+                'mode'           => $mode,
             ] ) . "\n\n";
             @ob_flush(); flush();
 
@@ -153,6 +187,7 @@ class RestAPI {
                 echo "event: error\ndata: " . wp_json_encode( [ 'error' => $reply->get_error_message() ] ) . "\n\n";
             } else {
                 Chat::add_message( $session_uuid, 'assistant', $reply );
+                RedisManager::instance()->store_memory( $session_uuid, [ 'role' => 'assistant', 'content' => $reply ] );
                 
                 if ( str_contains( $reply, 'I cannot answer this question because I have not yet been trained' ) || str_contains( $reply, 'I cannot answer questions or discuss topics outside of this medical domain' ) ) {
                     Chat::log_unanswered_query( $user_id, $message, $reply );
@@ -171,6 +206,7 @@ class RestAPI {
 
         // ── Store AI reply ───────────────────────────────────────────────────
         Chat::add_message( $session_uuid, 'assistant', $reply );
+        RedisManager::instance()->store_memory( $session_uuid, [ 'role' => 'assistant', 'content' => $reply ] );
 
         if ( str_contains( $reply, 'I cannot answer this question because I have not yet been trained' ) || str_contains( $reply, 'I cannot answer questions or discuss topics outside of this medical domain' ) ) {
             Chat::log_unanswered_query( $user_id, $message, $reply );
@@ -181,6 +217,7 @@ class RestAPI {
             'session_uuid'   => $session_uuid,
             'is_new_session' => $is_new_session,
             'context_images' => $context_imgs,
+            'mode'           => $mode,
         ], 200 );
     }
 
@@ -252,5 +289,92 @@ class RestAPI {
             'post_id'   => $post_id,
             'post_type' => $post->post_type,
         ], 200 );
+    }
+
+    // ── POST /saved ───────────────────────────────────────────────────────────
+
+    public function handle_save_response( \WP_REST_Request $request ): \WP_REST_Response {
+        $user_id       = get_current_user_id();
+        $session_uuid  = sanitize_text_field( $request->get_param( 'session_uuid' ) ?? '' );
+        $message_index = max( 0, (int) $request->get_param( 'message_index' ) );
+        $content       = wp_kses_post( $request->get_param( 'content' ) ?? '' );
+        $mode          = sanitize_key( $request->get_param( 'mode' ) ?? 'guideline' );
+        $topic_slug    = sanitize_key( $request->get_param( 'topic_slug' ) ?? '' );
+
+        if ( empty( $session_uuid ) || empty( $content ) ) {
+            return new \WP_REST_Response( [ 'error' => 'session_uuid and content are required.' ], 400 );
+        }
+
+        // Verify session ownership.
+        $session = Chat::get_session( $session_uuid, $user_id );
+        if ( ! $session ) {
+            return new \WP_REST_Response( [ 'error' => 'Session not found.' ], 404 );
+        }
+
+        $id = SavedResponses::save( $user_id, $session_uuid, $message_index, $content, $mode, $topic_slug );
+        if ( ! $id ) {
+            return new \WP_REST_Response( [ 'error' => 'Could not save response.' ], 500 );
+        }
+
+        return new \WP_REST_Response( [ 'id' => $id ], 201 );
+    }
+
+    // ── GET /saved ────────────────────────────────────────────────────────────
+
+    public function handle_list_saved( \WP_REST_Request $request ): \WP_REST_Response {
+        $user_id = get_current_user_id();
+        $items   = SavedResponses::list( $user_id );
+        return new \WP_REST_Response( $items, 200 );
+    }
+
+    // ── DELETE /saved/{id} ────────────────────────────────────────────────────
+
+    public function handle_delete_saved( \WP_REST_Request $request ): \WP_REST_Response {
+        $user_id = get_current_user_id();
+        $id      = absint( $request->get_param( 'id' ) );
+        $deleted = SavedResponses::delete( $id, $user_id );
+
+        if ( ! $deleted ) {
+            return new \WP_REST_Response( [ 'error' => 'Not found or already deleted.' ], 404 );
+        }
+
+        return new \WP_REST_Response( [ 'deleted' => true ], 200 );
+    }
+
+    // ── POST /feedback ────────────────────────────────────────────────────────
+    
+    public function handle_feedback( \WP_REST_Request $request ): \WP_REST_Response {
+        $user_id       = get_current_user_id();
+        $session_uuid  = sanitize_text_field( $request->get_param( 'session_uuid' ) ?? '' );
+        $message_index = max( 0, (int) $request->get_param( 'message_index' ) );
+        $vote          = sanitize_key( $request->get_param( 'vote' ) ?? '' );
+        $comment       = sanitize_textarea_field( $request->get_param( 'comment' ) ?? '' );
+
+        if ( empty( $session_uuid ) || empty( $vote ) ) {
+            return new \WP_REST_Response( [ 'error' => 'session_uuid and vote are required.' ], 400 );
+        }
+
+        // Verify session ownership.
+        $session = Chat::get_session( $session_uuid, $user_id );
+        if ( ! $session ) {
+            return new \WP_REST_Response( [ 'error' => 'Session not found.' ], 404 );
+        }
+
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'sonoai_feedback';
+
+        $wpdb->insert(
+            $table_name,
+            [
+                'session_uuid'  => $session_uuid,
+                'message_index' => $message_index,
+                'vote'          => $vote,
+                'comment'       => $comment,
+                'created_at'    => current_time( 'mysql' ),
+            ],
+            [ '%s', '%d', '%s', '%s', '%s' ]
+        );
+
+        return new \WP_REST_Response( [ 'success' => true ], 201 );
     }
 }

@@ -87,6 +87,14 @@ class ApiConfig {
         $clean['gemini_embedding_model']  = sanitize_text_field( $input['gemini_embedding_model']  ?? ( $existing['gemini_embedding_model']  ?? 'text-embedding-004' ) );
         $clean['mistral_embedding_model'] = sanitize_text_field( $input['mistral_embedding_model'] ?? ( $existing['mistral_embedding_model'] ?? 'mistral-embed' ) );
 
+        // Redis settings.
+        $clean['redis_enabled']  = ! empty( $input['redis_enabled'] );
+        $clean['redis_host']     = sanitize_text_field( $input['redis_host']     ?? '127.0.0.1' );
+        $clean['redis_port']     = intval( $input['redis_port']     ?? 6379 );
+        if ( ! empty( $input['redis_password'] ) ) {
+            $clean['redis_password'] = sanitize_text_field( $input['redis_password'] );
+        }
+
         // Refresh AI provider singleton.
         AIProvider::refresh();
 
@@ -369,6 +377,48 @@ class ApiConfig {
                                 </div>
                             <?php endforeach; ?>
                             <p class="sac-desc"><?php esc_html_e( 'Used to generate vector embeddings for the RAG knowledge base.', 'sonoai' ); ?></p>
+                        </div>
+                    </div>
+
+                    <div class="sac-divider"></div>
+
+                    <!-- ── Redis Configuration ─────────────────────────── -->
+                    <div class="sac-field-group">
+                        <label class="sac-label">
+                            <?php esc_html_e( 'Redis Vector Cache', 'sonoai' ); ?>
+                            <?php if ( RedisManager::instance()->is_active() ) : ?>
+                                <span class="sac-badge sac-badge-ok">✓ <?php esc_html_e( 'Active', 'sonoai' ); ?></span>
+                            <?php else : ?>
+                                <span class="sac-badge sac-badge-missing"><?php esc_html_e( 'Inactive', 'sonoai' ); ?></span>
+                            <?php endif; ?>
+                        </label>
+                        <div class="sac-control">
+                            <label class="sac-switch-wrap">
+                                <input type="checkbox" name="sonoai_settings[redis_enabled]" value="1" <?php checked( $opts['redis_enabled'] ?? false ); ?>>
+                                <span class="sac-switch-slider"></span>
+                                <span class="sac-switch-label"><?php esc_html_e( 'Enable Redis for High-Performance RAG & Memory', 'sonoai' ); ?></span>
+                            </label>
+                            
+                            <div class="sac-redis-details" style="margin-top: 15px; display: <?php echo ( $opts['redis_enabled'] ?? false ) ? 'block' : 'none'; ?>;">
+                                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                                    <div style="flex: 2;">
+                                        <label style="font-size: 11px; text-transform: uppercase; color: #888;"><?php esc_html_e( 'Host', 'sonoai' ); ?></label>
+                                        <input type="text" name="sonoai_settings[redis_host]" value="<?php echo esc_attr( $opts['redis_host'] ?? '127.0.0.1' ); ?>" class="sac-input-sm" placeholder="127.0.0.1">
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <label style="font-size: 11px; text-transform: uppercase; color: #888;"><?php esc_html_e( 'Port', 'sonoai' ); ?></label>
+                                        <input type="number" name="sonoai_settings[redis_port]" value="<?php echo esc_attr( $opts['redis_port'] ?? 6379 ); ?>" class="sac-input-sm" placeholder="6379">
+                                    </div>
+                                </div>
+                                <div style="margin-bottom: 10px;">
+                                    <label style="font-size: 11px; text-transform: uppercase; color: #888;"><?php esc_html_e( 'Password (Optional)', 'sonoai' ); ?></label>
+                                    <input type="password" name="sonoai_settings[redis_password]" value="" class="sac-input-sm" placeholder="<?php echo !empty($opts['redis_password']) ? '••••••••' : 'No password'; ?>">
+                                </div>
+                                <div class="sac-notice-inline" style="background: rgba(0,0,0,0.05);">
+                                    <span>ℹ</span>
+                                    <?php esc_html_e( 'Use Redis for sub-millisecond retrieval. If disabled, SonoAI will fall back to MySQL vector storage.', 'sonoai' ); ?>
+                                </div>
+                            </div>
                         </div>
                     </div>
 

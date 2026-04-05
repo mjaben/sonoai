@@ -1,0 +1,1307 @@
+/**
+ * User Feedback Page Styles
+ *
+ * Modern UI/UX design for the feedback management page
+ *
+ * @package eazyDocsPro
+ */
+
+// Variables
+$primary-color: #4c4cf1;
+$primary-hover: #3b3bd9;
+$success-color: #22c55e;
+$warning-color: #f59e0b;
+$danger-color: #ef4444;
+$text-primary: #1f2937;
+$text-secondary: #6b7280;
+$text-muted: #9ca3af;
+$border-color: #e5e7eb;
+$background-light: #f9fafb;
+$card-background: #ffffff;
+$shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+$shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+$shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+$radius-sm: 6px;
+$radius-md: 12px;
+$radius-lg: 16px;
+$transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+// Page Container
+.ezd-feedback-page {
+	max-width: 1400px;
+	margin: 20px auto 40px;
+	padding: 0 20px;
+}
+
+// Page Header
+.ezd-feedback-header {
+	margin-bottom: 24px;
+}
+
+.ezd-feedback-header-content {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 20px;
+	flex-wrap: wrap;
+}
+
+.ezd-feedback-header-left {
+	flex: 1;
+}
+
+.ezd-feedback-title {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	font-size: 28px;
+	font-weight: 700;
+	color: $text-primary;
+	margin: 0 0 8px;
+	line-height: 1.2;
+
+	.dashicons {
+		width: 32px;
+		height: 32px;
+		font-size: 32px;
+		color: $primary-color;
+	}
+}
+
+.ezd-feedback-subtitle {
+	font-size: 15px;
+	color: $text-secondary;
+	margin: 0;
+	line-height: 1.5;
+}
+
+.ezd-feedback-header-right {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding-top: 8px;
+}
+
+// Button Styles
+.ezd-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	padding: 10px 18px;
+	font-size: 14px;
+	font-weight: 500;
+	line-height: 1;
+	border-radius: $radius-sm;
+	border: none;
+	cursor: pointer;
+	transition: $transition;
+	text-decoration: none;
+	white-space: nowrap;
+
+	.dashicons {
+		width: 18px;
+		height: 18px;
+		font-size: 18px;
+	}
+
+	&:focus {
+		outline: none;
+		box-shadow: 0 0 0 3px rgba($primary-color, 0.2);
+	}
+}
+
+.ezd-export-btn {
+	background: #fff;
+	border-color: #d1d5db;
+	color: $text-secondary;
+	box-shadow: $shadow-sm;
+
+	&:hover {
+		border-color: $text-muted;
+		color: $text-primary;
+		background: #f9fafb;
+		transform: translateY(-1px);
+	}
+}
+
+.ezd-btn-primary {
+	background: linear-gradient(135deg, $primary-color 0%, $primary-hover 100%);
+	color: #fff;
+
+	&:hover {
+		background: linear-gradient(135deg, $primary-hover 0%, darken($primary-hover, 5%) 100%);
+		transform: translateY(-1px);
+		box-shadow: 0 4px 12px rgba($primary-color, 0.35);
+		color: #fff;
+	}
+}
+
+.ezd-btn-outline {
+	background: transparent;
+	border: 1.5px solid $border-color;
+	color: $text-secondary;
+
+	&:hover {
+		border-color: $primary-color;
+		color: $primary-color;
+		background: rgba($primary-color, 0.04);
+	}
+}
+
+.ezd-btn-sm {
+	padding: 6px 12px;
+	font-size: 13px;
+
+	.dashicons {
+		width: 16px;
+		height: 16px;
+		font-size: 16px;
+	}
+}
+
+.ezd-btn-danger {
+	background: linear-gradient(135deg, $danger-color 0%, darken($danger-color, 5%) 100%);
+	color: #fff;
+
+	&:hover {
+		transform: translateY(-1px);
+		box-shadow: 0 4px 12px rgba($danger-color, 0.35);
+	}
+}
+
+// Stats Cards
+.ezd-feedback-stats {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	gap: 16px;
+	margin-bottom: 24px;
+}
+
+.ezd-stat-card {
+	position: relative;
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	padding: 16px 20px;
+	background: $card-background;
+	border-radius: $radius-md;
+	box-shadow: $shadow-sm;
+	border: 1px solid $border-color;
+	transition: $transition;
+	overflow: hidden;
+
+	&:hover {
+		transform: translateY(-2px);
+		box-shadow: $shadow-md;
+	}
+}
+
+.ezd-stat-total {
+	border-left: 4px solid $primary-color;
+	background: linear-gradient(135deg, rgba($primary-color, 0.12) 0%, #fff 100%);
+
+	.ezd-stat-icon {
+		background: rgba($primary-color, 0.15);
+		color: $primary-color;
+	}
+}
+
+.ezd-stat-open {
+	border-left: 4px solid $success-color;
+	background: linear-gradient(135deg, rgba($success-color, 0.12) 0%, #fff 100%);
+
+	.ezd-stat-icon {
+		background: rgba($success-color, 0.15);
+		color: $success-color;
+	}
+}
+
+.ezd-stat-archived {
+	border-left: 4px solid $text-secondary;
+	background: linear-gradient(135deg, rgba($text-secondary, 0.12) 0%, #fff 100%);
+
+	.ezd-stat-icon {
+		background: rgba($text-secondary, 0.15);
+		color: $text-secondary;
+	}
+}
+
+.ezd-stat-rate {
+	border-left: 4px solid $warning-color;
+	background: linear-gradient(135deg, rgba($warning-color, 0.12) 0%, #fff 100%);
+
+	.ezd-stat-icon {
+		background: rgba($warning-color, 0.15);
+		color: $warning-color;
+	}
+
+	.ezd-stat-content {
+		width: 100%;
+	}
+}
+
+.ezd-stat-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 42px;
+	height: 42px;
+	border-radius: 10px;
+
+	.dashicons {
+		width: 20px;
+		height: 20px;
+		font-size: 20px;
+	}
+}
+
+.ezd-stat-content {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	flex: 1;
+}
+
+.ezd-stat-value {
+	font-size: 22px;
+	font-weight: 700;
+	color: $text-primary;
+	line-height: 1;
+}
+
+.ezd-stat-label {
+	font-size: 13px;
+	color: $text-secondary;
+	font-weight: 500;
+}
+
+.ezd-stat-progress {
+	width: 100%;
+	height: 4px;
+	background: rgba($warning-color, 0.15);
+	border-radius: 2px;
+	margin-top: 6px;
+	overflow: hidden;
+}
+
+.ezd-stat-progress-bar {
+	height: 100%;
+	background: linear-gradient(90deg, $warning-color 0%, darken($warning-color, 8%) 100%);
+	border-radius: 3px;
+	transition: width 0.5s ease;
+}
+
+// Main Card
+.ezd-feedback-card {
+	background: $card-background;
+	border-radius: $radius-lg;
+	box-shadow: $shadow-sm;
+	border: 1px solid $border-color;
+	overflow: hidden;
+}
+
+// Tabs
+.ezd-feedback-tabs {
+	display: flex;
+	gap: 0;
+	background: linear-gradient(135deg, #fafbfc 0%, #f3f4f6 100%);
+	border-bottom: 1px solid $border-color;
+	padding: 0 20px;
+}
+
+.ezd-feedback-tab {
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	padding: 16px 20px;
+	font-size: 14px;
+	font-weight: 500;
+	color: $text-secondary;
+	text-decoration: none;
+	border-bottom: 3px solid transparent;
+	margin-bottom: -1px;
+	transition: $transition;
+
+	.dashicons {
+		width: 18px;
+		height: 18px;
+		font-size: 18px;
+	}
+
+	&:hover {
+		color: $text-primary;
+		background: rgba(0, 0, 0, 0.02);
+	}
+
+	&.is-active {
+		color: $primary-color;
+		border-bottom-color: $primary-color;
+		background: rgba($primary-color, 0.03);
+
+		.ezd-tab-badge {
+			background: $primary-color;
+			color: #fff;
+		}
+	}
+}
+
+.ezd-tab-badge {
+	padding: 2px 8px;
+	font-size: 11px;
+	font-weight: 600;
+	background: rgba(0, 0, 0, 0.08);
+	color: $text-secondary;
+	border-radius: 10px;
+	min-width: 24px;
+	text-align: center;
+}
+
+// Toolbar
+.ezd-feedback-toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	padding: 16px 20px;
+	border-bottom: 1px solid $border-color;
+	flex-wrap: wrap;
+}
+
+.ezd-toolbar-left,
+.ezd-toolbar-right {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	flex-wrap: wrap;
+}
+
+// Status Filters
+.ezd-status-filters {
+	display: flex;
+	gap: 8px;
+}
+
+.ezd-status-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 14px;
+	font-size: 13px;
+	font-weight: 500;
+	color: $text-secondary;
+	background: $background-light;
+	border: 1px solid transparent;
+	border-radius: 20px;
+	text-decoration: none;
+	transition: $transition;
+
+	&:hover {
+		background: darken($background-light, 3%);
+		color: $text-primary;
+	}
+
+	&.is-active {
+		background: rgba($primary-color, 0.1);
+		color: $primary-color;
+		border-color: rgba($primary-color, 0.3);
+	}
+}
+
+.ezd-status-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+}
+
+.ezd-dot-open {
+	background: $success-color;
+}
+
+.ezd-dot-archive {
+	background: $text-muted;
+}
+
+.ezd-pill-count {
+	font-weight: 600;
+	color: inherit;
+}
+
+// Bulk Actions
+.ezd-bulk-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 12px;
+	background: rgba($primary-color, 0.08);
+	border-radius: $radius-sm;
+	animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+		transform: translateX(-10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+.ezd-selected-count {
+	font-size: 13px;
+	color: $primary-color;
+	font-weight: 500;
+}
+
+// Sort & Search
+.ezd-sort-dropdown {
+	.ezd-select {
+		padding: 8px 32px 8px 12px;
+		font-size: 13px;
+		border: 1px solid $border-color;
+		border-radius: $radius-sm;
+		background-color: #fff;
+		color: $text-primary;
+		cursor: pointer;
+		appearance: none;
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236B7280' d='M6 8L1.5 3.5h9z'/%3E%3C/svg%3E");
+		background-repeat: no-repeat;
+		background-position: right 10px center;
+
+		&:focus {
+			outline: none;
+			border-color: $primary-color;
+			box-shadow: 0 0 0 3px rgba($primary-color, 0.1);
+		}
+	}
+}
+
+.ezd-search-form {
+	position: relative;
+}
+
+.ezd-search-input-wrap {
+	position: relative;
+	display: flex;
+	align-items: center;
+
+	.dashicons-search {
+		position: absolute;
+		left: 10px;
+		color: $text-muted;
+		width: 16px;
+		height: 16px;
+		font-size: 16px;
+		margin-top: 1px;
+	}
+}
+
+.ezd-search-input {
+	width: 260px;
+	padding: 8px 30px 8px 32px !important;
+	font-size: 13px !important;
+	border: 1px solid $border-color !important;
+	border-radius: $radius-sm !important;
+	background: #fff !important;
+	color: $text-primary !important;
+	transition: $transition !important;
+
+	&::placeholder {
+		color: $text-muted !important;
+	}
+
+	&:focus {
+		outline: none;
+		border-color: $primary-color;
+		box-shadow: 0 0 0 3px rgba($primary-color, 0.1);
+	}
+}
+
+.ezd-search-clear {
+	position: absolute;
+	right: 8px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	color: $text-muted;
+	text-decoration: none;
+	border-radius: 50%;
+	transition: $transition;
+
+	&:hover {
+		background: rgba(0, 0, 0, 0.05);
+		color: $text-primary;
+	}
+
+	.dashicons {
+		width: 16px;
+		height: 16px;
+		font-size: 16px;
+	}
+}
+
+// Feedback List
+.ezd-feedback-list {
+	padding: 0;
+}
+
+.ezd-feedback-list-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 12px 20px;
+	background: $background-light;
+	border-bottom: 1px solid $border-color;
+}
+
+.ezd-checkbox-wrap {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	cursor: pointer;
+}
+
+.ezd-checkbox {
+	width: 18px;
+	height: 18px;
+	cursor: pointer;
+	accent-color: $primary-color;
+}
+
+.ezd-checkbox-label {
+	font-size: 13px;
+	color: $text-secondary;
+	font-weight: 500;
+}
+
+.ezd-list-info {
+	font-size: 13px;
+	color: $text-muted;
+}
+
+// Feedback Item
+.ezd-feedback-item {
+	display: flex;
+	align-items: flex-start;
+	gap: 20px;
+	padding: 24px 20px;
+	border-bottom: 1px solid $border-color;
+	transition: $transition;
+
+	&:hover {
+		background: rgba($primary-color, 0.02);
+
+		.ezd-fi-actions {
+			opacity: 1;
+		}
+	}
+
+	&:last-child {
+		border-bottom: none;
+	}
+}
+
+.ezd-fi-checkbox {
+	padding-top: 5px;
+}
+
+.ezd-fi-star {
+	padding-top: 5px;
+}
+
+.ezd-star-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	background: transparent;
+	border: none;
+	cursor: pointer;
+	color: $text-muted;
+	border-radius: $radius-sm;
+	transition: $transition;
+
+	.dashicons {
+		width: 18px;
+		height: 18px;
+		font-size: 18px;
+	}
+
+	&:hover {
+		color: $warning-color;
+		background: rgba($warning-color, 0.1);
+	}
+
+	&.is-starred {
+		color: $warning-color;
+
+		.dashicons::before {
+			content: "\f155"; // filled star
+		}
+	}
+}
+
+.ezd-fi-avatar {
+	flex-shrink: 0;
+
+	img {
+		width: 48px;
+		height: 48px;
+		border-radius: 50%;
+		object-fit: cover;
+	}
+}
+
+.ezd-fi-avatar-placeholder {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 48px;
+	height: 48px;
+	background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+	border-radius: 50%;
+
+	.dashicons {
+		width: 24px;
+		height: 24px;
+		font-size: 24px;
+		color: $text-muted;
+	}
+}
+
+.ezd-fi-main {
+	flex: 1;
+	min-width: 0;
+}
+
+.ezd-fi-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 12px;
+	margin-bottom: 8px;
+}
+
+.ezd-fi-header-left {
+	display: flex;
+	align-items: baseline;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+.ezd-fi-title {
+	margin: 0;
+	font-size: 15px;
+	font-weight: 600;
+	line-height: 1.4;
+
+	a {
+		color: $text-primary;
+		text-decoration: none;
+		transition: $transition;
+
+		&:hover {
+			color: $primary-color;
+		}
+	}
+}
+
+.ezd-fi-author {
+	font-size: 14px;
+	color: $text-secondary;
+	font-weight: 500;
+}
+
+.ezd-fi-type-badge {
+	display: inline-flex;
+	align-items: center;
+	padding: 3px 8px;
+	font-size: 11px;
+	font-weight: 500;
+	color: $primary-color;
+	background: rgba($primary-color, 0.1);
+	border-radius: 4px;
+}
+
+.ezd-fi-header-right {
+	flex-shrink: 0;
+}
+
+.ezd-fi-date {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	font-size: 12px;
+	color: $text-muted;
+
+	.dashicons {
+		width: 14px;
+		height: 14px;
+		font-size: 14px;
+	}
+}
+
+.ezd-fi-meta {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	margin-bottom: 12px;
+	flex-wrap: wrap;
+}
+
+.ezd-fi-email,
+.ezd-fi-doc {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 13px;
+	color: $text-secondary;
+	text-decoration: none;
+	transition: $transition;
+
+	.dashicons {
+		width: 16px;
+		height: 16px;
+		font-size: 16px;
+	}
+
+	&:hover {
+		color: $primary-color;
+	}
+}
+
+.ezd-fi-email-link,
+.ezd-fi-doc-link {
+	max-width: 200px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.ezd-copy-email {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	padding: 0;
+	background: transparent;
+	border: 1px solid $border-color;
+	border-radius: $radius-sm;
+	cursor: pointer;
+	color: $text-muted;
+	transition: $transition;
+
+	.dashicons {
+		width: 14px;
+		height: 14px;
+		font-size: 14px;
+	}
+
+	&:hover {
+		border-color: $primary-color;
+		color: $primary-color;
+		background: rgba($primary-color, 0.05);
+	}
+
+	&.copied {
+		border-color: $success-color;
+		background: rgba($success-color, 0.1);
+		color: $success-color;
+	}
+}
+
+.ezd-fi-content {
+	position: relative;
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	padding: 12px 14px;
+	background: $background-light;
+	border-radius: $radius-sm;
+	border-left: 3px solid $border-color;
+
+	.dashicons-format-quote {
+		flex-shrink: 0;
+		width: 16px;
+		height: 16px;
+		font-size: 16px;
+		color: $text-muted;
+		opacity: 0.5;
+		margin-top: 3px;
+	}
+}
+
+.ezd-fi-content-wrap {
+	flex: 1;
+	min-width: 0;
+}
+
+.ezd-fi-content-text {
+	margin: 0;
+	font-size: 14px;
+	line-height: 1.5;
+	color: $text-secondary;
+	word-break: break-all; // or break-word
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+	transition: max-height 0.3s ease;
+
+	&.is-expanded {
+		-webkit-line-clamp: unset;
+		word-break: break-word;
+	}
+}
+
+.ezd-read-more-btn {
+	background: none;
+	border: none;
+	padding: 0;
+	margin-left: 10px;
+	font-size: 12px;
+	font-weight: 600;
+	color: $primary-color;
+	cursor: pointer;
+	white-space: nowrap;
+	align-self: flex-end;
+	margin-bottom: 2px;
+
+	&:hover {
+		color: darken($primary-color, 10%);
+		text-decoration: underline;
+	}
+}
+
+// Actions
+.ezd-fi-actions {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	opacity: 0.5;
+	transition: $transition;
+}
+
+.ezd-action-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 34px;
+	height: 34px;
+	padding: 0;
+	background: #fff;
+	border: 1px solid $border-color;
+	border-radius: $radius-sm;
+	cursor: pointer;
+	color: $text-secondary;
+	text-decoration: none;
+	transition: $transition;
+
+	.dashicons {
+		width: 18px;
+		height: 18px;
+		font-size: 18px;
+	}
+
+	&:hover {
+		transform: translateY(-1px);
+		box-shadow: $shadow-sm;
+	}
+}
+
+.ezd-reply-btn:hover {
+	border-color: $primary-color;
+	color: $primary-color;
+	background: rgba($primary-color, 0.05);
+}
+
+.ezd-archive-btn:hover {
+	border-color: $warning-color;
+	color: $warning-color;
+	background: rgba($warning-color, 0.05);
+}
+
+.ezd-delete-btn:hover {
+	border-color: $danger-color;
+	color: $danger-color;
+	background: rgba($danger-color, 0.05);
+}
+
+// Pagination
+.ezd-feedback-pagination {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 16px 20px;
+	background: $background-light;
+	border-top: 1px solid $border-color;
+}
+
+.ezd-pagination-info {
+	font-size: 13px;
+	color: $text-muted;
+}
+
+.ezd-pagination-links {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.ezd-page-link {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 34px;
+	height: 34px;
+	padding: 0 10px;
+	font-size: 13px;
+	font-weight: 500;
+	color: $text-secondary;
+	background: #fff;
+	border: 1px solid $border-color;
+	border-radius: $radius-sm;
+	text-decoration: none;
+	transition: $transition;
+
+	.dashicons {
+		width: 16px;
+		height: 16px;
+		font-size: 16px;
+	}
+
+	&:hover {
+		border-color: $primary-color;
+		color: $primary-color;
+		background: rgba($primary-color, 0.05);
+	}
+
+	&.is-current {
+		background: $primary-color;
+		border-color: $primary-color;
+		color: #fff;
+	}
+}
+
+// Empty State
+.ezd-feedback-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 60px 20px;
+	text-align: center;
+}
+
+.ezd-empty-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 80px;
+	height: 80px;
+	margin-bottom: 24px;
+	background: linear-gradient(135deg, rgba($primary-color, 0.1) 0%, rgba($primary-color, 0.05) 100%);
+	border-radius: 50%;
+
+	.dashicons {
+		width: 40px;
+		height: 40px;
+		font-size: 40px;
+		color: $primary-color;
+		opacity: 0.6;
+	}
+}
+
+.ezd-empty-title {
+	margin: 0 0 12px;
+	font-size: 18px;
+	font-weight: 600;
+	color: $text-primary;
+}
+
+.ezd-empty-text {
+	margin: 0 0 24px;
+	font-size: 14px;
+	line-height: 1.6;
+	color: $text-secondary;
+	max-width: 400px;
+}
+
+// Modal
+.ezd-modal {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 100000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.ezd-modal-overlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.5);
+	backdrop-filter: blur(4px);
+}
+
+.ezd-modal-content {
+	position: relative;
+	width: 100%;
+	max-width: 500px;
+	margin: 20px;
+	background: #fff;
+	border-radius: $radius-lg;
+	box-shadow: $shadow-lg;
+	animation: modalSlideIn 0.25s ease;
+}
+
+@keyframes modalSlideIn {
+	from {
+		opacity: 0;
+		transform: translateY(-20px) scale(0.95);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+.ezd-modal-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 20px 24px;
+	border-bottom: 1px solid $border-color;
+
+	h3 {
+		margin: 0;
+		font-size: 18px;
+		font-weight: 600;
+		color: $text-primary;
+	}
+}
+
+.ezd-modal-close {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	padding: 0;
+	background: transparent;
+	border: none;
+	cursor: pointer;
+	color: $text-muted;
+	border-radius: $radius-sm;
+	transition: $transition;
+
+	&:hover {
+		background: rgba(0, 0, 0, 0.05);
+		color: $text-primary;
+	}
+
+	.dashicons {
+		width: 20px;
+		height: 20px;
+		font-size: 20px;
+	}
+}
+
+.ezd-modal-body {
+	padding: 24px;
+}
+
+.ezd-reply-to-info {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 12px 16px;
+	margin-bottom: 16px;
+	background: $background-light;
+	border-radius: $radius-sm;
+	font-size: 14px;
+	color: $text-secondary;
+
+	strong {
+		color: $text-primary;
+	}
+}
+
+.ezd-textarea {
+	width: 100%;
+	padding: 14px 16px;
+	font-size: 14px;
+	line-height: 1.5;
+	color: $text-primary;
+	border: 1px solid $border-color;
+	border-radius: $radius-sm;
+	resize: vertical;
+	transition: $transition;
+
+	&::placeholder {
+		color: $text-muted;
+	}
+
+	&:focus {
+		outline: none;
+		border-color: $primary-color;
+		box-shadow: 0 0 0 3px rgba($primary-color, 0.1);
+	}
+}
+
+.ezd-modal-footer {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 12px;
+	padding: 16px 24px;
+	border-top: 1px solid $border-color;
+	background: $background-light;
+	border-radius: 0 0 $radius-lg $radius-lg;
+}
+
+// Responsive
+@media (max-width: 1024px) {
+	.ezd-feedback-stats {
+		grid-template-columns: repeat(2, 1fr);
+	}
+}
+
+@media (max-width: 768px) {
+	.ezd-feedback-page {
+		padding: 0 10px;
+	}
+
+	.ezd-feedback-header-content {
+		flex-direction: column;
+	}
+
+	.ezd-feedback-header-right {
+		width: 100%;
+		padding-top: 0;
+	}
+
+	.ezd-feedback-stats {
+		grid-template-columns: 1fr;
+	}
+
+	.ezd-feedback-tabs {
+		padding: 0 12px;
+		overflow-x: auto;
+	}
+
+	.ezd-feedback-toolbar {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.ezd-toolbar-left,
+	.ezd-toolbar-right {
+		width: 100%;
+	}
+
+	.ezd-search-input {
+		width: 100%;
+	}
+
+	.ezd-feedback-item {
+		flex-wrap: wrap;
+		gap: 12px;
+	}
+
+	.ezd-fi-main {
+		order: 3;
+		width: 100%;
+	}
+
+	.ezd-fi-actions {
+		flex-direction: row;
+		order: 4;
+		width: 100%;
+		opacity: 1;
+		padding-top: 12px;
+		border-top: 1px dashed $border-color;
+	}
+
+	.ezd-fi-meta {
+		gap: 12px;
+	}
+
+	.ezd-pagination-links {
+		flex-wrap: wrap;
+	}
+}
+
+@media (max-width: 480px) {
+	.ezd-feedback-title {
+		font-size: 22px;
+
+		.dashicons {
+			width: 26px;
+			height: 26px;
+			font-size: 26px;
+		}
+	}
+
+	.ezd-stat-card {
+		padding: 16px 20px;
+	}
+
+	.ezd-stat-value {
+		font-size: 22px;
+	}
+
+	.ezd-fi-avatar {
+		display: none;
+	}
+
+	.ezd-status-filters {
+		width: 100%;
+		justify-content: center;
+	}
+}
+
+// RTL Support
+body.rtl {
+	.ezd-feedback-title {
+		flex-direction: row-reverse;
+	}
+
+	.ezd-fi-content {
+		border-left: none;
+		border-right: 3px solid $border-color;
+	}
+
+	.ezd-stat-card::before {
+		left: auto;
+		right: 0;
+		border-radius: 0 4px 4px 0;
+	}
+
+	.ezd-search-input-wrap .dashicons-search {
+		left: auto;
+		right: 12px;
+	}
+
+	.ezd-search-input {
+		padding: 10px 38px 10px 36px;
+	}
+
+	.ezd-search-clear {
+		right: auto;
+		left: 8px;
+	}
+}

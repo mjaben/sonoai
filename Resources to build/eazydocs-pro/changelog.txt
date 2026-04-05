@@ -1,0 +1,298 @@
+== Changelog ==
+= v2.2.0 (18 September 2025)
+New: Added Email Reporting with static and dynamic analytics reports
+New: Added option to set the Number of Docs displayed in the Assistant
+Fixed: SVG icon not showing on the profile page
+Fixed: Security issues fixed
+Tweaked: Non-matching sidebar items are now hidden when filtering with search
+Tweaked: Assistant font now matches the theme
+Tweaked: Enhanced notification filter functionality and the notification icon on the EazyDocs dashboard
+Updated: Freemius SDK updated to 2.12.2
+
+= v2.1.3 (17 August 2025)
+New: Added “Most Viewed” tab in Helpful Docs under Analytics
+New: Collaboration added in analytics
+New: Integrated Akismet spam protection into Assistant contact form
+Fixed: Resolved assistant fields disappearing issue
+Fixed: Resolved some issues of Assistant fields
+Fixed: Security issues fixed par
+Tweaked: Contributors restricted to Editor, Administrator, and Author roles
+Tweaked: Visibility and duplicate feature files and codes updated
+Tweaked: Updated a text for translation compatibility
+Tweaked: Analytics page design improved
+
+= v2.1.2 (18 June 2025)
+New: Added Author Profile Page, Anyone can now view an author’s profile by clicking their profile picture in the contributor list on a single doc page. The profile displays contributor details and all the docs they've contributed
+New: Added Cross Domain Embed option in "EazyDocs < Settings < Docs Assistant < Cross Domain Embed" Now you can extend your Docs Assistant to other websites by embedding it across multiple domains using a simple code snippet—making your documentation accessible wherever it's needed
+New: Featured image show hide option added for EazyDocs Grid block
+Fixed: Sidebar menu expand/collapse with AJAX loading issue
+Fixed: Ajax loading issue resolved
+Fixed: Selected comment button issue resolved
+Tweaked: Improved responsive of footnotes
+Updated: Freemius SDK updated to 2.12.0
+
+= v2.1.1 (10 May 2025)
+New: Added OnePage docs settings and 'View Docs' Shortcode for Single docs view
+New: Added a settings option to define which user roles can add or edit documentation as contributors
+New: Added 'View Docs' shortcode for single Docs view
+Fixed: OnePage Doc left sidebar menu active issue fixed with scrolling
+Fixed: Control issue fixed in the Book Chapter widget
+Fixed: Favicon issue resolved by changing the hook
+Tweaked: Private Docs Access for All Users and Multiple Role Support
+Tweaked: Private docs allowed for all users based on capabilities
+Tweaked: Unlimited roles can now be assigned for private docs
+Tweaked: Chatbot responsiveness has been improved
+Tweaked: Admin bar hide for OnePage Docs
+Tweaked: Fixed issue wi th add and edit buttons not appearing for contributors
+Tweaked: Ensured private docs in the left sidebar are visible only to users with proper capabilities
+Tweaked: Collaboration roles update by adding capabilities instead of role name
+
+= v2.1.0 (08 April 2025)
+New: WpEazyAI integrated
+New: Added option to hide "View All" button on Docs archive for docs that have no child items
+
+= v2.0.9 (06 April 2025)
+Fixed: Resolved Undefined function issue
+Fixed: Solved prevent masonry from mixing child items across different parent docs
+Tweaked: Assistant tabs position number updated
+Tweaked: Updated the subscribe button for instant subscription for logged-in users
+
+= v2.0.8 (16 March 2025)
+New: Default option added for footnote column in meta settings
+Fixed: Login issue resolved for subscriber user
+Fixed: Resolved OnePage Doc creation issue From docs builder
+Fixed: Private doc 404 with specific roles issue resolved
+Fixed: Thumbnail stretch issue resolved for boxed tabbed preset (EazyDoc's block)
+Tweaked: Make visibility field is required before submission to prevent disappearing issue when no option is selected
+Tweaked: Subscription button in right sidebar spacing issue improved
+Tweaked: Post status added to fix the issue for the Subscriber role, ensuring they now have the appropriate permissions to view private docs
+
+= v2.0.7 (01 March 2025)
+New: Introduced "Eazydoc's" Gutenberg Blocks with Single Doc & MultiDocs blocks, allowing users to create and manage documentation seamlessly within the Gutenberg editor
+New: Added all docs select option in the glossary elementor widget doc select field
+New: Added footnote column option in the meta field & Set the footnote column as the default option in meta settings based on the settings footnote column value
+New: Docs to view option added for left sidebar "EazyDocs > Settings > Doc Single > Left Sidebar" (Added two options for this settings: 1: All Docs for all the top label docs 2: Self Docs for child docs of the current doc)
+Fixed: Subscription button align issue fixed in docs shortcode
+Tweaked: Subscriber button design improved
+Tweaked: Updated Docs and OnePage Doc left and right sidebars to ensure clicking one hides the other
+Tweaked: Improved TOC and footnote display along with user click interactions
+Tweaked: Removed the footnote number attribute from the editor to prevent manual insertion
+
+= v2.0.6 (01 February 2025) =
+New: Added a cross icon to the contributor search field
+New: Sweet alert script added for user feedback
+New: Created function ezdGetParameterByName to get current page status by URL parameter
+New: Demo data xml file added in the sample folder
+Fixed: The search widget static keyword text field was not editable, it resolved
+Fixed: Some issue of User feedback feature
+Fixed: Doc Assistant Background in Dark mode
+Fixed: Not show Assistant icon while Docy's pre-loader is loading
+Fixed: Resolved the selected comment color issue, even if the settings are turned off
+Fixed: Footnote and highlight comment color issues in Dark mode
+Fixed: Fixed shortcode order, orderby & column issue
+Fixed: Resolved conflict between footnotes and selected comments
+Fixed: Resolved ID null & dark mode issue in fullscreen one-page doc
+Fixed: Resolved contributor search field in dark mode
+Tweaked: Excluded feedback from search result
+Tweaked: Footnote styling improved (spacing and colors)
+Tweaked: Removed some unnecessary code
+Tweaked: Hide the selected comment form after submitting a comment
+Tweaked: Remove unnecessary meta fields from the editor
+Tweaked: Improved Dark mode colors & Doc assistant design in dark mode
+Updated: Freemius SDK updated to 2.11.0
+
+= v2.0.5 (18 December 2024) =
+Fixed: Removed Scheme Key from Widget for compatibility with the latest version of Elementor (3.26.0)
+
+= v2.0.4 (14 December 2024) =
+Fixed: Selected comment issue resolved
+Updated: Freemius SDK updated to 2.10.1
+
+= v2.0.3 (17 September 2024) =
+New: Added reset option in analytics (You can now reset all analytics data, including views, feedback, and searches)
+Fixed: Issue with TranslatePress plugin fixed by resolving the slug issue
+Fixed: Assistant search result special character issue resolved
+Fixed: Print option for onepage docs resolved
+Fixed: Keyword alignment issue fixed (Elementor search widget)
+Tweaked: Reverted back the base slug structure as before
+Tweaked: Badge design improved
+Updated: Freemius SDK updated to 2.8.0
+
+= v2.0.2 (31 July 2024) =
+New: Added instant display of articles inside the assistant (Implemented a new feature that allows the assistant to fetch and display full articles directly within the assistant interface.)
+New: Added "Who Can Check Analytics?" in settings
+New: Enabled cookie to the selected comment switcher
+Fixed: Edit and Add doc button 404 issue resolved
+Tweaked: Improved login form
+Tweaked: compatibility with EazyDocs Free v2.5.1
+Updated: Freemius SDK updated to 2.7.3
+
+= v2.0.1 (23 May 2024) =
+New: Feedback switcher button for selected comment has added
+Fixed: Vulnerability issue solved for custom slug field
+Fixed: Solved analytics views problem
+Fixed: Solved OnePage Doc responsive issue
+Tweaked: Secured and Validated slug with special characters saved already in User Database
+Tweaked: Footnotes code re-structured
+Tweaked: improved Conditional dropdown with TOC visibility
+Tweaked: Changed field (Who Can Edit Settings)
+Tweaked: Resolved mobile screen clickability issues for Docs Flat Tabbed preset tab buttons in Elementor widget
+Tweaked: Selected comment feature improved
+Tweaked: Assistant tabs are rebuild by hook
+Tweaked: Footnotes code re-structured and improved the design
+Tweaked: Subscribe modal & form design improved
+
+= v2.0.0 (09 April 2024) =
+Note: Read the release note with videos and screenshots here https://spider-themes.net/eazydocs/eazydocs-premium-version-2-0-0-update-changes/
+New: Book chapter Elementor widget (unlocked in the Pro plan)
+New: Subscription feature integrated. Users can subscribe to any document, When creating a new document within a subscription, users will receive notifications via email. (unlocked in the Pro-MAX plan)
+New: Doc Root URL format option added in the 'Settings > Docs General' page. Now user can select custom slug or remove the 'docs' slug
+New: Unique views option added in the "EazyDocs > Settings > Doc Single > General" page to stop counting views from page reload.
+New: Feedback on Selected Text feature added in the "EazyDocs > Settings > Doc Single > Feedback Area" page (unlocked in the Pro-MAX plan)
+Fixed: Doc assistant search field issue on pages
+Tweaked: Footnotes Improved. Now, you can add footnotes in the Gutenberg editor toolbar.
+Tweaked: Conditional content feature improved. Now, you can add/apply conditional content in the Gutenberg editor toolbar.
+
+= v1.4.5 (14 January 2024) =
+Tweaked: Doc Assistant design improved (search form, active tab state, etc.)
+Tweaked: Improved internal documentation
+Updated: Freemius SDK updated to 2.6.2
+
+= v1.4.4 (29 December 2023) =
+Fixed: Glossary Tooltip design
+Fixed: Analytics views problem
+
+= v1.4.3 (25 December 2023) =
+Fixed: Install and Activate Free version button were not working
+Fixed: MultiDocs Elementor widget's design was breaking on the frontend
+Fixed: An issue causing restrictions on table functionality from wpDataTables within EazyDocs Pro
+Fixed: Doc Assistant Contact Form was not working
+Fixed: Undefined function issue which function was called from free plugin
+Fixed: Wrong ordering issue solved in the Docs Builder page in the admin dashboard (Was wrong ordering when Add Doc from Frontend)
+New: Assistant display location options added in the EazyDocs > Settings > Doc Assistant. Now, you can choose where you want to show the assistant.
+Tweaked: Compatibility added with the latest free version of EazyDocs (2.3.7)
+Tweaked: The language (.pot) file updated
+
+= v1.4.2 (15 November 2023) =
+Tweaked: Code reformatted and file restructured to make it more readable and maintainable
+Tweaked: The language (.pot) file updated
+Tweaked: Removed some unnecessary or optional codes from the plugin to improve the performance
+Tweaked: Made compatible with the latest free version of EazyDocs (2.3.5)
+Updated: Freemius SDK updated to 2.6.0
+
+= v1.4.1 (05 November 2023) =
+Fixed: A PHP error in the includes/functions.php file
+Tweaked: The language (.pot) file updated
+Tweaked: The doc assistant in dark mode improved
+
+= v1.4.0 (02 November 2023) =
+Tweaked: Styling options for the Glossary Elementor widget
+Tweaked: Removed bootstrap dependency from the whole plugin
+Fixed: Keywords alignment was not working in the Search Form Elementor widget
+Fixed: Contributor list and count was not showing correctly in the Collaborative Docs design of MultiDocs Elementor widget
+Fixed: MultiDocs Tab Arrow was showing incorrectly
+Fixed: Undefined array key error on the Analytics page in the admin dashboard
+
+= v1.3.9 (21 September 2023) =
+New: Tooltip feature added for the Glossary Doc Elementor widget
+Updated: Freemius SDK to the latest version 2.5.12
+Fixed: feedback_mail function php error
+Fixed: Multisite license activation mechanism where it would not include inactive sites in some cases
+Fixed: Properly acknowledge the use of the constant WP_SITEURL so that the clone resolution mechanism can work thoroughly in the necessary edge cases
+
+= v1.3.8 (10 September 2023) =
+Fixed: Adding contributor function was not working for the Ajax on scroll loaded contributor list
+Fixed: Private doc 404 page issue solved
+Fixed: Assistance contact form mail issue resolved
+Tweaked: Newly added contributors will be added instantly in the contributors list. No need to reload the page to see the newly added contributors.
+Tweaked: Glossary Doc Elementor widget design improved
+Tweaked: Multi Docs Elementor widget's Flat Tabbed Docs design improved
+
+= v1.3.7 (23 July 2023) =
+New: Glossary Doc Elementor widget
+
+= v1.3.6 (17 June 2023) =
+New: Embed doc feature added. Now, you can embed any doc in any page/post using the [embed_post] shortcode (https://tinyurl.com/2k3sajt5)
+Tweaked: Code optimized to improve the performance
+Fixed: Duplicate Docs issue solved
+
+= v1.3.5 (20 April 2023) =
+Fixed: PHP Fatal error on Activation the EazyDocs Pro plugin without EazyDocs free plugin
+Tweaked: Freemius SDK updated to the latest version 2.5.6
+
+= v1.3.4 (14 April 2023) =
+Tweaked: Removed some unnecessary files from the plugin
+Tweaked: Compatibility improved with the latest EazyDocs free version
+
+= v1.3.3 (14 March 2023) =
+Fixed: PHP error was thrown if Elementor plugin isn't active
+
+= v1.3.2 (14 March 2023) =
+Fixed: PHP error on Applying custom content in the Doc sidebar content popup
+Fixed: Feedback calculation issue resolved.
+Tweaked: Load more contributors asynchronously on scrolling down. Previously, it was loading all the contributors at once.
+
+= v1.3.1 (01 March 2023) =
+New: Elementor template library added to import the prebuilt templates (available in the Pro-MAX plan)
+Fixed: Freemius license issue
+Fixed: PHP error on the Users Feedback page in the admin dashboard
+Tweaked: Analytics page design and functionality improved
+
+= v1.3.0 (11 February 2023) =
+New: Analytics page added in the admin UI (Unlocked in the Pro-MAX plan)
+Fixed: Doc Duplicator issue solved with attachment
+Fixed: Editor can access Settings page even if this role not assigned to access the settings page. (Fixed)
+Tweaked: Footnotes design improved
+Tweaked: Changed the Menu name to EazyDocs Pro
+Tweaked: Code structure improved to make it more readable and maintainable
+Tweaked: OnePage Doc layouts design improved
+
+= v1.2.2 (29 December 2022) =
+New: [reference] shortcode added to show/create Footnotes. Read doc here https://tinyurl.com/2ewlorze (available in Pro-MAX plan)
+Fixed: Extended Docs Navigation Layout design issues
+Tweaked: Elementor EazyDocs Search widget
+Tweaked: OnePage doc design improved
+Deleted: Unnecessary files removed
+
+= v1.2.1 (05 December 2022) =
+New: Reusable Blocks support added for the OnePage Doc sidebars
+Tweaked: Shortcode content type merged with Normal Content in the Doc sidebars. Now, you can put shortcode in the Normal Content box.
+Tweaked: Link added for Managing Reusable content from the Doc Sidebar content popup
+Tweaked: Adding new Doc by clicking on the Add Doc button is now automatically added to the current Doc's parent category
+
+= v1.2.0 (06 November 2022) =
+Notice: Compatibility with EazyDocs 1.3.5 (The EazyDocs Pro 1.2.0 requires EazyDocs 1.3.5 or higher)
+New: Bulk Visibility option added for doc Section, Articles (Visibility icon added in the admin UI)
+New: Reusable Blocks support added for the Doc sidebars
+Deleted: Separate settings file for the EazyDocs Pro (made one single settings file for pro and free)
+
+= v1.1.9 (15 October 2022) =
+New: Contributors management system on the Frontend
+New: EazyDocs Pro Max plan integrated
+Tweaked: Doc Badge styling improved
+
+= v1.1.8 (21 August 2022) =
+New: Docs Contribution feature (works on frontend Add Doc, Edit Doc buttons) added to allow other people to contribute the docs.
+New: Extended left sidebar layout (choose it from EazyDocs > Settings > Doc Single > Left Sidebar).
+New: Full Screen OnePage Doc layout added.
+New: Article Badge feature added.
+New: User Feedbacks database in list view.
+New: Private Doc access with Login
+Tweaked: Some settings improved (Title, description, default value).
+
+= v1.1.7 (22 June 2022) =
+Fixed: The Auto Update notice was not working for the PRO version (from this version, you will get update notice)
+
+= v1.1.6 (16 June 2022) =
+New: OnePage Doc
+New: Dark Mode
+New: Mark filtering text option added in EazyDocs > Settings
+
+= v1.1.5 (19 May 2022) =
+New: Knowledge-base assistant
+New: Next/Previous doc links
+Fixed: Notifications count
+Fixed: Customizer options was missing in PRO
+
+= v1.1.1 (09 May 2022) =
+ * Initial release

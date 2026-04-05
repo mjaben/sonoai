@@ -8,7 +8,6 @@ class ComposerStaticInitab1ea84a84d5f65c43da2b4f03aa2162
 {
     public static $files = array (
         '0e6d7bf4a5811bfa5cf40c5ccd6fae6a' => __DIR__ . '/..' . '/symfony/polyfill-mbstring/bootstrap.php',
-        '8d50dc88e56bace65e1e72f6017983ed' => __DIR__ . '/..' . '/freemius/wordpress-sdk/start.php',
     );
 
     public static $prefixLengthsPsr4 = array (
@@ -17,9 +16,10 @@ class ComposerStaticInitab1ea84a84d5f65c43da2b4f03aa2162
             'Symfony\\Polyfill\\Mbstring\\' => 26,
             'Soundasleep\\' => 12,
         ),
-        'A' => 
+        'P' => 
         array (
-            'Antimanual\\' => 11,
+            'Psr\\Http\\Message\\' => 17,
+            'Predis\\' => 7,
         ),
     );
 
@@ -32,9 +32,13 @@ class ComposerStaticInitab1ea84a84d5f65c43da2b4f03aa2162
         array (
             0 => __DIR__ . '/..' . '/soundasleep/html2text/src',
         ),
-        'Antimanual\\' => 
+        'Psr\\Http\\Message\\' => 
         array (
-            0 => __DIR__ . '/../..' . '/includes/classes',
+            0 => __DIR__ . '/..' . '/psr/http-message/src',
+        ),
+        'Predis\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/predis/predis/src',
         ),
     );
 

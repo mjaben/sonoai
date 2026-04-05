@@ -86,9 +86,17 @@
             });
         });
 
-        // Store original masked placeholder on each input for restoration after hide.
         document.querySelectorAll('.sac-input').forEach(function (input) {
             input.dataset.maskedPlaceholder = input.placeholder;
         });
+
+        // ── Redis Toggle ──────────────────────────────────────────────────────
+        var redisToggle = document.querySelector('input[name="sonoai_settings[redis_enabled]"]');
+        var redisDetails = document.querySelector('.sac-redis-details');
+        if (redisToggle && redisDetails) {
+            redisToggle.addEventListener('change', function () {
+                redisDetails.style.display = this.checked ? 'block' : 'none';
+            });
+        }
     });
 }());

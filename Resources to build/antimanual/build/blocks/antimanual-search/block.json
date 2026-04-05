@@ -1,0 +1,72 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "antimanual/antimanual-search",
+  "version": "1.0.0",
+  "title": "Antimanual AI Search",
+  "category": "widgets",
+  "icon": "search",
+  "description": "An AI-powered search block with intelligent results and references.",
+  "example": {},
+  "supports": {
+    "html": false,
+    "align": [
+      "wide",
+      "full"
+    ],
+    "spacing": {
+      "margin": true,
+      "padding": true
+    }
+  },
+  "attributes": {
+    "placeholder": {
+      "type": "string",
+      "default": "Ask AI anything..."
+    },
+    "buttonText": {
+      "type": "string",
+      "default": "Ask"
+    },
+    "showIcon": {
+      "type": "boolean",
+      "default": true
+    },
+    "showPopularKeywords": {
+      "type": "boolean",
+      "default": true
+    },
+    "popularKeywordsCount": {
+      "type": "number",
+      "default": 5
+    },
+    "accentColor": {
+      "type": "string",
+      "default": "#0079FF"
+    },
+    "buttonTextColor": {
+      "type": "string",
+      "default": "#ffffff"
+    },
+    "borderStyle": {
+      "type": "string",
+      "default": "pill"
+    },
+    "greetingText": {
+      "type": "string",
+      "default": ""
+    },
+    "suggestedQuestions": {
+      "type": "string",
+      "default": ""
+    },
+    "answerDetail": {
+      "type": "string",
+      "default": "balanced"
+    }
+  },
+  "textdomain": "antimanual",
+  "editorScript": "file:../../../build/blocks/antimanual-search/index.js",
+  "editorStyle": "file:../../../build/blocks/antimanual-search/index.css",
+  "style": "file:../../../build/blocks/antimanual-search/style-index.css"
+}

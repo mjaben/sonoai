@@ -1,0 +1,330 @@
+
+// Subscription
+body {
+	&.admin-bar {
+		.ezd-subscription-form-wrap{
+			top: 32px;
+			max-width: 100%;
+			.ezd-subscription-inner {
+				top: 32px;
+			}
+		}
+		.ezd-subscription-popup{
+			&.top-right {
+				.ezd-subscription-popup-inner {
+					margin-top: 32px;
+				}
+			}
+		}
+	}
+}
+.ezd-subscription-btn {
+	border: 1px solid rgba(34, 36, 38, 0.15);
+    color: rgba(0, 0, 0, 0.87);
+    border-radius: 0.28571429rem;
+    box-shadow: 0 0 0 0 transparent inset;
+    transition: color 0.1s ease, border-color 0.1s ease;
+    padding: 14px 25px;
+    font-size: 15px;
+    line-height: 1.21428571em;
+    cursor: pointer;
+    display: block;
+    width: 100%;
+    background: var(--ezd_brand_color);
+    color: white;
+    letter-spacing: 0.4px;
+	&.subscribed{
+		background: gray;
+	}
+	&.ezd-block-subscribe {
+		border: 1px solid rgba(34, 36, 38, 0.15);
+		box-shadow: 0 0 0 0 transparent inset;
+		transition: color 0.1s ease, border-color 0.1s ease;
+		padding: 5px 14px;
+		cursor: pointer;
+		display: inline-block;
+		width: max-content;
+		background: #f2f7ff;
+		color: #000404;
+		border-radius: 4px;
+		font-size: 14px;
+		font-weight: 500;
+		line-height: 1.625;
+		&:hover {
+			background: cornsilk;
+		}
+		&.subscribed{
+			background: cornsilk;
+		}
+	}
+}
+.ezd-subscription-form-wrap{
+    background-color: rgba(0,0,0,.7);
+    padding: 3px;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    height: 100%;
+    width: 100%;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+	display: none;
+	max-width: 100%;
+	
+	.ezd-subscription-inner {
+		background-color: var(--bs-white);
+		position: fixed;
+		top: 0;
+		bottom: 0;
+		height: 100%;
+		width: 400px;
+		right: -400px;
+		z-index: 111;
+		padding: 30px;
+		box-sizing: border-box;
+		transition: right .1s ease-in-out;
+
+		p.ezd-response-alert {
+			text-align: center;
+			margin: 20px 0 0;
+			color: green;
+			font-size: 15px;
+		}
+
+		h2 {
+			font-size: 1.5rem;
+			margin: 0 0 20px;
+		}
+		input{
+			width: -webkit-fill-available;
+			width: -moz-available;
+			width: fill-available;
+			width: stretch;
+			margin-bottom: 15px;
+			line-height: 1.21428571em;
+			font-size: 14px;
+			background: #fff;
+			border: 1px solid rgba(34,36,38,.15);
+			color: rgba(0, 0, 0, 0.87) !important;
+			border-radius: 0.28571429rem;
+			box-shadow: 0 0 0 0 transparent inset;
+			transition: color .1s ease,border-color .1s ease;
+		}
+		label {
+			font-size: 14px;
+			color: var(--black_800);
+			font-weight: 600;
+			margin-bottom: 5px;
+			display: block;
+		}
+		button {
+			border: 1px solid rgba(34,36,38,.15);
+			color: rgba(0,0,0,.87);
+			border-radius: 0.28571429rem;
+			box-shadow: 0 0 0 0 transparent inset;
+			transition: color .1s ease,border-color .1s ease;
+			padding: 5px;
+			font-size: 16px;
+			line-height: 1.21428571em;
+			cursor: pointer;
+			display: block;
+			width: 100%;
+			margin-top: 5px;
+			box-sizing: border-box;
+			margin-bottom: 5px;
+			background: var(--ezd_brand_color);
+			color: white;
+			height: 43px;
+			&:last-child {
+				background: transparent;
+				border:none;
+				box-shadow: none;
+				text-shadow: none;
+				outline: none;
+				color:#404040
+			}
+			.spinner-border {
+				width: 30px;
+				height: 30px;
+				border: 2px solid rgb(255 255 255);
+				border-right-color: green;
+				margin: -1px 0 .5px;
+			}
+		}
+		.ezd-subscription-close {
+			font-size: 30px;
+			position: absolute;
+			right: 24px;
+			top: 30px;
+			line-height: 0;
+			font-weight: bold;
+			color: #858585;
+			cursor: pointer;
+		}
+		.ezd-subscription-cancel {
+			font-size: 15px;
+			line-height: 0;
+			font-weight: 400;
+			cursor: pointer;
+			text-align: center;
+			display: block;
+			margin-top: 16px;
+			color: var(--black_800);
+		}
+	}
+	&.active {
+		display: block;
+		.ezd-subscription-inner {
+			right: 0;
+		}
+	}
+}
+
+.ezd-subscription-popup{
+	position: fixed;
+    width: 100%;
+    z-index: 999;
+    background: rgba(0, 0, 0, 0.3803921569);
+    height: 100%;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: 0;
+    margin: auto;
+	
+	.ezd-subscription-popup-inner {
+		color: black;
+		z-index: 9999;
+		position: absolute;
+		bottom: 0;
+		top: 0;
+		left: 0;
+		right: 0;
+		margin: auto;
+		text-align: center;
+		width: 350px;
+		background: white;
+		height: max-content;
+		display: block;
+		align-items: center;
+		justify-content: center;
+		border-radius: 5px;
+		padding: 15px;
+		box-sizing: border-box;
+		
+		 .ezd-subscription-action{
+			display: flex;
+			justify-content: end;
+			a.ezd-subscription-cancel, a.ezd-subscription-confirm {
+			   background: var(--ezd_brand_color);
+			   margin: 5px;
+			   color: white;
+			   padding: 5px 15px;
+			   display: inline-block;
+			   border-radius: 5px;
+			   font-weight: bold;
+			   text-decoration: none;
+			   &:hover {
+				   background: #0606cb;
+			   }
+		   }
+		   a.ezd-subscription-cancel {
+			   background: red;
+			   &:hover {
+				   background: #bf0000;
+			   }
+		   }
+		}
+	}
+	&.hidden{
+		display: none;
+	}
+	p {
+		font-size: 16px;
+		color: #404040;
+		margin: 2px 0 12px;
+		line-height: 24px;
+	}
+	
+	&.top-right {
+		.ezd-subscription-popup-inner {
+			width: 280px;
+			margin-top: 0px;
+			right: 12px;
+			position: absolute;
+			left: unset;
+			top: 12px;
+			&.auto-opt-out{
+				width: 300px;
+			}
+		}
+	}
+	&.unsubscription {
+		.ezd-subscription-popup-inner {
+			width: 450px;
+			@media screen and (max-width: 600px) {
+				width: 280px;
+				
+			}
+			h1 ,
+			p {
+				text-align: left;
+				margin: 0 0 12px;
+			}
+			.ezd-subscription-preloader {
+				position: absolute;
+				right: 225px;
+				bottom: 20px;
+			}
+			.ezd-subscription-loader-wrap {
+				width: 30px;
+				height: 30px;
+			  }
+		}
+	}
+	h1 {
+		font-size: 20px;
+		font-weight: 600;
+		color: #404040;
+		margin: 0;
+	}
+	&.hidden{
+		display: none;
+	}
+	.ezd-subscription-preloader {
+		background: #ffffff;
+		justify-content: center;
+		align-items: center;
+		display: flex;
+		&.hidden{
+			display: none;
+		}
+	  }
+  
+	  .ezd-subscription-loader-wrap {
+		border: 4px solid #e7e7e7;
+		border-top: 4px solid var(--ezd_brand_color);
+		border-bottom: 4px solid var(--ezd_brand_color);
+		border-radius: 50%;
+		width: 40px;
+		height: 40px;
+		animation: ezdSpin 1s linear infinite;
+	  }
+  
+	  @keyframes ezdSpin {
+		0% { 
+			transform: rotate(0deg); 
+		}
+		100% { 
+			transform: rotate(360deg); 
+		}
+	  }
+}
+.ezd-doc-btn-wrap {
+	&.has-subscription {
+		display: flex;
+		gap: 10px;
+		flex-wrap: wrap
+	}
+}

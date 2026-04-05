@@ -17,16 +17,17 @@
 
     // ── State ──────────────────────────────────────────────────────────────
     const state = {
-        sessionUuid : null,
+        sessionUuid : sonoai_vars.session_uuid || null,
         sending     : false,
         sessions    : [],
+        mode        : localStorage.getItem('sonoai_mode') || 'guideline',
     };
 
     // ── DOM refs ───────────────────────────────────────────────────────────
     const app           = document.getElementById('sonoai-app');
     const sidebar       = document.getElementById('sonoai-sidebar');
     const overlay       = document.getElementById('sonoai-overlay');
-    const historyList   = document.getElementById('sonoai-history-list');
+    const historyContainer = document.getElementById('sonoai-history-container');
     const messages      = document.getElementById('sonoai-messages');
     const welcome       = document.getElementById('sonoai-welcome');
     const textarea      = document.getElementById('sonoai-input');
@@ -34,16 +35,39 @@
     const sidebarToggle = document.getElementById('sonoai-sidebar-toggle');
     const newChatBtn    = document.getElementById('sonoai-new-chat');
     const newChatMobile = document.getElementById('sonoai-new-chat-mobile');
+    const savedBtn      = document.getElementById('sonoai-saved-btn');
+    const savedPanel    = document.getElementById('sonoai-saved-panel');
+    const savedClose    = document.getElementById('sonoai-saved-close');
 
     // ── Boot ───────────────────────────────────────────────────────────────
     function init() {
+        initTheme();
         bindEvents();
+
+        // 1. If we have a UUID from PHP/URL, load it immediately to avoid "welcome flash".
+        if (state.sessionUuid) {
+            openSession(state.sessionUuid, true);
+        }
+
+        // 2. Load history in background.
         loadHistory();
+        
+        loadSavedResponses();
         autoResizeTextarea();
     }
 
     // ── Event bindings ─────────────────────────────────────────────────────
     function bindEvents() {
+        // Mode toggle.
+        updateModeUI();
+        document.querySelectorAll('.sonoai-mode-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                state.mode = btn.dataset.mode || 'research';
+                localStorage.setItem('sonoai_mode', state.mode);
+                updateModeUI();
+            });
+        });
+
         // Send on click or Enter (Shift+Enter = new line).
         sendBtn.addEventListener('click', handleSend);
         textarea.addEventListener('keydown', function (e) {
@@ -77,12 +101,54 @@
         });
 
         // New chat.
-        newChatBtn.addEventListener('click', startNewChat);
-        newChatMobile.addEventListener('click', startNewChat);
+        if (newChatBtn)    newChatBtn.addEventListener('click', startNewChat);
+        if (newChatMobile) newChatMobile.addEventListener('click', startNewChat);
 
         // Sidebar toggle (mobile).
-        sidebarToggle.addEventListener('click', toggleSidebar);
-        overlay.addEventListener('click', closeSidebar);
+        if (sidebarToggle) sidebarToggle.addEventListener('click', toggleSidebar);
+        if (overlay)       overlay.addEventListener('click', closeSidebar);
+
+        // ── Dark / Light mode toggle ──
+        var themeToggleBtn = document.getElementById('sonoai-theme-toggle');
+        if (themeToggleBtn) {
+            themeToggleBtn.addEventListener('click', function () {
+                var isLight = app.classList.toggle('sonoai-light');
+                localStorage.setItem('sonoai_theme', isLight ? 'light' : 'dark');
+                var moon = themeToggleBtn.querySelector('.sonoai-icon-moon');
+                var sun  = themeToggleBtn.querySelector('.sonoai-icon-sun');
+                if (moon) moon.style.display = isLight ? 'none' : '';
+                if (sun)  sun.style.display  = isLight ? '' : 'none';
+            });
+        }
+
+        // Saved responses panel.
+        if (savedBtn)   savedBtn.addEventListener('click', toggleSavedPanel);
+        if (savedClose) savedClose.addEventListener('click', closeSavedPanel);
+
+        // Handle back/forward navigation.
+        window.addEventListener('popstate', function (e) {
+            if (e.state && e.state.uuid) {
+                openSession(e.state.uuid, true);
+            } else {
+                startNewChat();
+            }
+        });
+
+    }
+
+    // ── Theme init (restore from localStorage) ────────────────────────────
+    function initTheme() {
+        var saved = localStorage.getItem('sonoai_theme');
+        var themeToggleBtn = document.getElementById('sonoai-theme-toggle');
+        if (saved === 'light') {
+            app.classList.add('sonoai-light');
+            if (themeToggleBtn) {
+                var moon = themeToggleBtn.querySelector('.sonoai-icon-moon');
+                var sun  = themeToggleBtn.querySelector('.sonoai-icon-sun');
+                if (moon) moon.style.display = 'none';
+                if (sun)  sun.style.display  = '';
+            }
+        }
     }
 
     // ── Sidebar helpers ────────────────────────────────────────────────────
@@ -90,17 +156,41 @@
         const open = sidebar.classList.toggle('open');
         sidebarToggle.setAttribute('aria-expanded', open);
         overlay.hidden = !open;
+        overlay.setAttribute('aria-hidden', !open);
+        if (!open) closeSavedPanel();
     }
 
     function closeSidebar() {
         sidebar.classList.remove('open');
         sidebarToggle.setAttribute('aria-expanded', 'false');
         overlay.hidden = true;
+        overlay.setAttribute('aria-hidden', 'true');
+        closeSavedPanel();
+    }
+
+    function toggleSavedPanel() {
+        if (!savedPanel) return;
+        const isOpen = savedPanel.classList.toggle('open');
+        savedPanel.setAttribute('aria-hidden', !isOpen);
+        if (savedBtn) savedBtn.classList.toggle('active', isOpen);
+    }
+
+    function closeSavedPanel() {
+        if (!savedPanel) return;
+        savedPanel.classList.remove('open');
+        savedPanel.setAttribute('aria-hidden', 'true');
+        if (savedBtn) savedBtn.classList.remove('active');
+    }
+
+    function updateModeUI() {
+        document.querySelectorAll('.sonoai-mode-btn').forEach(function (btn) {
+            btn.classList.toggle('active', btn.dataset.mode === state.mode);
+        });
     }
 
     // ── History ────────────────────────────────────────────────────────────
     function loadHistory() {
-        apiFetch('history')
+        return apiFetch('history')
             .then(function (sessions) {
                 state.sessions = Array.isArray(sessions) ? sessions : [];
                 renderHistoryList();
@@ -111,56 +201,129 @@
     }
 
     function renderHistoryList() {
-        historyList.innerHTML = '';
+        historyContainer.innerHTML = '';
 
         if (state.sessions.length === 0) {
+            const label = document.createElement('p');
+            label.className = 'sonoai-history-label';
+            label.textContent = 'RECENT';
+            const ul = document.createElement('ul');
+            ul.className = 'sonoai-history-list';
+            ul.role = 'list';
             const li = document.createElement('li');
             li.className = 'sonoai-history-empty';
             li.textContent = sonoai_vars.i18n.no_history;
-            historyList.appendChild(li);
+            ul.appendChild(li);
+            historyContainer.appendChild(label);
+            historyContainer.appendChild(ul);
             return;
         }
 
+        let savedModes = {};
+        try {
+            savedModes = JSON.parse(localStorage.getItem('sonoai_session_modes') || '{}');
+        } catch(e) {}
+
+        const researchSessions = [];
+        const guidelineSessions = [];
+
         state.sessions.forEach(function (s) {
-            const li  = document.createElement('li');
-            li.className = 'sonoai-history-item' + (s.session_uuid === state.sessionUuid ? ' active' : '');
-            li.dataset.uuid = s.session_uuid;
-
-            const text = document.createElement('span');
-            text.className = 'sonoai-history-text';
-            text.textContent = s.title || sonoai_vars.i18n.new_chat;
-
-            const del = document.createElement('button');
-            del.className = 'sonoai-history-delete';
-            del.title = sonoai_vars.i18n.delete;
-            del.setAttribute('aria-label', sonoai_vars.i18n.delete + ': ' + text.textContent);
-            del.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
-
-            del.addEventListener('click', function (e) {
-                e.stopPropagation();
-                deleteSession(s.session_uuid);
-            });
-
-            li.addEventListener('click', function () {
-                openSession(s.session_uuid);
-                closeSidebar();
-            });
-
-            li.appendChild(text);
-            li.appendChild(del);
-            historyList.appendChild(li);
+            // Prefer mode from server response; fall back to localStorage map.
+            let savedModes = {};
+            try { savedModes = JSON.parse(localStorage.getItem('sonoai_session_modes') || '{}'); } catch(e) {}
+            const mode = s.mode || savedModes[s.session_uuid] || 'guideline';
+            if (mode === 'guideline') {
+                guidelineSessions.push(s);
+            } else {
+                researchSessions.push(s);
+            }
         });
+
+        function renderGroup(groupName, items, isSecondGroup, modeClass) {
+            if (items.length === 0) return;
+            
+            const label = document.createElement('p');
+            label.className = 'sonoai-history-label' + (isSecondGroup ? ' sonoai-history-label-2' : '') + (modeClass ? ' ' + modeClass + '-label' : '');
+            label.textContent = groupName;
+            historyContainer.appendChild(label);
+
+            const ul = document.createElement('ul');
+            ul.className = 'sonoai-history-list';
+            ul.role = 'list';
+
+            items.forEach(function (s) {
+                const isGuideline = (modeClass === 'guideline');
+                const li  = document.createElement('li');
+                li.className = 'sonoai-history-item'
+                    + (s.session_uuid === state.sessionUuid ? ' active' : '')
+                    + (isGuideline ? ' guideline-item' : '');
+                li.dataset.uuid = s.session_uuid;
+
+                const iconWrap = document.createElement('span');
+                iconWrap.className = 'sonoai-history-icon-wrap';
+                iconWrap.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>';
+
+                const text = document.createElement('span');
+                text.className = 'sonoai-history-text';
+                text.textContent = s.title || sonoai_vars.i18n.new_chat;
+
+                const del = document.createElement('button');
+                del.className = 'sonoai-history-delete';
+                del.title = sonoai_vars.i18n.delete;
+                del.setAttribute('aria-label', sonoai_vars.i18n.delete + ': ' + text.textContent);
+                del.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
+
+                del.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    deleteSession(s.session_uuid);
+                });
+
+                li.addEventListener('click', function () {
+                    openSession(s.session_uuid);
+                    closeSidebar();
+                });
+
+                li.appendChild(iconWrap);
+                li.appendChild(text);
+                li.appendChild(del);
+                ul.appendChild(li);
+            });
+            
+            historyContainer.appendChild(ul);
+        }
+
+        let hasResearch = researchSessions.length > 0;
+        renderGroup('RECENT RESEARCH', researchSessions, false, 'research');
+        renderGroup('RECENT GUIDELINE', guidelineSessions, hasResearch, 'guideline');
     }
 
-    function openSession(uuid) {
+    function openSession(uuid, skipPushState) {
         state.sessionUuid = uuid;
+
+        if (!skipPushState) {
+            updateUrl(uuid);
+        }
 
         apiFetch('history/' + uuid)
             .then(function (session) {
+                // Restore mode from server response.
+                const sessionMode = session.mode || 'guideline';
+                state.mode = sessionMode;
+                localStorage.setItem('sonoai_mode', state.mode);
+
+                // Also persist in local map for offline grouping.
+                let savedModes = {};
+                try { savedModes = JSON.parse(localStorage.getItem('sonoai_session_modes') || '{}'); } catch(e){}
+                savedModes[uuid] = sessionMode;
+                localStorage.setItem('sonoai_session_modes', JSON.stringify(savedModes));
+
+                updateModeUI();
+                if (welcome) welcome.style.display = 'none';
+
                 clearMessages();
                 const msgs = session.messages || [];
                 msgs.forEach(function (m) {
-                    appendMessage(m.role, m.content, m.image_url || '', m.context_images || []);
+                    appendMessage(m.role, m.content, m.image_url || '', m.context_images || [], m.saved_id, true);
                 });
                 updateHistoryActiveState();
                 scrollToBottom();
@@ -178,6 +341,8 @@
                 }
                 state.sessions = state.sessions.filter(function (s) { return s.session_uuid !== uuid; });
                 renderHistoryList();
+                // Refresh saved responses as they might have been deleted (cascade).
+                loadSavedResponses();
             })
             .catch(function () {
                 showError(sonoai_vars.i18n.error);
@@ -193,11 +358,24 @@
     // ── New chat ───────────────────────────────────────────────────────────
     function startNewChat() {
         state.sessionUuid = null;
+        updateUrl(null);
         clearMessages();
         if (welcome) welcome.style.display = '';
         textarea.value = '';
         textarea.dispatchEvent(new Event('input'));
-        closeSidebar();
+        if (window.innerWidth < 768) {
+            closeSidebar();
+        }
+    }
+
+    function updateUrl(uuid) {
+        let newUrl = sonoai_vars.base_url || window.location.origin + window.location.pathname;
+        if (uuid) {
+            // Remove trailing slash if exists to normalize
+            newUrl = newUrl.replace(/\/$/, '');
+            newUrl += '/' + uuid;
+        }
+        history.pushState({ uuid: uuid }, '', newUrl);
     }
 
     // ── Send message ───────────────────────────────────────────────────────
@@ -214,22 +392,33 @@
         const imageUrl = '';
         appendMessage('user', text, imageUrl);
 
-        // Build form data.
-        const formData = new FormData();
-        formData.append('message', text);
-        if (state.sessionUuid) {
-            formData.append('session_uuid', state.sessionUuid);
-        }
+        performChatStream(text, state.mode, state.sessionUuid, imageUrl);
+    }
 
-        // Reset input.
+    /**
+     * Reusable streaming chat request logic.
+     */
+    async function performChatStream(text, mode, sessionUuid, imageUrl) {
+        if (state.sending) return;
+
+        // Reset input if called from handleSend.
         textarea.value = '';
         textarea.dispatchEvent(new Event('input'));
+
+        // Hide welcome screen.
+        if (welcome) welcome.style.display = 'none';
 
         // Show typing indicator.
         const typingEl = appendTyping();
         state.sending  = true;
         sendBtn.disabled = true;
 
+        const formData = new FormData();
+        formData.append('message', text);
+        formData.append('mode', mode); 
+        if (sessionUuid) {
+            formData.append('session_uuid', sessionUuid);
+        }
         formData.append('stream', '1');
 
         fetch(sonoai_vars.rest_url + 'chat', {
@@ -238,8 +427,8 @@
             headers: { 'X-WP-Nonce': sonoai_vars.nonce }
         }).then(async function (response) {
             if (!response.ok) {
-                const text = await response.text();
-                throw new Error(text || sonoai_vars.i18n.error);
+                const errorText = await response.text();
+                throw new Error(errorText || sonoai_vars.i18n.error);
             }
 
             const reader = response.body.getReader();
@@ -249,6 +438,7 @@
             let assistantWrapper = null;
             let bubble = null;
             let fullReply = '';
+            let firstChunkReceived = false;
 
             try {
                 while (true) {
@@ -279,23 +469,48 @@
                             const parsed = JSON.parse(eventData);
                             
                             if (eventType === 'meta') {
-                                if (typingEl && typingEl.parentNode) typingEl.remove();
-                                state.sending = false;
+                                // We no longer remove typingEl here. We wait for the first chunk.
                                 state.sessionUuid = parsed.session_uuid;
                                 
+                                if (parsed.mode) {
+                                    state.mode = parsed.mode;
+                                    localStorage.setItem('sonoai_mode', state.mode);
+                                    updateModeUI();
+                                }
+
                                 if (parsed.is_new_session) {
                                     state.sessions.unshift({
                                         session_uuid: parsed.session_uuid,
                                         title       : text.substring(0, 80),
+                                        mode        : state.mode,
                                     });
+
+                                    let savedModes = {};
+                                    try { savedModes = JSON.parse(localStorage.getItem('sonoai_session_modes') || '{}'); } catch(e){}
+                                    savedModes[parsed.session_uuid] = state.mode;
+                                    localStorage.setItem('sonoai_session_modes', JSON.stringify(savedModes));
+
                                     renderHistoryList();
+                                    updateUrl(parsed.session_uuid);
                                 }
                                 
-                                assistantWrapper = appendMessage('assistant', '', '', parsed.context_images || []);
+                                assistantWrapper = appendMessage('assistant', '', '', parsed.context_images || [], null, false);
                                 bubble = assistantWrapper.querySelector('.sonoai-bubble');
                                 updateHistoryActiveState();
                             }
                             else if (eventType === 'chunk') {
+                                // Smooth transition: hide 'Thinking' only when real text arrives.
+                                if (!firstChunkReceived && parsed.chunk && parsed.chunk.trim().length > 0) {
+                                    firstChunkReceived = true;
+                                    if (typingEl) {
+                                        const typingPill = typingEl.querySelector('.sonoai-typing');
+                                        if (typingPill) typingPill.classList.add('sonoai-typing-fade-out');
+                                        setTimeout(function() { 
+                                            if (typingEl && typingEl.parentNode) typingEl.remove(); 
+                                        }, 300);
+                                    }
+                                }
+
                                 fullReply += parsed.chunk;
                                 if (bubble) {
                                     bubble.innerHTML = markdownToHtml(fullReply);
@@ -310,6 +525,25 @@
                 }
             } finally {
                 reader.releaseLock();
+                state.sending = false;
+                
+                // Final safety: remove typing indicator if it wasn't already removed by the first chunk.
+                if (typingEl && typingEl.parentNode) {
+                    const finalPill = typingEl.querySelector('.sonoai-typing');
+                    if (finalPill) finalPill.classList.add('sonoai-typing-fade-out');
+                    setTimeout(function() {
+                        if (typingEl && typingEl.parentNode) typingEl.remove();
+                    }, 300);
+                }
+
+                // Show action buttons for the current assistant message
+                if (assistantWrapper) {
+                    const row = assistantWrapper.querySelector('.sonoai-action-row');
+                    if (row) {
+                        row.style.display = 'flex';
+                    }
+                    scrollToBottom();
+                }
             }
             
             sendBtn.disabled = textarea.value.trim().length === 0;
@@ -323,30 +557,36 @@
     }
 
     // ── Message rendering ──────────────────────────────────────────────────
-    function appendMessage(role, content, imageUrl, contextImages) {
+    function appendMessage(role, content, imageUrl, contextImages, savedId, showActions) {
         const isUser  = role === 'user';
         const wrapper = document.createElement('div');
         wrapper.className = 'sonoai-message ' + (isUser ? 'user' : 'assistant');
+        if (savedId) {
+            wrapper.dataset.savedId = savedId;
+        }
 
-        // Avatar.
-        const avatarEl = document.createElement('div');
-        avatarEl.className = 'sonoai-message-avatar';
-        if (isUser && sonoai_vars.user && sonoai_vars.user.avatar) {
-            const img = document.createElement('img');
-            img.src = sonoai_vars.user.avatar;
-            img.alt = sonoai_vars.user.first_name || '';
-            avatarEl.appendChild(img);
-        } else if (!isUser) {
-            avatarEl.textContent = '🔬';
-        } else {
-            avatarEl.textContent = '👤';
+        // Avatar (user only).
+        if (isUser) {
+            const avatarEl = document.createElement('div');
+            avatarEl.className = 'sonoai-message-avatar';
+            if (sonoai_vars.user && sonoai_vars.user.avatar) {
+                const img = document.createElement('img');
+                img.src = sonoai_vars.user.avatar;
+                img.alt = sonoai_vars.user.first_name || '';
+                avatarEl.appendChild(img);
+            } else {
+                avatarEl.textContent = (sonoai_vars.user && sonoai_vars.user.first_name)
+                    ? sonoai_vars.user.first_name.charAt(0).toUpperCase()
+                    : 'U';
+            }
+            wrapper.appendChild(avatarEl);
         }
 
         // Body.
         const body   = document.createElement('div');
         body.className = 'sonoai-message-body';
 
-        // Image (if present).
+        // Image attachment (user messages).
         if (imageUrl && isUser) {
             const imgEl = document.createElement('img');
             imgEl.src    = imageUrl;
@@ -365,33 +605,35 @@
             body.appendChild(bubble);
         }
 
-        // Context Images (if present).
+        // Context Images.
         if (contextImages && contextImages.length > 0) {
             const gallery = document.createElement('div');
             gallery.className = 'sonoai-context-gallery';
-            gallery.style.display = 'flex';
-            gallery.style.gap = '8px';
-            gallery.style.marginTop = '10px';
-            gallery.style.overflowX = 'auto';
-            gallery.style.paddingBottom = '4px';
+            gallery.style.cssText = 'display:flex;gap:8px;margin-top:10px;overflow-x:auto;padding-bottom:4px;';
             contextImages.forEach(function (src) {
                 const a = document.createElement('a');
-                a.href = src;
+                a.href   = src;
                 a.target = '_blank';
                 const imgEl = document.createElement('img');
                 imgEl.src = src;
-                imgEl.alt = 'Reference manual';
+                imgEl.alt = 'Reference image';
                 imgEl.className = 'sonoai-context-image';
-                imgEl.style.maxHeight = '80px';
-                imgEl.style.borderRadius = '4px';
-                imgEl.style.border = '1px solid rgba(0,0,0,0.1)';
+                imgEl.style.cssText = 'max-height:80px;border-radius:4px;border:1px solid rgba(0,0,0,0.1);';
                 a.appendChild(imgEl);
                 gallery.appendChild(a);
             });
             body.appendChild(gallery);
         }
 
-        wrapper.appendChild(avatarEl);
+        // Action row for assistant messages.
+        if (!isUser) {
+            const actionRow = buildActionRow(wrapper, savedId);
+            if (!showActions) {
+                actionRow.style.display = 'none'; // hidden during stream
+            }
+            body.appendChild(actionRow);
+        }
+
         wrapper.appendChild(body);
         messages.appendChild(wrapper);
         scrollToBottom();
@@ -399,23 +641,207 @@
         return wrapper;
     }
 
+    // ── Build the action row beneath each assistant message ──
+    function buildActionRow(wrapper, savedId) {
+        const row = document.createElement('div');
+        row.className = 'sonoai-action-row';
+
+        function svgIcon(path, w, h) {
+            w = w || 14; h = h || 14;
+            return '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' + path + '</svg>';
+        }
+
+        function makeBtn(icon, label, cls, clickFn) {
+            const btn = document.createElement('button');
+            btn.className = 'sonoai-action-btn' + (cls ? ' ' + cls : '');
+            btn.innerHTML = svgIcon(icon) + (label ? '<span>' + label + '</span>' : '');
+            btn.title     = label || '';
+            btn.addEventListener('click', clickFn);
+            return btn;
+        }
+
+        // Thumbs up
+        const upBtn = makeBtn(
+            '<path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>',
+            '', 'sonoai-vote-up',
+            function () {
+                if(upBtn.classList.contains('sonoai-voted')) return;
+                upBtn.classList.add('sonoai-voted');
+                downBtn.classList.remove('sonoai-voted');
+                submitFeedback(wrapper, 'up', '');
+            }
+        );
+
+        // Thumbs down
+        const downBtn = makeBtn(
+            '<path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/>',
+            '', 'sonoai-vote-down',
+            function () {
+                if(downBtn.classList.contains('sonoai-voted')) return;
+                downBtn.classList.add('sonoai-voted');
+                upBtn.classList.remove('sonoai-voted');
+                submitFeedback(wrapper, 'down', '');
+            }
+        );
+
+        // Save button
+        const saveBtn = makeBtn(
+            '<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>', 'Save', '',
+            function () {
+                const isSaved = saveBtn.dataset.saved === '1';
+                if (isSaved) {
+                    // UNSAVE
+                    const id = saveBtn.dataset.id;
+                    if (!id) return;
+                    saveBtn.disabled = true;
+                    apiFetch('saved/' + id, { method: 'DELETE' })
+                        .then(function () {
+                            saveBtn.dataset.saved = '0';
+                            saveBtn.dataset.id    = '';
+                            saveBtn.classList.remove('active');
+                            saveBtn.title = 'Save';
+                            saveBtn.disabled = false;
+                            loadSavedResponses();
+                        })
+                        .catch(function () {
+                            saveBtn.disabled = false;
+                        });
+                    return;
+                }
+
+                // SAVE (existing logic)
+                const bubble  = wrapper.querySelector('.sonoai-bubble');
+                const content = bubble ? bubble.innerHTML : '';
+                if (!content || !state.sessionUuid) return;
+
+                const allMsgs = messages.querySelectorAll('.sonoai-message');
+                let msgIndex  = 0;
+                allMsgs.forEach(function (el, idx) {
+                    if (el === wrapper) msgIndex = idx;
+                });
+
+                const fd = new FormData();
+                fd.append('session_uuid',  state.sessionUuid);
+                fd.append('message_index', msgIndex);
+                fd.append('content',       content);
+                fd.append('mode',          state.mode);
+
+                saveBtn.disabled = true;
+                apiFetch('saved', { method: 'POST', body: fd, isFormData: true })
+                    .then(function (res) {
+                        saveBtn.dataset.saved = '1';
+                        saveBtn.dataset.id    = res.id;
+                        saveBtn.classList.add('active');
+                        saveBtn.title = 'Saved!';
+                        saveBtn.disabled = false;
+                        loadSavedResponses();
+                    })
+                    .catch(function () {
+                        saveBtn.disabled = false;
+                        saveBtn.title = 'Error saving';
+                    });
+            }
+        );
+
+        if (savedId) {
+            saveBtn.dataset.saved = '1';
+            saveBtn.dataset.id    = savedId;
+            saveBtn.classList.add('active');
+            saveBtn.title = 'Saved!';
+        }
+
+        // Regenerate — takes the closest previous user message and resubmits it
+        const regenBtn = makeBtn(
+            '<polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>',
+            'Regenerate', '', function () {
+                if (state.sending) return;
+                
+                // Find the user message before this assistant message
+                let prevUserMsg = null;
+                const allNodes = Array.from(messages.children);
+                const currentIndex = allNodes.indexOf(wrapper);
+                for (let i = currentIndex - 1; i >= 0; i--) {
+                    if (allNodes[i].classList.contains('user')) {
+                        prevUserMsg = allNodes[i].querySelector('.sonoai-bubble').innerText;
+                        break;
+                    }
+                }
+                
+                if (prevUserMsg) {
+                    // Send to backend without appending a NEW user message to the UI
+                    performChatStream(prevUserMsg, state.mode, state.sessionUuid, '');
+                }
+            }
+        );
+
+        // Spacer
+        const spacer = document.createElement('span');
+        spacer.className = 'sonoai-action-divider';
+
+        // Copy
+        const copyBtn = makeBtn(
+            '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+            'Copy', '',
+            function () {
+                const bubble = wrapper.querySelector('.sonoai-bubble');
+                if (bubble) {
+                    navigator.clipboard.writeText(bubble.innerText || '').then(function () {
+                        const origHTML = copyBtn.innerHTML;
+                        copyBtn.innerHTML = svgIcon('<polyline points="20 6 9 17 4 12"/>') + '<span>Copied!</span>';
+                        copyBtn.classList.add('active');
+                        setTimeout(function () {
+                            copyBtn.innerHTML = origHTML;
+                            copyBtn.classList.remove('active');
+                        }, 2000);
+                    });
+                }
+            }
+        );
+
+        row.appendChild(upBtn);
+        row.appendChild(downBtn);
+        row.appendChild(saveBtn);
+        row.appendChild(regenBtn);
+        row.appendChild(spacer);
+        row.appendChild(copyBtn);
+
+        return row;
+    }
+
+    function submitFeedback(wrapper, vote, comment) {
+        if (!state.sessionUuid) return;
+
+        // Calculate zero-based message index.
+        const allMsgs = messages.querySelectorAll('.sonoai-message');
+        let msgIndex  = 0;
+        allMsgs.forEach(function (el, idx) {
+            if (el === wrapper) msgIndex = idx;
+        });
+
+        const fd = new FormData();
+        fd.append('session_uuid',  state.sessionUuid);
+        fd.append('message_index', msgIndex);
+        fd.append('vote',          vote);
+        fd.append('comment',       comment || '');
+
+        apiFetch('feedback', { method: 'POST', body: fd, isFormData: true })
+            .catch(function (e) {
+                console.error("Failed to submit feedback", e);
+            });
+    }
+
     function appendTyping() {
         const typingWrapper = document.createElement('div');
         typingWrapper.className = 'sonoai-message assistant';
-
-        const avatarEl = document.createElement('div');
-        avatarEl.className = 'sonoai-message-avatar';
-        avatarEl.textContent = '🔬';
 
         const body = document.createElement('div');
         body.className = 'sonoai-message-body';
 
         const typing = document.createElement('div');
         typing.className = 'sonoai-typing';
-        typing.innerHTML = '<span></span><span></span><span></span>';
+        typing.innerHTML = '<span class="sonoai-typing-label">Thinking</span><div class="sonoai-typing-dots"><span></span><span></span><span></span></div>';
         body.appendChild(typing);
 
-        typingWrapper.appendChild(avatarEl);
         typingWrapper.appendChild(body);
         messages.appendChild(typingWrapper);
         scrollToBottom();
@@ -424,8 +850,11 @@
     }
 
     function clearMessages() {
-        messages.innerHTML = '';
-        if (welcome) {
+        Array.from(messages.children).forEach(function (child) {
+            if (welcome && child === welcome) return;
+            child.remove();
+        });
+        if (welcome && welcome.parentNode !== messages) {
             messages.appendChild(welcome);
         }
     }
@@ -436,14 +865,135 @@
         const body   = document.createElement('div');
         body.className = 'sonoai-message-body';
         const bubble = document.createElement('div');
-        bubble.className = 'sonoai-bubble';
-        bubble.style.borderColor = 'rgba(255,80,80,0.4)';
-        bubble.style.color       = '#ff8080';
+        bubble.className = 'sonoai-bubble sonoai-error-bubble';
         bubble.textContent       = '⚠ ' + msg;
         body.appendChild(bubble);
         errEl.appendChild(body);
         messages.appendChild(errEl);
         scrollToBottom();
+    }
+
+    // ── Saved Responses ────────────────────────────────────────────────────
+
+    function loadSavedResponses() {
+        if (!savedPanel) return;
+        apiFetch('saved')
+            .then(function (items) {
+                renderSavedList(Array.isArray(items) ? items : []);
+            })
+            .catch(function () {
+                // Silently fail.
+            });
+    }
+
+    function renderSavedList(items) {
+        if (!savedPanel) return;
+        let listEl = savedPanel.querySelector('.sonoai-saved-list');
+        if (!listEl) {
+            listEl = document.createElement('div');
+            listEl.className = 'sonoai-saved-list';
+            savedPanel.appendChild(listEl);
+        }
+        listEl.innerHTML = '';
+
+        if (items.length === 0) {
+            const empty = document.createElement('p');
+            empty.className = 'sonoai-saved-empty';
+            empty.textContent = 'No saved responses yet.';
+            listEl.appendChild(empty);
+            return;
+        }
+
+        items.forEach(function (item) {
+            const card = document.createElement('div');
+            card.className = 'sonoai-saved-item';
+            card.dataset.id           = item.id;
+            card.dataset.sessionUuid  = item.session_uuid;
+            card.dataset.messageIndex = item.message_index;
+            card.dataset.mode         = item.mode;
+
+            const modePill = document.createElement('span');
+            modePill.className = 'sonoai-saved-mode sonoai-mode-' + (item.mode || 'guideline');
+            modePill.textContent = item.mode === 'research' ? 'Research' : 'Guideline';
+
+            const titleEl = document.createElement('p');
+            titleEl.className = 'sonoai-saved-title';
+            titleEl.textContent = item.title || 'Saved response';
+
+            const dateEl = document.createElement('span');
+            dateEl.className = 'sonoai-saved-date';
+            const d = new Date(item.created_at);
+            dateEl.textContent = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+
+            const delBtn = document.createElement('button');
+            delBtn.className = 'sonoai-saved-delete';
+            delBtn.title     = 'Remove saved response';
+            delBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>';
+            delBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                apiFetch('saved/' + item.id, { method: 'DELETE' })
+                    .then(function () { loadSavedResponses(); })
+                    .catch(function () {});
+            });
+
+            card.appendChild(modePill);
+            card.appendChild(titleEl);
+            card.appendChild(dateEl);
+            card.appendChild(delBtn);
+
+            // Click: deep-link to session + message.
+            card.addEventListener('click', function () {
+                closeSavedPanel();
+                if (window.innerWidth < 768) closeSidebar();
+
+                // Switch mode first.
+                state.mode = item.mode || 'guideline';
+                localStorage.setItem('sonoai_mode', state.mode);
+                updateModeUI();
+
+                // Load session messages.
+                state.sessionUuid = item.session_uuid;
+                apiFetch('history/' + item.session_uuid)
+                    .then(function (session) {
+                        clearMessages();
+                        const msgs = session.messages || [];
+                        msgs.forEach(function (m) {
+                            appendMessage(m.role, m.content, m.image_url || '', m.context_images || [], m.saved_id, true);
+                        });
+                        updateHistoryActiveState();
+
+                        // Scroll to + highlight the target message.
+                        requestAnimationFrame(function () {
+                            const allMsgs = messages.querySelectorAll('.sonoai-message.assistant');
+                            const targetIdx = item.message_index;
+                            // Count only assistant messages for index.
+                            let assistantCount = -1;
+                            const allMsgEls = messages.querySelectorAll('.sonoai-message');
+                            let targetEl = null;
+                            allMsgEls.forEach(function (el) {
+                                if (el.classList.contains('assistant')) {
+                                    assistantCount++;
+                                    if (assistantCount === targetIdx) {
+                                        targetEl = el;
+                                    }
+                                }
+                            });
+                            if (targetEl) {
+                                targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                targetEl.classList.add('sonoai-highlight');
+                                setTimeout(function () {
+                                    targetEl.classList.remove('sonoai-highlight');
+                                }, 3000);
+                            }
+                        });
+                    })
+                    .catch(function () {
+                        showError(sonoai_vars.i18n.error);
+                    });
+            });
+
+            listEl.appendChild(card);
+        });
     }
 
 
@@ -468,65 +1018,142 @@
     }
 
     /**
-     * Very lightweight markdown → HTML (covers the main AI output patterns).
-     * A full implementation would use a library; this handles the most common cases.
+     * Section-aware markdown -> HTML renderer.
+     *
+     * Custom fence blocks (set via system prompt):
+     *
+     *   :::grid
+     *   | LABEL | VALUE | SUBLABEL |
+     *   :::
+     *
+     *   :::checklist
+     *   Item text
+     *   :::
+     *
+     * Standard ## headings become labelled .sonoai-section cards.
      */
     function markdownToHtml(text) {
-        // First, escape all existing HTML tags to prevent DOM XSS.
-        let html = escapeHtml(text);
-
-        // Code blocks: Use a placeholder to protect them from further processing.
-        const codeBlocks = [];
-        html = html.replace(/```[\w]*\n?([\s\S]*?)```/g, function(_, code) {
-            const id = '___CODEBLOCK' + codeBlocks.length + '___';
-            codeBlocks.push('<pre><code>' + code.trim() + '</code></pre>');
+        var blocks = [];
+        function protect(html) {
+            var id = '\x01B' + blocks.length + '\x01';
+            blocks.push(html);
             return id;
+        }
+
+        // 1. Protect code blocks.
+        text = text.replace(/```[\w]*\n?([\s\S]*?)```/g, function(_, code) {
+            return protect('<pre><code>' + escapeHtml(code.trim()) + '</code></pre>');
         });
 
-        // Inline code placeholders.
-        const inlineCodes = [];
+        // 2. Parse :::grid fences.
+        text = text.replace(/:::grid\n([\s\S]*?):::/g, function(_, inner) {
+            var rows = inner.trim().split('\n');
+            var h = '<div class="sonoai-grid-2">';
+            rows.forEach(function(row) {
+                var parts = row.split('|').map(function(p) { return p.trim(); }).filter(Boolean);
+                if (parts.length < 2) return;
+                var lbl = escapeHtml(parts[0]);
+                var val = escapeHtml(parts[1]);
+                var sub = parts[2] ? escapeHtml(parts[2]) : '';
+                h += '<div class="sonoai-metric-card">';
+                h += '<span class="sonoai-metric-label">' + lbl + '</span>';
+                h += '<span class="sonoai-metric-value">' + val;
+                if (sub) { h += ' <span class="sonoai-metric-sub">(' + sub + ')</span>'; }
+                h += '</span></div>';
+            });
+            h += '</div>';
+            return protect(h);
+        });
+
+        // 3. Parse :::checklist fences.
+        var chkSvg = '<span class="sonoai-check-icon"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span>';
+        text = text.replace(/:::checklist\n([\s\S]*?):::/g, function(_, inner) {
+            var lines = inner.trim().split('\n').filter(function(l) { return l.trim(); });
+            var h = '<ul class="sonoai-checklist">';
+            lines.forEach(function(line) {
+                var clean = escapeHtml(line.replace(/^[-*]\s*/, '').trim());
+                h += '<li>' + chkSvg + '<span>' + clean + '</span></li>';
+            });
+            h += '</ul>';
+            return protect(h);
+        });
+
+        // 4. Escape remaining raw HTML.
+        var html = escapeHtml(text);
+
+        // 5. Inline code.
         html = html.replace(/`([^`]+)`/g, function(_, code) {
-            const id = '___INLINECODE' + inlineCodes.length + '___';
-            inlineCodes.push('<code>' + code + '</code>');
-            return id;
+            return protect('<code>' + code + '</code>');
         });
 
-        // Bold.
+        // 6. Bold & Italic.
         html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-        // Italic.
         html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-        // Headers.
-        html = html.replace(/^### (.+)/gm, '<h4>$1</h4>');
-        html = html.replace(/^## (.+)/gm,  '<h3>$1</h3>');
-        html = html.replace(/^# (.+)/gm,   '<h2>$1</h2>');
-        
-        // Unordered list items.
-        html = html.replace(/^\s*[-*] (.+)/gm, '<li>$1</li>');
-        html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
-        
-        // Numbered list items.
-        html = html.replace(/^\s*\d+\. (.+)/gm, '<li>$1</li>');
-        
-        // Paragraphs (double newline).
-        html = html.replace(/\n{2,}/g, '</p><p>');
-        // Single newlines to <br>.
-        html = html.replace(/\n/g, '<br>');
-        // Wrap in paragraph.
-        html = '<p>' + html + '</p>';
-        
-        // Restore code blocks/inline code.
-        codeBlocks.forEach(function(code, i) {
-            html = html.replace('___CODEBLOCK' + i + '___', code);
+
+        // 7. Section-aware heading processing.
+        var lines = html.split('\n');
+        var output = [];
+        var inSection = false;
+        var buf = [];
+
+        function flushSection() {
+            if (!inSection) return;
+            var body = buf.join('\n').trim();
+            body = body.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            body = body.replace(/\*(.+?)\*/g, '<em>$1</em>');
+            body = body.replace(/\n/g, '<br>');
+            output.push('<div class="sonoai-section-box">' + body + '</div>');
+            output.push('</div>');
+            buf = [];
+            inSection = false;
+        }
+
+        lines.forEach(function(line) {
+            var h2 = line.match(/^## (.+)$/);
+            var h3 = line.match(/^### (.+)$/);
+            if (h2) {
+                flushSection();
+                output.push('<div class="sonoai-section">');
+                output.push('<div class="sonoai-section-title">' + h2[1] + '</div>');
+                inSection = true;
+            } else if (h3) {
+                flushSection();
+                output.push('<h4 style="font-size:13px;font-weight:700;color:#c8c8d8;margin:8px 0 4px;">' + h3[1] + '</h4>');
+            } else if (inSection) {
+                buf.push(line);
+            } else {
+                output.push(line);
+            }
         });
-        inlineCodes.forEach(function(code, i) {
-            html = html.replace('___INLINECODE' + i + '___', code);
+        flushSection();
+        html = output.join('\n');
+
+        // 8. Unordered lists.
+        html = html.replace(/^\s*[-*] (.+)/gm, '<li data-t="ul">$1</li>');
+        html = html.replace(/(<li data-t="ul">[\s\S]*?<\/li>\n?)+/g, '<ul>$&</ul>');
+        html = html.replace(/ data-t="ul"/g, '');
+
+        // 9. Ordered lists.
+        html = html.replace(/^\s*\d+\. (.+)/gm, '<li data-t="ol">$1</li>');
+        html = html.replace(/(<li data-t="ol">[\s\S]*?<\/li>\n?)+/g, '<ol>$&</ol>');
+        html = html.replace(/ data-t="ol"/g, '');
+
+        // 10. Paragraphs.
+        html = html.replace(/\n{2,}/g, '</p><p>');
+        html = html.replace(/\n/g, '<br>');
+        html = '<p>' + html + '</p>';
+
+        // 11. Clean up.
+        html = html.replace(/<p>\s*<\/p>/g, '');
+        ['ul','ol','pre','div'].forEach(function(tag) {
+            html = html.replace(new RegExp('<p>(<' + tag + '[\\s\\S]*?>)', 'g'), '$1');
+            html = html.replace(new RegExp('(<\\/' + tag + '>)<\/p>', 'g'), '$1');
         });
 
-        // Clean up empty paragraphs.
-        html = html.replace(/<p>\s*<\/p>/g, '');
-        // Restore layout for lists/pre.
-        html = html.replace(/<p><ul>/g, '<ul>').replace(/<\/ul><\/p>/g, '</ul>');
-        html = html.replace(/<p><pre>/g, '<pre>').replace(/<\/pre><\/p>/g, '</pre>');
+        // 12. Restore protected blocks.
+        blocks.forEach(function(block, i) {
+            html = html.split('\x01B' + i + '\x01').join(block);
+        });
 
         return html;
     }

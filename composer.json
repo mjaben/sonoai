@@ -1,0 +1,8 @@
+{
+    "require": {
+        "smalot/pdfparser": "*",
+        "soundasleep/html2text": "*",
+        "symfony/polyfill-mbstring": "*",
+        "predis/predis": "^3.4"
+    }
+}

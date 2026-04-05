@@ -73,6 +73,15 @@ class Activator {
             $wpdb->query( "ALTER TABLE `$embeddings_table` ADD COLUMN `source_title` VARCHAR(255) DEFAULT NULL AFTER `source_url`" );
             $wpdb->query( "ALTER TABLE `$embeddings_table` ADD COLUMN `image_urls` LONGTEXT DEFAULT NULL AFTER `source_title`" );
         }
+        // Add mode + topic_slug columns if missing (v1.3.0)
+        if ( ! empty( $cols ) && ! in_array( 'mode', $cols, true ) ) {
+            $wpdb->query( "ALTER TABLE `$embeddings_table` ADD COLUMN `mode` VARCHAR(20) NOT NULL DEFAULT 'guideline' AFTER `image_urls`" );
+            $wpdb->query( "ALTER TABLE `$embeddings_table` ADD KEY `idx_mode` (`mode`)" );
+        }
+        if ( ! empty( $cols ) && ! in_array( 'topic_slug', $cols, true ) ) {
+            $wpdb->query( "ALTER TABLE `$embeddings_table` ADD COLUMN `topic_slug` VARCHAR(100) DEFAULT NULL AFTER `mode`" );
+            $wpdb->query( "ALTER TABLE `$embeddings_table` ADD KEY `idx_topic_slug` (`topic_slug`(100))" );
+        }
 
         // ── KB Items table ─────────────────────────────────────────────────────
         // One row per KB item (not per chunk) — drives the list-table views.
@@ -97,6 +106,16 @@ class Activator {
         ) $charset_collate;";
         dbDelta( $sql_kb_items );
 
+        // Add mode + topic_id columns to KB items if missing (v1.3.0)
+        $kb_cols = $wpdb->get_col( "DESCRIBE `$kb_items_table`", 0 );
+        if ( ! empty( $kb_cols ) && ! in_array( 'mode', $kb_cols, true ) ) {
+            $wpdb->query( "ALTER TABLE `$kb_items_table` ADD COLUMN `mode` VARCHAR(20) NOT NULL DEFAULT 'guideline' AFTER `type`" );
+            $wpdb->query( "ALTER TABLE `$kb_items_table` ADD KEY `idx_mode` (`mode`)" );
+        }
+        if ( ! empty( $kb_cols ) && ! in_array( 'topic_id', $kb_cols, true ) ) {
+            $wpdb->query( "ALTER TABLE `$kb_items_table` ADD COLUMN `topic_id` INT UNSIGNED DEFAULT NULL AFTER `mode`" );
+        }
+
         // ── Sessions table ────────────────────────────────────────────────────
         $sessions_table = $wpdb->prefix . 'sonoai_sessions';
         $sql_sessions   = "CREATE TABLE IF NOT EXISTS `$sessions_table` (
@@ -113,6 +132,12 @@ class Activator {
         ) $charset_collate;";
         dbDelta( $sql_sessions );
 
+        // Add mode column to sessions if missing (v1.3.0)
+        $sess_cols = $wpdb->get_col( "DESCRIBE `$sessions_table`", 0 );
+        if ( ! empty( $sess_cols ) && ! in_array( 'mode', $sess_cols, true ) ) {
+            $wpdb->query( "ALTER TABLE `$sessions_table` ADD COLUMN `mode` VARCHAR(20) NOT NULL DEFAULT 'guideline' AFTER `title`" );
+        }
+
         // ── Query Logs table ──────────────────────────────────────────────────
         $logs_table = $wpdb->prefix . 'sonoai_query_logs';
         $sql_logs   = "CREATE TABLE IF NOT EXISTS `$logs_table` (
@@ -125,9 +150,55 @@ class Activator {
             KEY `idx_user_id` (`user_id`)
         ) $charset_collate;";
         dbDelta( $sql_logs );
+
+        // ── KB Topics table ───────────────────────────────────────────────────
+        $topics_table = $wpdb->prefix . 'sonoai_kb_topics';
+        $sql_topics   = "CREATE TABLE IF NOT EXISTS `$topics_table` (
+            `id`         INT UNSIGNED    NOT NULL AUTO_INCREMENT,
+            `slug`       VARCHAR(100)    NOT NULL,
+            `name`       VARCHAR(255)    NOT NULL,
+            `wp_term_id` BIGINT UNSIGNED          DEFAULT NULL,
+            `created_at` DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `uniq_slug` (`slug`(100))
+        ) $charset_collate;";
+        dbDelta( $sql_topics );
+
+        // ── Saved Responses table ─────────────────────────────────────────────
+        $saved_table = $wpdb->prefix . 'sonoai_saved_responses';
+        $sql_saved   = "CREATE TABLE IF NOT EXISTS `$saved_table` (
+            `id`            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `user_id`       BIGINT UNSIGNED NOT NULL,
+            `session_uuid`  VARCHAR(36)     NOT NULL,
+            `message_index` INT             NOT NULL DEFAULT 0,
+            `content`       LONGTEXT        NOT NULL,
+            `mode`          VARCHAR(20)     NOT NULL DEFAULT 'guideline',
+            `topic_slug`    VARCHAR(100)             DEFAULT NULL,
+            `title`         VARCHAR(255)             DEFAULT NULL,
+            `created_at`    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            KEY `idx_user_id`      (`user_id`),
+            KEY `idx_session_uuid` (`session_uuid`)
+        ) $charset_collate;";
+        dbDelta( $sql_saved );
+        // ── Feedback table ────────────────────────────────────────────────────
+        $feedback_table = $wpdb->prefix . 'sonoai_feedback';
+        $sql_feedback   = "CREATE TABLE IF NOT EXISTS `$feedback_table` (
+            `id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `session_uuid` VARCHAR(36)     NOT NULL,
+            `message_index`INT             NOT NULL DEFAULT 0,
+            `vote`         VARCHAR(10)     NOT NULL, -- 'up' or 'down'
+            `comment`      TEXT                     DEFAULT NULL,
+            `created_at`   DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            KEY `idx_session_uuid` (`session_uuid`),
+            KEY `idx_vote` (`vote`)
+        ) $charset_collate;";
+        dbDelta( $sql_feedback );
     }
 
     /**
+
      * Create the sonoai upload directory and protect it with an .htaccess.
      */
     public static function create_upload_dir(): void {

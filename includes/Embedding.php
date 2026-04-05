@@ -37,26 +37,36 @@ class Embedding {
 
     // ── Chunking ──────────────────────────────────────────────────────────────
 
-    /**
-     * Split text into overlapping chunks for embedding.
-     *
-     * @param string $text    Cleaned plain-text content.
-     * @param int    $size    Chunk character size.
-     * @param int    $overlap Overlap between chunks.
-     * @return string[]
-     */
-    public static function split_into_chunks( string $text, int $size = 700, int $overlap = 100 ): array {
-        $text_len = mb_strlen( $text );
-        if ( $text_len === 0 ) {
-            return [];
+    public static function split_into_chunks( string $text, int $size = 800, int $overlap = 100 ): array {
+        $text = trim( $text );
+        if ( empty( $text ) ) return [];
+
+        // ── Structural Chunking ──
+        // Instead of characters, we split by logical medical document blocks.
+        // Look for: Procedure:, Required For:, Skills Required:, SITM:, or generic Level/Level Headers
+        $split_pattern = "/(?=(?:Procedure:|SITM:|Required\sFor:|Skills\sRequired:|Level\s\d+|Introduction|Assessment|Mandatory\sUltrasound))/i";
+        $raw_parts      = preg_split( $split_pattern, $text );
+
+        if ( ! $raw_parts ) return [ $text ];
+
+        $chunks       = [];
+        $current_chunk = '';
+
+        foreach ( $raw_parts as $part ) {
+            $part = trim( $part );
+            if ( empty( $part ) ) continue;
+
+            // If adding this part exceeds size, push current and start new
+            if ( mb_strlen( $current_chunk . $part ) > $size && ! empty( $current_chunk ) ) {
+                $chunks[]      = $current_chunk;
+                $current_chunk = mb_substr( $current_chunk, -$overlap ) . $part;
+            } else {
+                $current_chunk .= ( empty( $current_chunk ) ? '' : "\n\n" ) . $part;
+            }
         }
 
-        $total     = max( 1, (int) ceil( $text_len / $size ) );
-        $real_size = (int) ceil( $text_len / $total );
-        $chunks    = [];
-
-        for ( $i = 0; $i < $total; $i++ ) {
-            $chunks[] = mb_substr( $text, $i * $real_size, $real_size + $overlap );
+        if ( ! empty( $current_chunk ) ) {
+            $chunks[] = $current_chunk;
         }
 
         return array_filter( $chunks );
@@ -73,7 +83,7 @@ class Embedding {
      * @param string[] $image_urls Optional array of image source URLs.
      * @return string|\WP_Error
      */
-    public static function insert( int $post_id, string $post_type, string $content, array $image_urls = [] ) {
+    public static function insert( int $post_id, string $post_type, string $content, array $image_urls = [], string $mode = 'guideline', string $topic_slug = '' ) {
         $content = trim( $content );
         if ( empty( $content ) ) {
             return new \WP_Error( 'empty_content', __( 'Content is empty.', 'sonoai' ) );
@@ -115,9 +125,22 @@ class Embedding {
                     'provider'          => $provider,
                     'embedding_model'   => $model,
                     'post_modified_gmt' => $modified_gmt,
+                    'mode'              => in_array( $mode, [ 'guideline', 'research' ], true ) ? $mode : 'guideline',
+                    'topic_slug'        => $topic_slug ?: null,
                 ],
-                [ '%s', '%d', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s' ]
+                [ '%s', '%d', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s' ]
             );
+
+            // Cache in Redis for high-performance retrieval
+            if ( false !== $result ) {
+                RedisManager::instance()->cache_embedding( $knowledge_id . ':' . $idx, $embedding, [
+                    'post_id'    => $post_id,
+                    'post_type'  => $post_type,
+                    'chunk_text' => $chunk_text,
+                    'mode'       => $mode,
+                    'image_urls' => $image_urls,
+                ]);
+            }
 
             if ( false === $result ) {
                 error_log( '[SonoAI] DB insert failed: ' . $wpdb->last_error );
@@ -166,7 +189,7 @@ class Embedding {
      * @param float    $min_similarity Minimum similarity score to include (0.0 to 1.0).
      * @return array{chunk_text: string, post_id: int, post_type: string, similarity: float}[]
      */
-    public static function search( string $query, int $limit = 5, array $post_types = [], float $min_similarity = 0.0 ) {
+    public static function search( string $query, int $limit = 5, array $post_types = [], float $min_similarity = 0.0, string $mode = '' ) {
         if ( ! AIProvider::has_api_key() ) {
             return [];
         }
@@ -186,6 +209,13 @@ class Embedding {
             set_transient( $cache_key, $query_vector, DAY_IN_SECONDS );
         }
 
+        // ── Phase 1: Redis Fast Search ──────────────────────────────────────────
+        $redis_results = RedisManager::instance()->search_vectors( $query_vector, $mode, $min_similarity, $limit );
+        if ( ! empty( $redis_results ) ) {
+            return $redis_results;
+        }
+
+        // ── Phase 2: MySQL Fallback (Traditional) ────────────────────────────────
         global $wpdb;
         $table = self::table();
 
@@ -197,6 +227,10 @@ class Embedding {
                 $type_placeholders[] = $wpdb->prepare( '%s', $pt );
             }
             $where_sql .= ' AND post_type IN (' . implode( ',', $type_placeholders ) . ')';
+        }
+        // Filter by mode if provided.
+        if ( ! empty( $mode ) && in_array( $mode, [ 'guideline', 'research' ], true ) ) {
+            $where_sql .= $wpdb->prepare( ' AND mode = %s', $mode );
         }
 
         // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared

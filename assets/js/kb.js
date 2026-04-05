@@ -28,18 +28,66 @@
         }
 
         // Route to tab-specific init based on which tab is active.
-        var currentPt = document.getElementById('kb-current-pt');
-        if (currentPt) initWpTab(currentPt.value);
-
+        // Initialize all modules safely
+        // Each function handles its own existence checks
+        initWpTab();
         initPdfTab();
         initUrlTab();
         initTxtTab();
         initDeleteButtons();
         initViewModal();
+        initTopicsTab();
     });
 
+    /**
+     * Safe open for <dialog> elements
+     */
+    function openModal(modal) {
+        if (!modal) return;
+        modal.classList.add('is-open'); // For CSS fallback
+        if (typeof modal.showModal === 'function') {
+            try {
+                modal.showModal();
+            } catch (e) {
+                modal.setAttribute('open', 'open');
+            }
+        } else {
+            modal.setAttribute('open', 'open');
+            modal.style.display = 'block';
+            // Simple backdrop fallback
+            var backdrop = document.createElement('div');
+            backdrop.id = 'kb-modal-fallback-backdrop';
+            backdrop.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9998;';
+            document.body.appendChild(backdrop);
+            modal.style.zIndex = '9999';
+            modal.style.position = 'fixed';
+            modal.style.top = '50%';
+            modal.style.left = '50%';
+            modal.style.transform = 'translate(-50%, -50%)';
+        }
+    }
+
+    function closeModal(modal) {
+        if (!modal) return;
+        modal.classList.remove('is-open');
+        if (typeof modal.close === 'function') {
+            try {
+                modal.close();
+            } catch (e) {
+                modal.removeAttribute('open');
+            }
+        } else {
+            modal.removeAttribute('open');
+            modal.style.display = 'none';
+            var backdrop = document.getElementById('kb-modal-fallback-backdrop');
+            if (backdrop) backdrop.remove();
+        }
+    }
+
     // ── WP Posts Tab ──────────────────────────────────────────────────────────
-    function initWpTab(postType) {
+    function initWpTab() {
+        var currentPt = document.getElementById('kb-current-pt');
+        var postType = currentPt ? currentPt.value : 'post';
         var tbody  = document.getElementById('kb-wp-tbody');
         var pagDiv = document.getElementById('kb-wp-pagination');
         if (!tbody) return;
@@ -49,6 +97,8 @@
         var bulkSel     = document.getElementById('kb-wp-bulk-action');
         var bulkApply   = document.getElementById('kb-wp-bulk-apply');
         var filterBtns  = document.querySelectorAll('.kb-status-btn');
+        var filterMode  = document.getElementById('kb-wp-filter-mode');
+        var filterTopic = document.getElementById('kb-wp-filter-topic');
         var currentPage = 1;
         var currentSearch = '';
         var currentFilter = 'all';
@@ -57,17 +107,22 @@
             currentPage   = page;
             currentSearch = search;
             tbody.innerHTML = '<tr class="kb-loading-row"><td colspan="6"><span class="kb-spinner"></span> Loading…</td></tr>';
-            $.post(ajax, {
+            
+            var payload = {
                 action:    'sonoai_kb_get_posts',
                 nonce:     nonces.getPosts,
                 post_type: postType,
                 page:      page,
                 search:    search,
                 kb_status: currentFilter,
-            }, function (res) {
+            };
+            if (filterMode && filterMode.value) payload.mode = filterMode.value;
+            if (filterTopic && filterTopic.value) payload.topic_id = filterTopic.value;
+            
+            $.post(ajax, payload, function (res) {
                 renderPosts(res.data);
             }).fail(function () {
-                tbody.innerHTML = '<tr><td colspan="6" class="kb-empty">Error loading posts.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="kb-empty">Error loading posts.</td></tr>';
             });
         }
 
@@ -84,7 +139,7 @@
             }
 
             if (!data || !data.posts || data.posts.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="kb-empty">No posts found.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" class="kb-empty">No posts found.</td></tr>';
                 pagDiv.innerHTML = '';
                 return;
             }
@@ -95,10 +150,12 @@
 
                 if (p.kb_status === 'added') {
                     badgeHtml = '<span class="kb-badge-added">Added</span>';
-                    btnsHtml  = '<button type="button" class="kb-add-btn kb-remove-btn" data-post-id="' + p.id + '">Remove</button>';
+                    btnsHtml  = '<button type="button" class="kb-add-btn kb-quick-edit-btn" data-post-id="' + p.id + '" data-mode="' + p.raw_mode + '" data-topic="' + p.topic_id + '">Quick Edit</button>'
+                              + '<button type="button" class="kb-add-btn kb-remove-btn" data-post-id="' + p.id + '">Remove</button>';
                 } else if (p.kb_status === 'update') {
                     badgeHtml = '<span class="kb-badge-update">Requires Update</span>';
                     btnsHtml  = '<button type="button" class="kb-add-btn kb-update-btn" data-post-id="' + p.id + '">Update</button>'
+                              + '<button type="button" class="kb-add-btn kb-quick-edit-btn" data-post-id="' + p.id + '" data-mode="' + p.raw_mode + '" data-topic="' + p.topic_id + '">Quick Edit</button>'
                               + '<button type="button" class="kb-add-btn kb-remove-btn" data-post-id="' + p.id + '">Remove</button>';
                 } else {
                     badgeHtml = '<span class="kb-badge-not-added">Not Added</span>';
@@ -111,6 +168,8 @@
                     + '<td class="kb-col-date">' + escHtml(p.last_modified) + '</td>'
                     + '<td class="kb-col-date">' + escHtml(p.kb_added) + '</td>'
                     + '<td>' + badgeHtml + '</td>'
+                    + '<td>' + escHtml(p.mode) + '</td>'
+                    + '<td>' + escHtml(p.topic_name) + '</td>'
                     + '<td>' + (p.ai_model !== '—' ? '<span class="kb-badge-model">' + escHtml(p.ai_model) + '</span>' : '—') + '</td>'
                     + '<td>' + btnsHtml + '</td>'
                     + '</tr>';
@@ -128,11 +187,21 @@
                     if (spinner) spinner.style.display = 'inline-block';
                     if (btnText) btnText.style.opacity  = '0.5';
 
-                    $.post(ajax, {
+                    var payload = {
                         action:  isRemove ? 'sonoai_kb_remove_post' : 'sonoai_kb_add_post',
                         nonce:   isRemove ? nonces.removePost : nonces.addPost,
                         post_id: pid,
-                    }, function () {
+                    };
+                    if (!isRemove) {
+                        var mSel = document.getElementById('kb-wp-bulk-mode'); // Should use a different ID if possible, but let's fall back to wp-mode for bulk
+                        var bSelItemM = document.getElementById('kb-wp-mode');
+                        if (bSelItemM) payload.mode = bSelItemM.value;
+                        
+                        var tSel = document.getElementById('kb-wp-topic');
+                        if (tSel) payload.topic_id = tSel.value;
+                    }
+
+                    $.post(ajax, payload, function () {
                         loadPosts(currentPage, currentSearch);
                     }).fail(function (xhr) {
                         var msg = (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message)
@@ -143,7 +212,71 @@
                 });
             });
 
+            // Bind quick edit buttons.
+            tbody.querySelectorAll('.kb-quick-edit-btn').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var pid = this.dataset.postId;
+                    var mode = this.dataset.mode;
+                    var topic = this.dataset.topic;
+
+                    document.getElementById('qe-post-id').value = pid;
+                    var qeMode = document.getElementById('qe-mode');
+                    if(qeMode) {
+                        qeMode.value = mode || 'guideline';
+                    }
+                    var qeTopic = document.getElementById('qe-topic');
+                    if(qeTopic) {
+                        qeTopic.value = topic || 0;
+                    }
+                    var modal = document.getElementById('kb-quick-edit-modal');
+                    if(modal) {
+                        modal.style.display = 'flex';
+                    }
+                });
+            });
+
             renderPagination(data, pagDiv);
+        }
+
+        // Quick Edit Modal events
+        var qeModal = document.getElementById('kb-quick-edit-modal');
+        var qeClose = document.getElementById('qe-close-btn');
+        var qeSave  = document.getElementById('qe-save-btn');
+        if (qeModal && qeClose) {
+            qeClose.addEventListener('click', function() {
+                qeModal.style.display = 'none';
+            });
+        }
+        if (qeSave) {
+            qeSave.addEventListener('click', function() {
+                var pid = document.getElementById('qe-post-id').value;
+                var mode = document.getElementById('qe-mode').value;
+                var topic = document.getElementById('qe-topic').value;
+
+                var btnText = this.innerText;
+                this.innerText = 'Saving...';
+                this.disabled = true;
+                
+                var payload = {
+                    action: 'sonoai_kb_update_meta',
+                    nonce: nonces.updateMeta, // Corrected from nonces.topics
+                    post_id: pid,
+                    type: 'wp',
+                    mode: mode,
+                    topic_id: topic
+                };
+
+                $.post(ajax, payload, function(res) {
+                    qeModal.style.display = 'none';
+                    qeSave.innerText = btnText;
+                    qeSave.disabled = false;
+                    loadPosts(currentPage, currentSearch);
+                }).fail(function() {
+                    alert('Error saving meta');
+                    qeSave.innerText = btnText;
+                    qeSave.disabled = false;
+                });
+            });
         }
 
         function renderPagination(data, container) {
@@ -189,6 +322,18 @@
             });
         }
 
+        // Mode and Topic Filters
+        if (filterMode) {
+            filterMode.addEventListener('change', function () {
+                loadPosts(1, currentSearch);
+            });
+        }
+        if (filterTopic) {
+            filterTopic.addEventListener('change', function () {
+                loadPosts(1, currentSearch);
+            });
+        }
+
         // Bulk apply.
         if (bulkApply) {
             bulkApply.addEventListener('click', function () {
@@ -200,7 +345,14 @@
                 var ajxAct = action === 'add' ? 'sonoai_kb_add_post' : 'sonoai_kb_remove_post';
                 var pending = checked.length;
                 checked.forEach(function (pid) {
-                    $.post(ajax, { action: ajxAct, nonce: nonce, post_id: pid }, function () {
+                    var payload = { action: ajxAct, nonce: nonce, post_id: pid };
+                    if (action === 'add') {
+                        var mSel = document.getElementById('kb-wp-mode');
+                        var tSel = document.getElementById('kb-wp-topic');
+                        if (mSel) payload.mode = mSel.value;
+                        if (tSel) payload.topic_id = tSel.value;
+                    }
+                    $.post(ajax, payload, function () {
                         pending--;
                         if (pending === 0) loadPosts(currentPage, currentSearch);
                     });
@@ -239,6 +391,11 @@
             fd.append('action', 'sonoai_kb_add_pdf');
             fd.append('nonce',  nonces.addPdf);
             fd.append('pdf_file', fileInp.files[0]);
+
+            var mSel = document.getElementById('kb-pdf-mode');
+            var tSel = document.getElementById('kb-pdf-topic');
+            if (mSel) fd.append('mode', mSel.value);
+            if (tSel) fd.append('topic_id', tSel.value);
 
             $.ajax({
                 url:         ajax,
@@ -282,11 +439,17 @@
             if (text)    text.style.opacity    = '0.5';
             submit.disabled = true;
 
-            $.post(ajax, {
+            var payload = {
                 action: 'sonoai_kb_add_url',
                 nonce:  nonces.addUrl,
                 url:    url,
-            }, function (res) {
+            };
+            var mSel = document.getElementById('kb-url-mode');
+            var tSel = document.getElementById('kb-url-topic');
+            if (mSel) payload.mode = mSel.value;
+            if (tSel) payload.topic_id = tSel.value;
+
+            $.post(ajax, payload, function (res) {
                 if (res.success) {
                     setNotice(notice, '✓ URL added to knowledge base (' + res.data.chunk_count + ' chunks).', 'success');
                     if (input) input.value = '';
@@ -338,6 +501,11 @@
             var data = { action: action, nonce: nonce, content: content };
             var editId = document.getElementById('kb-edit-knowledge-id');
             if (editId) data.knowledge_id = editId.value;
+
+            var mSel = document.getElementById('kb-txt-mode');
+            var tSel = document.getElementById('kb-txt-topic');
+            if (mSel) data.mode = mSel.value;
+            if (tSel) data.topic_id = tSel.value;
 
             $.post(ajax, data, function (res) {
                 if (res.success) {
@@ -405,6 +573,109 @@
 
         modal.addEventListener('click', function (e) {
             if (e.target === modal) modal.style.display = 'none';
+        });
+    }
+
+    // ── Topics Tab ────────────────────────────────────────────────────────────
+    function initTopicsTab() {
+        var modal = document.getElementById('kb-topic-modal');
+        var form  = document.getElementById('kb-topic-form');
+        var tbody = document.getElementById('kb-topics-tbody');
+
+        if (!modal || !form) return;
+
+        // Use document-level delegation for better robustness
+        document.addEventListener('click', function(e) {
+            // Open Modal for Add
+            const addBtn = e.target.closest('#kb-btn-add-topic');
+            if (addBtn) {
+                e.preventDefault();
+                document.getElementById('kb-topic-modal-title').textContent = 'Add Topic';
+                document.getElementById('kb-topic-id').value = '';
+                form.reset();
+                openModal(modal);
+                return;
+            }
+
+            // Edit Topic
+            var editBtn = e.target.closest('.kb-edit-topic-btn');
+            if (editBtn) {
+                e.preventDefault();
+                document.getElementById('kb-topic-modal-title').textContent = 'Edit Topic';
+                document.getElementById('kb-topic-id').value = editBtn.dataset.id;
+                document.getElementById('kb-topic-name').value = editBtn.dataset.name;
+                openModal(modal);
+                return;
+            }
+
+            // Delete Topic
+            var delBtn = e.target.closest('.kb-delete-topic-btn');
+            if (delBtn) {
+                if (!confirm('Are you sure you want to delete this topic? Items using this topic will be unassigned.')) return;
+                
+                var id = delBtn.dataset.id;
+                delBtn.disabled = true;
+
+                $.post(ajax, {
+                    action: 'sonoai_kb_delete_topic',
+                    nonce: nonces.topics,
+                    topic_id: id
+                }, function(res) {
+                    if (res.success) location.reload();
+                    else {
+                        alert(res.data.message || 'Error deleting topic.');
+                        delBtn.disabled = false;
+                    }
+                });
+            }
+
+        });
+
+        // Use closeModal for Cancel button inside form
+        var cancelBtn = document.getElementById('kb-topic-modal-cancel');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', function() {
+                closeModal(modal);
+            });
+        }
+
+        // Handle Form Submit (Add or Edit)
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            var id   = document.getElementById('kb-topic-id').value;
+            var name = document.getElementById('kb-topic-name').value;
+            var submitBtn = form.querySelector('button[type="submit"]');
+
+            var action = id ? 'sonoai_kb_edit_topic' : 'sonoai_kb_add_topic';
+            
+            submitBtn.disabled = true;
+            var originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Saving...';
+
+            console.log('SonoAI Topics: Saving', { action: action, id: id, name: name });
+
+            $.post(ajax, {
+                action: action,
+                nonce:  nonces.topics,
+                topic_id: id,
+                name:     name
+            }, function(res) {
+                console.log('SonoAI Topics: Save Res', res);
+                if (res.success) {
+                    location.reload();
+                } else {
+                    alert(res.data.message || 'Saving failed.');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                }
+            }).fail(function(xhr) {
+                console.error('SonoAI Topics: Save Fail', xhr);
+                alert('Request failed. Check console for details.');
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            });
         });
     }
 

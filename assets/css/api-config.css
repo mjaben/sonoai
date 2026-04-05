@@ -384,6 +384,80 @@
     max-width: 420px;
 }
 
+/* ── Redis Switch ───────────────────────────────────────────────────────────── */
+.sac-wrap .sac-switch-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.sac-wrap .sac-switch-slider {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    background-color: #cbd5e1;
+    border-radius: 20px;
+    transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sac-wrap .sac-switch-slider::before {
+    content: "";
+    position: absolute;
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    border-radius: 50%;
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.sac-wrap .sac-switch-wrap input {
+    display: none;
+}
+
+.sac-wrap .sac-switch-wrap input:checked + .sac-switch-slider {
+    background-color: #3b82f6;
+}
+
+.sac-wrap .sac-switch-wrap input:checked + .sac-switch-slider::before {
+    transform: translateX(20px);
+}
+
+.sac-wrap .sac-switch-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #475569;
+}
+
+.sac-wrap .sac-input-sm {
+    width: 100% !important;
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 6px !important;
+    font-size: 12px !important;
+    padding: 7px 10px !important;
+    color: #1e293b !important;
+}
+
+.sac-wrap.sac-dark .sac-switch-slider {
+    background-color: #334155;
+}
+
+.sac-wrap.sac-dark .sac-input-sm {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+    color: #cbd5e1 !important;
+}
+
+.sac-wrap.sac-dark .sac-switch-label {
+    color: #94a3b8;
+}
+
 /* ── Quick Tips ─────────────────────────────────────────────────────────────── */
 .sac-wrap .sac-tips-card {
     background: #f0f7ff;

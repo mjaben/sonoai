@@ -1,0 +1,493 @@
+/*----------------------------------------*/
+/*  Redesigned Notification Popover Styles
+/*  Modern UI with improved UX and infinite scroll
+/*----------------------------------------*/
+
+// Variables
+$notification-panel-width: 380px;
+$notification-max-height: 420px;
+$notification-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+$notification-border-radius: 12px;
+
+$color-primary: #4c4cf1;
+$color-success: #2db22d;
+$color-danger: #e74c3c;
+$color-warning: #f1bd6c;
+$color-text: #333;
+$color-text-light: #666;
+$color-text-muted: #999;
+$color-border: #e5e7eb;
+$color-bg-hover: #f8f9fa;
+
+// ========================================
+// Notification Container
+// ========================================
+.ezd-notification-redesigned {
+    position: relative;
+    
+    .header-notify-icon {
+        position: relative;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        
+        .notify-icon-svg {
+            color: #6b7280;
+            transition: color 0.2s ease;
+        }
+        
+        &:hover {
+            .notify-icon-svg {
+                color: $color-primary;
+            }
+        }
+    }
+    
+    .ezd-notification-count {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 5px;
+        font-size: 10px;
+        font-weight: 600;
+        line-height: 18px;
+        text-align: center;
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: #fff;
+        border-radius: 10px;
+        animation: ezd-pulse-badge 2s ease-in-out infinite;
+    }
+}
+
+@keyframes ezd-pulse-badge {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+}
+
+// ========================================
+// Notification Panel
+// ========================================
+.ezd-notification-panel {
+    position: absolute;
+    top: calc(100% + 15px);
+    right: -20px;
+    width: $notification-panel-width;
+    background: #fff;
+    border-radius: $notification-border-radius;
+    box-shadow: $notification-shadow;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 9999;
+    
+    &.is-active {
+        display: block;
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+}
+
+// ========================================
+// Notification Header
+// ========================================
+.ezd-notification-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    border-bottom: 1px solid $color-border;
+    background: linear-gradient(135deg, #fafbfc 0%, #f3f4f6 100%);
+    border-radius: $notification-border-radius $notification-border-radius 0 0;
+}
+
+.ezd-notification-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.ezd-notification-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: $color-text;
+}
+
+.ezd-notification-header-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 500;
+    color: $color-primary;
+    background: rgba($color-primary, 0.1);
+    border-radius: 12px;
+}
+
+.ezd-notification-mark-read {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    color: $color-text-muted;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    
+    .dashicons {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+    }
+    
+    &:hover {
+        background: $color-bg-hover;
+        color: $color-success;
+        border-color: $color-border;
+    }
+    
+    &.clicked {
+        background: rgba($color-success, 0.1);
+        color: $color-success;
+    }
+}
+
+// ========================================
+// Filter Tabs
+// ========================================
+.ezd-notification-filters {
+    display: flex;
+    gap: 6px;
+    padding: 12px 16px;
+    background: #fff;
+    border-bottom: 1px solid $color-border;
+}
+
+.ezd-filter-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    font-size: 12px !important;
+    font-weight: 500;
+    color: $color-text-light;
+    background: #f3f4f6;
+    border: 1px solid transparent;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    
+    .ezd-filter-icon {
+        display: flex;
+        
+        .dashicons {
+            font-size: 12px;
+            width: 12px;
+            height: 12px;
+        }
+    }
+    
+    &:hover {
+        background: #e5e7eb;
+        color: $color-text;
+    }
+    
+    &.is-active {
+        background: linear-gradient(135deg, rgba($color-primary, 0.1) 0%, rgba($color-primary, 0.15) 100%);
+        color: $color-primary;
+        border-color: rgba($color-primary, 0.3);
+        
+        .dashicons {
+            color: $color-primary;
+        }
+    }
+}
+
+// ========================================
+// Notification List Container
+// ========================================
+.ezd-notification-list-container {
+    max-height: $notification-max-height;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f1f5f9;
+    
+    &::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    &::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 3px;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 3px;
+        
+        &:hover {
+            background: #94a3b8;
+        }
+    }
+}
+
+.ezd-notification-list {
+    padding: 8px 0;
+}
+
+// ========================================
+// Notification Items
+// ========================================
+.ezd-notification-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 12px;
+    margin: 0 8px 4px;
+    text-decoration: none;
+    color: inherit;
+    background: #fff;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    
+    &:hover {
+        background: $color-bg-hover;
+        
+        .ezd-notification-content .ezd-doc-title {
+            color: $color-primary;
+        }
+    }
+    
+    &:last-child {
+        margin-bottom: 0;
+    }
+}
+
+// Avatar
+.ezd-notification-avatar {
+    position: relative;
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    
+    img {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    
+    .ezd-avatar-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 42px;
+        height: 42px;
+        background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+        border-radius: 50%;
+        
+        .dashicons {
+            font-size: 18px;
+            width: 18px;
+            height: 18px;
+            color: #9ca3af;
+        }
+    }
+}
+
+// Type Badge
+.ezd-notification-type-badge {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    
+    .dashicons {
+        font-size: 8px;
+        width: 8px;
+        height: 8px;
+        color: #fff;
+    }
+    
+    &.ezd-vote-positive {
+        background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    }
+    
+    &.ezd-vote-negative {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    }
+    
+    &.ezd-badge-comment {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    }
+}
+
+// Content
+.ezd-notification-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.ezd-notification-text {
+    margin: 0 0 4px;
+    font-size: 13px;
+    line-height: 1.4;
+    color: $color-text;
+    
+    strong {
+        font-weight: 600;
+    }
+    
+    .ezd-doc-title {
+        color: $color-text-light;
+        transition: color 0.2s ease;
+    }
+}
+
+.ezd-notification-time {
+    display: block;
+    font-size: 11px;
+    color: $color-text-muted;
+}
+
+// ========================================
+// Loading & States
+// ========================================
+.ezd-notification-loader {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 16px;
+    font-size: 12px;
+    color: $color-text-muted;
+    
+    .ezd-loader-spinner {
+        width: 18px;
+        height: 18px;
+        border: 2px solid #e5e7eb;
+        border-top-color: $color-primary;
+        border-radius: 50%;
+        animation: ezd-spin 0.8s linear infinite;
+    }
+}
+
+@keyframes ezd-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.ezd-notification-end {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 20px 16px;
+    font-size: 12px;
+    color: $color-success;
+    
+    .dashicons {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+    }
+}
+
+// ========================================
+// Empty State
+// ========================================
+.ezd-notification-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+    
+    .ezd-empty-icon {
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+    
+    .ezd-empty-title {
+        margin: 0 0 8px;
+        font-size: 15px;
+        font-weight: 600;
+        color: $color-text;
+    }
+    
+    .ezd-empty-text {
+        margin: 0;
+        font-size: 13px;
+        color: $color-text-muted;
+        max-width: 200px;
+    }
+}
+
+// ========================================
+// RTL Support
+// ========================================
+body.rtl {
+    .ezd-notification-panel {
+        right: auto;
+        left: -20px;
+        
+        &::before {
+            right: auto;
+            left: 28px;
+        }
+    }
+    
+    .ezd-notification-count {
+        right: auto;
+        left: -5px;
+    }
+    
+    .ezd-notification-type-badge {
+        right: auto;
+        left: -2px;
+    }
+}
+
+// ========================================
+// Responsive
+// ========================================
+@media (max-width: 480px) {
+    .ezd-notification-panel {
+        right: -10px;
+        width: calc(100vw - 40px);
+        max-width: 360px;
+    }
+    
+    .ezd-notification-filters {
+        overflow-x: auto;
+        padding-bottom: 10px;
+        
+        &::-webkit-scrollbar {
+            display: none;
+        }
+    }
+    
+    .ezd-filter-tab {
+        white-space: nowrap;
+    }
+}

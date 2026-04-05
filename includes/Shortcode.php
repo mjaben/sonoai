@@ -34,6 +34,26 @@ class Shortcode {
 
         // Add body class for CSS targeting.
         add_filter( 'body_class', [ $this, 'add_body_class' ] );
+
+        // Clean URLs: support /UUID
+        add_action( 'init', [ $this, 'add_rewrite_rules' ] );
+        add_filter( 'query_vars', [ $this, 'add_query_vars' ] );
+    }
+
+    /** Add rewrite rule to handle /UUID after the page slug. */
+    public function add_rewrite_rules(): void {
+        // Matches page-slug/UUID-v4
+        add_rewrite_rule(
+            '(.?.+?)/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/?$',
+            'index.php?pagename=$matches[1]&sonoai_uuid=$matches[2]',
+            'top'
+        );
+    }
+
+    /** Register our custom query variable. */
+    public function add_query_vars( array $vars ): array {
+        $vars[] = 'sonoai_uuid';
+        return $vars;
     }
 
     /**
@@ -53,8 +73,11 @@ class Shortcode {
 
         $this->is_active = true;
 
+        // Detect session UUID from either GET param or our new query var.
+        $session_uuid = get_query_var( 'sonoai_uuid' ) ?: ( isset( $_GET['uuid'] ) ? sanitize_text_field( $_GET['uuid'] ) : '' );
+
         // Enqueue assets now so wp_head() includes them.
-        add_action( 'wp_enqueue_scripts', function () {
+        add_action( 'wp_enqueue_scripts', function () use ( $session_uuid ) {
             wp_enqueue_style( 'sonoai-chat' );
             wp_enqueue_script( 'sonoai-chat' );
             wp_localize_script( 'sonoai-chat', 'sonoai_vars', [
@@ -64,6 +87,8 @@ class Shortcode {
                 'login_url'     => wp_login_url( get_permalink() ),
                 'user'          => $this->get_user_data(),
                 'history_limit' => (int) sonoai_option( 'history_limit', 50 ),
+                'session_uuid'  => $session_uuid,
+                'base_url'      => get_permalink(),
                 'i18n'          => [
                     'new_chat'     => __( 'New Chat', 'sonoai' ),
                     'send'         => __( 'Send', 'sonoai' ),
@@ -144,6 +169,8 @@ class Shortcode {
         wp_enqueue_script( 'sonoai-chat' );
 
         // Always provide data even for logged-out state.
+        $session_uuid = get_query_var( 'sonoai_uuid' ) ?: ( isset( $_GET['uuid'] ) ? sanitize_text_field( $_GET['uuid'] ) : '' );
+        
         wp_localize_script( 'sonoai-chat', 'sonoai_vars', [
             'rest_url'       => esc_url( rest_url( 'sonoai/v1/' ) ),
             'nonce'          => wp_create_nonce( 'wp_rest' ),
@@ -151,6 +178,8 @@ class Shortcode {
             'login_url'      => wp_login_url( get_permalink() ),
             'user'           => $this->get_user_data(),
             'history_limit'  => (int) sonoai_option( 'history_limit', 50 ),
+            'session_uuid'   => $session_uuid,
+            'base_url'       => get_permalink(),
             'i18n'           => [
                 'new_chat'     => __( 'New Chat', 'sonoai' ),
                 'send'         => __( 'Send', 'sonoai' ),

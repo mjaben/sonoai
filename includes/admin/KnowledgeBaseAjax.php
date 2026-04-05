@@ -32,6 +32,11 @@ class KnowledgeBaseAjax {
             'sonoai_kb_add_txt',
             'sonoai_kb_edit_txt',
             'sonoai_kb_delete_item',
+            'sonoai_kb_add_topic',
+            'sonoai_kb_edit_topic',
+            'sonoai_kb_delete_topic',
+            'sonoai_kb_update_meta',
+            'sonoai_kb_sync_topics',
         ];
         foreach ( $actions as $action ) {
             add_action( "wp_ajax_{$action}", [ $this, str_replace( 'sonoai_kb_', 'handle_', $action ) ] );
@@ -92,6 +97,65 @@ class KnowledgeBaseAjax {
     }
 
     /**
+     * Handle updating metadata (mode/topic) for a single KB item
+     */
+    public function handle_update_meta() {
+        $this->check( 'sonoai_kb_update_meta' );
+
+        $post_id  = isset( $_POST['post_id'] ) ? intval( $_POST['post_id'] ) : 0;
+        $type     = isset( $_POST['type'] ) ? sanitize_text_field( wp_unslash( $_POST['type'] ) ) : 'wp';
+        $mode     = isset( $_POST['mode'] ) ? sanitize_text_field( wp_unslash( $_POST['mode'] ) ) : 'guideline';
+        $topic_id = isset( $_POST['topic_id'] ) ? intval( $_POST['topic_id'] ) : 0;
+
+        if ( ! $post_id ) {
+            wp_send_json_error( [ 'message' => __( 'Invalid post ID.', 'sonoai' ) ] );
+        }
+
+        global $wpdb;
+        $table_name = $this->kb_table();
+        $emb_table  = $this->emb_table();
+
+        // Get topic slug for embedding update
+        $topic_slug = null;
+        if ( $topic_id ) {
+            $topic = $wpdb->get_row( $wpdb->prepare( "SELECT slug FROM `{$wpdb->prefix}sonoai_kb_topics` WHERE id = %d", $topic_id ) );
+            if ( $topic ) {
+                $topic_slug = $topic->slug;
+            }
+        }
+
+        // Update KB items table
+        $updated = $wpdb->update(
+            $table_name,
+            [
+                'mode'     => $mode,
+                'topic_id' => $topic_id ?: null
+            ],
+            [
+                'post_id' => $post_id,
+                'type'    => $type
+            ],
+            [ '%s', '%d' ],
+            [ '%d', '%s' ]
+        );
+
+        // Also update embeddings table for correct RAG filtering
+        $wpdb->update(
+            $emb_table,
+            [ 'mode' => $mode, 'topic_slug' => $topic_slug ],
+            [ 'post_id' => $post_id, 'type' => $type ],
+            [ '%s', '%s' ],
+            [ '%d', '%s' ]
+        );
+
+        if ( $updated === false ) {
+            wp_send_json_error( [ 'message' => __( 'Failed to update metadata.', 'sonoai' ) ] );
+        }
+
+        wp_send_json_success( [ 'message' => __( 'Metadata updated successfully.', 'sonoai' ) ] );
+    }
+
+    /**
      * Embed and store one KB item.
      * Returns array with 'knowledge_id' and 'chunk_count' on success.
      */
@@ -105,13 +169,26 @@ class KnowledgeBaseAjax {
         $source_title = $args['source_title'] ?? '';
         $post_id      = $args['post_id']      ?? 0;
         $image_urls   = $args['image_urls']   ?? [];
+        $mode         = in_array( $args['mode'] ?? 'guideline', [ 'guideline', 'research' ], true ) ? $args['mode'] : 'guideline';
+        $topic_id     = ! empty( $args['topic_id'] ) ? (int) $args['topic_id'] : null;
 
         if ( empty( $plain_text ) ) {
             return new \WP_Error( 'empty_content', __( 'Content is empty.', 'sonoai' ) );
         }
 
+        // Get topic slug if topic_id is provided
+        $topic_slug = '';
+        if ( $topic_id ) {
+            $topic = $wpdb->get_row( $wpdb->prepare( "SELECT slug FROM `{$wpdb->prefix}sonoai_kb_topics` WHERE id = %d", $topic_id ) );
+            if ( $topic ) {
+                $topic_slug = $topic->slug;
+            } else {
+                $topic_id = null; // Reset if invalid
+            }
+        }
+
         // Use the centralized Embedding class for actual vector storage.
-        $knowledge_id = Embedding::insert( (int) $post_id, $type, $plain_text, $image_urls );
+        $knowledge_id = Embedding::insert( (int) $post_id, $type, $plain_text, $image_urls, $mode, $topic_slug );
         
         if ( is_wp_error( $knowledge_id ) ) {
             return $knowledge_id;
@@ -127,6 +204,8 @@ class KnowledgeBaseAjax {
             [
                 'knowledge_id'    => $knowledge_id,
                 'type'            => $type,
+                'mode'            => $mode,
+                'topic_id'        => $topic_id,
                 'post_id'         => (int) $post_id,
                 'source_title'    => $source_title,
                 'source_url'      => $source_url,
@@ -136,7 +215,7 @@ class KnowledgeBaseAjax {
                 'embedding_model' => $embedding_model,
                 'chunk_count'     => count( $chunks ),
             ],
-            [ '%s','%s','%d','%s','%s','%s','%s','%s','%s','%d' ]
+            [ '%s','%s','%s','%d','%d','%s','%s','%s','%s','%s','%s','%d' ]
         );
 
         return [
@@ -156,6 +235,8 @@ class KnowledgeBaseAjax {
         $filter    = sanitize_key( $_POST['kb_status'] ?? 'all' ); // all, added, not_added, update
         $per_page  = 20;
         $search    = sanitize_text_field( $_POST['search'] ?? '' );
+        $mode      = sanitize_key( $_POST['mode'] ?? '' );
+        $topic_id  = intval( $_POST['topic_id'] ?? 0 );
         $offset    = ( $page - 1 ) * $per_page;
 
         $posts_tbl = $wpdb->posts;
@@ -166,6 +247,16 @@ class KnowledgeBaseAjax {
             $like  = '%' . $wpdb->esc_like( $search ) . '%';
             $where .= $wpdb->prepare( ' AND p.post_title LIKE %s', $like );
         }
+        
+        $topics_tbl = $wpdb->prefix . 'sonoai_kb_topics';
+
+        $kb_where = "";
+        if ( $mode ) {
+            $kb_where .= $wpdb->prepare( " AND kb.mode = %s", $mode );
+        }
+        if ( $topic_id ) {
+            $kb_where .= $wpdb->prepare( " AND kb.topic_id = %d", $topic_id );
+        }
 
         $query = "
             SELECT 
@@ -174,12 +265,24 @@ class KnowledgeBaseAjax {
                 p.post_modified_gmt as last_modified,
                 kb.created_at as kb_added,
                 kb.provider as provider,
-                kb.embedding_model as model
+                kb.embedding_model as model,
+                kb.mode as mode,
+                kb.topic_id as topic_id,
+                t.name as topic_name
             FROM $posts_tbl p
             LEFT JOIN $kb_tbl kb ON kb.post_id = p.ID AND kb.type = 'wp'
+            LEFT JOIN $topics_tbl t ON t.id = kb.topic_id
             WHERE $where
-            ORDER BY p.post_date DESC
         ";
+
+        if ( $mode ) {
+            $query .= $wpdb->prepare( " AND kb.mode = %s", $mode );
+        }
+        if ( $topic_id ) {
+            $query .= $wpdb->prepare( " AND kb.topic_id = %d", $topic_id );
+        }
+
+        $query .= " ORDER BY p.post_date DESC";
 
         $all_posts = $wpdb->get_results( $query );
 
@@ -202,6 +305,10 @@ class KnowledgeBaseAjax {
                     'last_modified' => date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $p->last_modified . ' UTC' ) ),
                     'kb_added'      => $p->kb_added ? date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $p->kb_added . ' UTC' ) ) : '—',
                     'kb_status'     => $p_status,
+                    'mode'          => $p->mode ? ucfirst($p->mode) : '—',
+                    'topic_name'    => $p->topic_name ? $p->topic_name : '—',
+                    'topic_id'      => $p->topic_id ? $p->topic_id : 0,
+                    'raw_mode'      => $p->mode ? $p->mode : '',
                     'ai_model'      => $p->model ? ( ucfirst( $p->provider ) . ' / ' . $p->model ) : '—',
                     'edit_url'      => get_edit_post_link( $p->id, 'raw' ),
                 ];
@@ -245,6 +352,8 @@ class KnowledgeBaseAjax {
             'source_url'   => get_permalink( $post->ID ),
             'source_title' => $post->post_title,
             'post_id'      => $post->ID,
+            'mode'         => sanitize_text_field( $_POST['mode'] ?? 'guideline' ),
+            'topic_id'     => intval( $_POST['topic_id'] ?? 0 ),
         ] );
 
         if ( is_wp_error( $result ) ) {
@@ -321,6 +430,8 @@ class KnowledgeBaseAjax {
             'text'         => $content,
             'source_url'   => $moved['url'],
             'source_title' => sanitize_file_name( $file['name'] ),
+            'mode'         => sanitize_text_field( $_POST['mode'] ?? 'guideline' ),
+            'topic_id'     => intval( $_POST['topic_id'] ?? 0 ),
         ] );
 
         if ( is_wp_error( $result ) ) {
@@ -361,6 +472,8 @@ class KnowledgeBaseAjax {
             'text'         => $content,
             'source_url'   => $url,
             'source_title' => $url,
+            'mode'         => sanitize_text_field( $_POST['mode'] ?? 'guideline' ),
+            'topic_id'     => intval( $_POST['topic_id'] ?? 0 ),
         ] );
 
         if ( is_wp_error( $result ) ) {
@@ -394,6 +507,8 @@ class KnowledgeBaseAjax {
             'raw_content'  => $raw_html,
             'source_title' => $title,
             'image_urls'   => $image_urls,
+            'mode'         => sanitize_text_field( $_POST['mode'] ?? 'guideline' ),
+            'topic_id'     => intval( $_POST['topic_id'] ?? 0 ),
         ] );
 
         if ( is_wp_error( $result ) ) {
@@ -434,6 +549,8 @@ class KnowledgeBaseAjax {
             'raw_content'  => $raw_html,
             'source_title' => $title,
             'image_urls'   => $image_urls,
+            'mode'         => sanitize_text_field( $_POST['mode'] ?? 'guideline' ),
+            'topic_id'     => intval( $_POST['topic_id'] ?? 0 ),
         ] );
 
         if ( is_wp_error( $result ) ) {
@@ -460,5 +577,146 @@ class KnowledgeBaseAjax {
         $wpdb->delete( $this->emb_table(), [ 'knowledge_id' => $knowledge_id ], [ '%s' ] );
 
         wp_send_json_success( [ 'message' => __( 'Item deleted from knowledge base.', 'sonoai' ) ] );
+    }
+
+    // ── Topic Handlers ────────────────────────────────────────────────────────
+
+    public function handle_add_topic(): void {
+        $this->check( 'sonoai_kb_manage_topics' );
+        global $wpdb;
+
+        $name = sanitize_text_field( $_POST['name'] ?? '' );
+        if ( empty( $name ) ) {
+            wp_send_json_error( [ 'message' => __( 'Topic name is required.', 'sonoai' ) ] );
+        }
+
+        $slug = sanitize_title( $name );
+        $topics_table = $wpdb->prefix . 'sonoai_kb_topics';
+
+        $existing = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM `$topics_table` WHERE slug = %s", $slug ) );
+        if ( $existing ) {
+            wp_send_json_error( [ 'message' => __( 'A topic with this name already exists.', 'sonoai' ) ] );
+        }
+
+        $result = $wpdb->insert(
+            $topics_table,
+            [
+                'name' => $name,
+                'slug' => $slug,
+            ],
+            [ '%s', '%s' ]
+        );
+
+        if ( ! $result ) {
+            wp_send_json_error( [ 'message' => __( 'Database error. Could not create topic.', 'sonoai' ) ] );
+        }
+
+        wp_send_json_success( [
+            'message' => __( 'Topic created.', 'sonoai' ),
+            'topic'   => [
+                'id'   => $wpdb->insert_id,
+                'name' => $name,
+                'slug' => $slug,
+            ]
+        ] );
+    }
+
+    public function handle_edit_topic(): void {
+        $this->check( 'sonoai_kb_manage_topics' );
+        global $wpdb;
+
+        $id   = intval( $_POST['topic_id'] ?? 0 );
+        $name = sanitize_text_field( $_POST['name'] ?? '' );
+        if ( empty( $name ) || empty( $id ) ) {
+            wp_send_json_error( [ 'message' => __( 'Topic ID and name are required.', 'sonoai' ) ] );
+        }
+
+        $slug = sanitize_title( $name );
+        $topics_table = $wpdb->prefix . 'sonoai_kb_topics';
+
+        $existing = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM `$topics_table` WHERE slug = %s AND id != %d", $slug, $id ) );
+        if ( $existing ) {
+            wp_send_json_error( [ 'message' => __( 'A topic with this name already exists.', 'sonoai' ) ] );
+        }
+
+        // We also need to cascade update topic_slug in sonoai_embeddings if we change slug, but for simplicity, let's just update the topic table. Actually, we should update both to prevent orphan topic_slugs in embeddings or saved responses.
+        $old_topic = $wpdb->get_row( $wpdb->prepare( "SELECT slug FROM `$topics_table` WHERE id = %d", $id ) );
+        if ( $old_topic && $old_topic->slug !== $slug ) {
+            $wpdb->update( $this->emb_table(), [ 'topic_slug' => $slug ], [ 'topic_slug' => $old_topic->slug ], [ '%s' ], [ '%s' ] );
+            $wpdb->update( $wpdb->prefix . 'sonoai_saved_responses', [ 'topic_slug' => $slug ], [ 'topic_slug' => $old_topic->slug ], [ '%s' ], [ '%s' ] );
+        }
+
+        $wpdb->update(
+            $topics_table,
+            [ 'name' => $name, 'slug' => $slug ],
+            [ 'id' => $id ],
+            [ '%s', '%s' ],
+            [ '%d' ]
+        );
+
+        wp_send_json_success( [
+            'message' => __( 'Topic updated.', 'sonoai' ),
+            'topic'   => [ 'id' => $id, 'name' => $name, 'slug' => $slug ]
+        ] );
+    }
+
+    public function handle_delete_topic(): void {
+        $this->check( 'sonoai_kb_manage_topics' );
+        global $wpdb;
+
+        $id = intval( $_POST['topic_id'] ?? 0 );
+        if ( empty( $id ) ) {
+            wp_send_json_error( [ 'message' => __( 'Topic ID is required.', 'sonoai' ) ] );
+        }
+
+        $topics_table = $wpdb->prefix . 'sonoai_kb_topics';
+        $old_topic    = $wpdb->get_row( $wpdb->prepare( "SELECT slug FROM `$topics_table` WHERE id = %d", $id ) );
+
+        $wpdb->delete( $topics_table, [ 'id' => $id ], [ '%d' ] );
+
+        // Nullify the topic_id in kb_items
+        $wpdb->update( $this->kb_table(), [ 'topic_id' => null ], [ 'topic_id' => $id ] );
+        
+        // Nullify topic_slug in embeddings and saved responses
+        if ( $old_topic ) {
+            $wpdb->update( $this->emb_table(), [ 'topic_slug' => null ], [ 'topic_slug' => $old_topic->slug ] );
+            $wpdb->update( $wpdb->prefix . 'sonoai_saved_responses', [ 'topic_slug' => null ], [ 'topic_slug' => $old_topic->slug ] );
+        }
+
+        wp_send_json_success( [ 'message' => __( 'Topic deleted.', 'sonoai' ) ] );
+    }
+
+    public function handle_sync_topics(): void {
+        $this->check( 'sonoai_kb_manage_topics' );
+        
+        $taxonomies = [ 'category', 'post_tag' ];
+        // Add eazydocs taxonomies if they exist
+        if ( taxonomy_exists( 'docs_category' ) ) {
+            $taxonomies[] = 'docs_category';
+        }
+
+        $count = 0;
+        foreach ( $taxonomies as $tax ) {
+            $terms = get_terms( [
+                'taxonomy'   => $tax,
+                'hide_empty' => false,
+            ] );
+
+            if ( ! is_wp_error( $terms ) ) {
+                foreach ( $terms as $term ) {
+                    if ( $term->slug === 'uncategorized' ) {
+                        continue;
+                    }
+                    $topic_id = Topics::get_or_create( $term->name, $term->term_id );
+                    if ( $topic_id ) {
+                        $count++;
+                    }
+                }
+            }
+        }
+
+        wp_send_json_success( [
+            'message' => sprintf( __( 'Synced %d topics from WordPress categories and tags.', 'sonoai' ), $count ),
+        ] );
     }
 }
