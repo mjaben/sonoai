@@ -216,6 +216,22 @@ $current_user = wp_get_current_user();
             </div>
         </div>
 
+
     <?php endif; ?>
+
+    <!-- ── Clinical Lightbox ── -->
+    <div id="sonoai-lightbox" class="sonoai-lightbox" hidden aria-hidden="true" role="dialog">
+        <button class="sonoai-lightbox-close" aria-label="<?php esc_attr_e( 'Close lightbox', 'sonoai' ); ?>">&times;</button>
+        <div class="sonoai-lightbox-content">
+            <div class="sonoai-lightbox-nav">
+                <button class="sonoai-lightbox-prev" aria-label="<?php esc_attr_e( 'Previous image', 'sonoai' ); ?>">&#10094;</button>
+                <div style="flex:1;"></div>
+                <button class="sonoai-lightbox-next" aria-label="<?php esc_attr_e( 'Next image', 'sonoai' ); ?>">&#10095;</button>
+            </div>
+            <img id="sonoai-lightbox-img" src="" alt="<?php esc_attr_e( 'Clinical visualization', 'sonoai' ); ?>">
+        </div>
+        <div id="sonoai-lightbox-caption" class="sonoai-lightbox-caption"></div>
+        <div id="sonoai-lightbox-counter" class="sonoai-lightbox-counter"></div>
+    </div>
 
 </div><!-- #sonoai-app -->

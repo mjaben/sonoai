@@ -186,7 +186,7 @@ class RestAPI {
             if ( is_wp_error( $reply ) ) {
                 echo "event: error\ndata: " . wp_json_encode( [ 'error' => $reply->get_error_message() ] ) . "\n\n";
             } else {
-                Chat::add_message( $session_uuid, 'assistant', $reply );
+                Chat::add_message( $session_uuid, 'assistant', $reply, '', $context_imgs );
                 RedisManager::instance()->store_memory( $session_uuid, [ 'role' => 'assistant', 'content' => $reply ] );
                 
                 if ( str_contains( $reply, 'I cannot answer this question because I have not yet been trained' ) || str_contains( $reply, 'I cannot answer questions or discuss topics outside of this medical domain' ) ) {
@@ -205,7 +205,7 @@ class RestAPI {
         }
 
         // ── Store AI reply ───────────────────────────────────────────────────
-        Chat::add_message( $session_uuid, 'assistant', $reply );
+        Chat::add_message( $session_uuid, 'assistant', $reply, '', $context_imgs );
         RedisManager::instance()->store_memory( $session_uuid, [ 'role' => 'assistant', 'content' => $reply ] );
 
         if ( str_contains( $reply, 'I cannot answer this question because I have not yet been trained' ) || str_contains( $reply, 'I cannot answer questions or discuss topics outside of this medical domain' ) ) {
@@ -273,8 +273,20 @@ class RestAPI {
 
         $content    = $post->post_content;
         $image_urls = [];
-        if ( preg_match_all( '/<img[^>]+src=["\']([^"\']+)["\']/', $content, $m ) ) {
-            $image_urls = array_values( array_unique( $m[1] ) );
+        if ( preg_match_all( '/<img[^>]+src=["\']([^"\']+)["\'][^>]*>/i', $content, $matches ) ) {
+            foreach ( $matches[0] as $i => $full_tag ) {
+                $url = $matches[1][$i];
+                $label = '';
+                if ( preg_match( '/alt=["\']([^"\']+)["\']/', $full_tag, $alt_match ) ) {
+                    $label = $alt_match[1];
+                } elseif ( preg_match( '/title=["\']([^"\']+)["\']/', $full_tag, $title_match ) ) {
+                    $label = $title_match[1];
+                }
+                if ( empty( $label ) ) {
+                    $label = ucwords( str_replace( [ '-', '_' ], ' ', pathinfo( parse_url( $url, PHP_URL_PATH ) ?: '', PATHINFO_FILENAME ) ) );
+                }
+                $image_urls[] = [ 'url' => $url, 'label' => $label ];
+            }
         }
 
         $clean_content = sonoai_clean_content( $content );

@@ -21,6 +21,8 @@
         sending     : false,
         sessions    : [],
         mode        : localStorage.getItem('sonoai_mode') || 'guideline',
+        lightboxImages: [],
+        lightboxIndex : 0,
     };
 
     // ── DOM refs ───────────────────────────────────────────────────────────
@@ -134,6 +136,44 @@
             }
         });
 
+        // Lightbox / Zoom delegation.
+        messages.addEventListener('click', function(e) {
+            if (e.target.classList.contains('sonoai-zoomable-img')) {
+                const clickedImg = e.target;
+                const allImgs = Array.from(messages.querySelectorAll('.sonoai-zoomable-img'));
+                
+                state.lightboxImages = allImgs.map(img => ({
+                    url: img.src,
+                    label: img.alt || 'Clinical Visualization'
+                }));
+                
+                state.lightboxIndex = allImgs.indexOf(clickedImg);
+                if (state.lightboxIndex === -1) state.lightboxIndex = 0;
+                
+                openLightbox();
+            }
+        });
+
+        // Lightbox control buttons
+        const lightbox = document.getElementById('sonoai-lightbox');
+        if (lightbox) {
+            lightbox.querySelector('.sonoai-lightbox-close').addEventListener('click', closeLightbox);
+            lightbox.querySelector('.sonoai-lightbox-prev').addEventListener('click', () => navigateLightbox(-1));
+            lightbox.querySelector('.sonoai-lightbox-next').addEventListener('click', () => navigateLightbox(1));
+            
+            // Close on backdrop click
+            lightbox.addEventListener('click', function(e) {
+                if (e.target === lightbox) closeLightbox();
+            });
+
+            // Keyboard navigation
+            document.addEventListener('keydown', function(e) {
+                if (lightbox.hidden) return;
+                if (e.key === 'Escape') closeLightbox();
+                if (e.key === 'ArrowLeft') navigateLightbox(-1);
+                if (e.key === 'ArrowRight') navigateLightbox(1);
+            });
+        }
     }
 
     // ── Theme init (restore from localStorage) ────────────────────────────
@@ -323,7 +363,7 @@
                 clearMessages();
                 const msgs = session.messages || [];
                 msgs.forEach(function (m) {
-                    appendMessage(m.role, m.content, m.image_url || '', m.context_images || [], m.saved_id, true);
+                    appendMessage(m.role, m.content, m.image_url || '', m.images || m.context_images || [], m.saved_id, true);
                 });
                 updateHistoryActiveState();
                 scrollToBottom();
@@ -438,6 +478,7 @@
             let assistantWrapper = null;
             let bubble = null;
             let fullReply = '';
+            let currentImages = {};
             let firstChunkReceived = false;
 
             try {
@@ -478,6 +519,10 @@
                                     updateModeUI();
                                 }
 
+                                if (parsed.context_images) {
+                                    currentImages = parsed.context_images;
+                                }
+
                                 if (parsed.is_new_session) {
                                     state.sessions.unshift({
                                         session_uuid: parsed.session_uuid,
@@ -494,7 +539,7 @@
                                     updateUrl(parsed.session_uuid);
                                 }
                                 
-                                assistantWrapper = appendMessage('assistant', '', '', parsed.context_images || [], null, false);
+                                assistantWrapper = appendMessage('assistant', '', '', currentImages, null, false);
                                 bubble = assistantWrapper.querySelector('.sonoai-bubble');
                                 updateHistoryActiveState();
                             }
@@ -513,7 +558,7 @@
 
                                 fullReply += parsed.chunk;
                                 if (bubble) {
-                                    bubble.innerHTML = markdownToHtml(fullReply);
+                                    bubble.innerHTML = markdownToHtml(fullReply, currentImages);
                                     scrollToBottom();
                                 }
                             }
@@ -557,7 +602,7 @@
     }
 
     // ── Message rendering ──────────────────────────────────────────────────
-    function appendMessage(role, content, imageUrl, contextImages, savedId, showActions) {
+    function appendMessage(role, content, imageUrl, images, savedId, showActions) {
         const isUser  = role === 'user';
         const wrapper = document.createElement('div');
         wrapper.className = 'sonoai-message ' + (isUser ? 'user' : 'assistant');
@@ -601,26 +646,24 @@
             bubble.className = 'sonoai-bubble';
             bubble.innerHTML = isUser
                 ? escapeHtml(content).replace(/\n/g, '<br>')
-                : markdownToHtml(content);
+                : markdownToHtml(content, images);
             body.appendChild(bubble);
         }
 
-        // Context Images.
-        if (contextImages && contextImages.length > 0) {
+        // Optional: Context Images Gallery (Legacy/Fallback)
+        // If we want a separate gallery, we can keep it, but redirected images are better.
+        // For now, let's keep it as a 'Reference Gallery' if many images exist.
+        if (images && !Array.isArray(images) && Object.keys(images).length > 0) {
             const gallery = document.createElement('div');
             gallery.className = 'sonoai-context-gallery';
             gallery.style.cssText = 'display:flex;gap:8px;margin-top:10px;overflow-x:auto;padding-bottom:4px;';
-            contextImages.forEach(function (src) {
-                const a = document.createElement('a');
-                a.href   = src;
-                a.target = '_blank';
+            Object.values(images).forEach(function (img) {
                 const imgEl = document.createElement('img');
-                imgEl.src = src;
-                imgEl.alt = 'Reference image';
-                imgEl.className = 'sonoai-context-image';
-                imgEl.style.cssText = 'max-height:80px;border-radius:4px;border:1px solid rgba(0,0,0,0.1);';
-                a.appendChild(imgEl);
-                gallery.appendChild(a);
+                imgEl.src = img.url;
+                imgEl.alt = img.label || 'Reference image';
+                imgEl.className = 'sonoai-context-image sonoai-zoomable-img';
+                imgEl.style.cssText = 'max-height:80px;border-radius:4px;border:1px solid rgba(255,255,255,0.1); cursor:zoom-in;';
+                gallery.appendChild(imgEl);
             });
             body.appendChild(gallery);
         }
@@ -998,6 +1041,57 @@
 
 
 
+    // ── Lightbox Logic ──
+    function openLightbox() {
+        const lightbox = document.getElementById('sonoai-lightbox');
+        if (!lightbox || state.lightboxImages.length === 0) return;
+        
+        lightbox.hidden = false;
+        lightbox.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden'; // Prevent scroll
+        
+        updateLightboxUI();
+    }
+
+    function closeLightbox() {
+        const lightbox = document.getElementById('sonoai-lightbox');
+        if (!lightbox) return;
+        
+        lightbox.hidden = true;
+        lightbox.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+    }
+
+    function navigateLightbox(dir) {
+        let newIndex = state.lightboxIndex + dir;
+        if (newIndex < 0) newIndex = 0;
+        if (newIndex >= state.lightboxImages.length) newIndex = state.lightboxImages.length - 1;
+        
+        if (newIndex !== state.lightboxIndex) {
+            state.lightboxIndex = newIndex;
+            updateLightboxUI();
+        }
+    }
+
+    function updateLightboxUI() {
+        const lightbox = document.getElementById('sonoai-lightbox');
+        const img = document.getElementById('sonoai-lightbox-img');
+        const caption = document.getElementById('sonoai-lightbox-caption');
+        const counter = document.getElementById('sonoai-lightbox-counter');
+        const prevBtn = lightbox.querySelector('.sonoai-lightbox-prev');
+        const nextBtn = lightbox.querySelector('.sonoai-lightbox-next');
+        
+        const data = state.lightboxImages[state.lightboxIndex];
+        if (!data) return;
+        
+        img.src = data.url;
+        caption.textContent = data.label;
+        counter.textContent = (state.lightboxIndex + 1) + ' / ' + state.lightboxImages.length;
+        
+        prevBtn.disabled = (state.lightboxIndex === 0);
+        nextBtn.disabled = (state.lightboxIndex === state.lightboxImages.length - 1);
+    }
+
     // ── Utilities ──────────────────────────────────────────────────────────
     function scrollToBottom() {
         requestAnimationFrame(function () {
@@ -1094,6 +1188,15 @@
                     h += '<span class="sonoai-source-pill"><span>' + name + '</span></span>';
                 }
             });
+            h += '</div>';
+            return protect(h);
+        });
+
+        // 3b. Parse :::image|URL|Label::: fences for clinical citations.
+        text = text.replace(/:::image\|(.*?)\|(.*?):::/g, function(_, url, label) {
+            var h = '<div class="sonoai-image-card">';
+            h += '<img src="' + url + '" alt="' + escapeHtml(label) + '" class="sonoai-zoomable-img">';
+            h += '<div class="sonoai-image-label">' + escapeHtml(label) + '</div>';
             h += '</div>';
             return protect(h);
         });

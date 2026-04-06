@@ -100,7 +100,7 @@ class Embedding {
         $model        = AIProvider::get_embedding_model();
         $chunks       = self::split_into_chunks( $content );
         $modified_gmt = current_time( 'mysql', true );
-        $image_json   = ! empty( $image_urls ) ? wp_json_encode( array_values( array_unique( $image_urls ) ) ) : null;
+        $image_json   = ! empty( $image_urls ) ? wp_json_encode( array_values( $image_urls ) ) : null;
         $errors       = 0;
 
         foreach ( $chunks as $idx => $chunk_text ) {
@@ -128,7 +128,7 @@ class Embedding {
                     'mode'              => in_array( $mode, [ 'guideline', 'research' ], true ) ? $mode : 'guideline',
                     'topic_slug'        => $topic_slug ?: null,
                     'country'           => $country ?: null,
-                    'source_name'       => $source_name ?: null,
+                    'source_title'      => $source_name ?: null,
                     'source_url'        => $source_url ?: null,
                 ],
                 [ '%s', '%d', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' ]
@@ -143,7 +143,7 @@ class Embedding {
                     'mode'       => $mode,
                     'topic_slug' => $topic_slug,
                     'country'    => $country,
-                    'source_name' => $source_name,
+                    'source_title' => $source_name,
                     'source_url'  => $source_url,
                     'image_urls' => $image_urls,
                 ]);
@@ -241,7 +241,7 @@ class Embedding {
         }
 
         // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-        $rows = $wpdb->get_results( "SELECT id, post_id, post_type, chunk_text, embedding, image_urls, country, topic_slug, source_name, source_url FROM `$table` WHERE $where_sql", ARRAY_A );
+        $rows = $wpdb->get_results( "SELECT id, post_id, post_type, chunk_text, embedding, image_urls, country, topic_slug, source_title, source_url FROM `$table` WHERE $where_sql", ARRAY_A );
 
         if ( empty( $rows ) ) {
             return [];
@@ -268,7 +268,7 @@ class Embedding {
                 'image_urls' => $row['image_urls'] ? json_decode( $row['image_urls'], true ) : [],
                 'country'    => $row['country'],
                 'topic_slug' => $row['topic_slug'],
-                'source_name' => $row['source_name'],
+                'source_name' => $row['source_title'],
                 'source_url'  => $row['source_url'],
                 'similarity' => $sim,
             ];

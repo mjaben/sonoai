@@ -97,7 +97,8 @@ class RAG {
             "1. OUT-OF-DOMAIN: If the user asks a question, makes a request, or attempts to discuss a topic outside the domain of ultrasound, sonography, radiology, or relevant medicine, you MUST reply EXACTLY with the phrase 'I am SonoAI, an assistant specializing in ultrasound and sonography...' and nothing else.\n\n" .
             "2. CONVERSATIONAL: Respond naturally but concisely. Do not provide facts on out-of-domain topics.\n\n" .
             "3. DOMAIN-SPECIFIC: Answer ONLY using the information provided in the <KNOWLEDGE_BASE> block. You are STRICTLY FORBIDDEN from using pre-trained internal memory. If the information is not in the knowledge base, you cannot answer it.\n\n" .
-            "4. MISSING KNOWLEDGE: If the answer is not in the provided context, you MUST reply EXACTLY: 'I cannot answer this question because I have not yet been trained on this specific topic.'"
+            "4. MISSING KNOWLEDGE: If the answer is not in the provided context, you MUST reply EXACTLY: 'I cannot answer this question because I have not yet been trained on this specific topic.'",
+            "5. IMAGES: If a provided image in the context is highly relevant to your explanation, you MUST embed it using the following tag: :::image|IMG_ID|Label::: (where Label is the descriptive text provided). Only use images from the current context."
         );
 
         // Memory Retrieval
@@ -137,17 +138,30 @@ class RAG {
                 $source_url  = ! empty( $chunk['source_url'] ) ? ' (URL: ' . $chunk['source_url'] . ')' : '';
                 $topic_tag   = ! empty( $chunk['topic_slug'] ) ? '[' . strtoupper($chunk['topic_slug']) . '] ' : '';
                 
+                $chunks_images = [];
+                if ( ! empty( $chunk['image_urls'] ) && is_array( $chunk['image_urls'] ) ) {
+                    foreach ( $chunk['image_urls'] as $img_obj ) {
+                        $img_url = is_array( $img_obj ) ? $img_obj['url'] : $img_obj;
+                        $img_lbl = is_array( $img_obj ) ? $img_obj['label'] : 'Clinical Image';
+                        
+                        // Generate or retrieve stable ID for this session
+                        $img_id = 'IMG_' . sprintf( "%02d", count( $images ) + 1 );
+                        $images[ $img_id ] = [ 'url' => $img_url, 'label' => $img_lbl ];
+                        $chunks_images[] = "[{$img_id}: {$img_lbl}]";
+                    }
+                }
+
+                $img_list = ! empty( $chunks_images ) ? "\nAvailable Images: " . implode( ', ', $chunks_images ) : '';
+                
                 $lines[] = sprintf(
-                    "## %s%s%s\n%s\n%s",
+                    "## %s%s%s\n%s\n%s%s",
                     $topic_tag,
                     $source_name,
                     $country,
                     $source_url,
-                    trim( $chunk['chunk_text'] )
+                    trim( $chunk['chunk_text'] ),
+                    $img_list
                 );
-                if ( ! empty( $chunk['image_urls'] ) && is_array( $chunk['image_urls'] ) ) {
-                    $images = array_merge( $images, $chunk['image_urls'] );
-                }
             }
         }
 
@@ -167,7 +181,7 @@ Source Name | https://url.com
 
         return [
             'prompt' => $base_prompt,
-            'images' => array_values( array_unique( $images ) ),
+            'images' => $images, // Now returns associative array [ID => {url, label}]
         ];
     }
 }

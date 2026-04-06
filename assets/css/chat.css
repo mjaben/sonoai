@@ -1833,3 +1833,187 @@ body.sonoai-fullscreen #sonoai-app {
     border-color: #4a90e2;
     color: #2563eb;
 }
+
+/* ── Clinical Image Cards ── */
+.sonoai-image-card {
+    background: var(--sono-surface-2);
+    border: 1px solid var(--sono-border);
+    border-radius: 12px;
+    padding: 10px;
+    margin: 16px 0;
+    max-width: 420px;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+    cursor: default;
+}
+
+.sonoai-image-card:hover {
+    border-color: rgba(74, 144, 226, 0.4);
+}
+
+.sonoai-zoomable-img {
+    width: 100%;
+    height: auto;
+    max-height: 280px;
+    object-fit: cover;
+    border-radius: 8px;
+    cursor: zoom-in;
+    display: block;
+    transition: opacity 0.2s ease;
+}
+
+.sonoai-zoomable-img:hover {
+    opacity: 0.95;
+}
+
+.sonoai-image-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--sono-text-muted);
+    margin-top: 10px;
+    padding: 0 4px;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CLINICAL LIGHTBOX
+   ══════════════════════════════════════════════════════════════ */
+.sonoai-lightbox {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+    background: rgba(10, 10, 12, 0.95);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(12px);
+    transition: opacity 0.3s ease;
+}
+
+.sonoai-lightbox[hidden] {
+    display: none;
+    opacity: 0;
+}
+
+.sonoai-lightbox-close {
+    position: absolute;
+    top: 30px;
+    right: 30px;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #fff !important;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    transition: all 0.2s ease;
+    z-index: 10001;
+}
+
+.sonoai-lightbox-close:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    transform: rotate(90deg);
+}
+
+.sonoai-lightbox-content {
+    position: relative;
+    max-width: 90vw;
+    max-height: 80vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sonoai-lightbox-content img {
+    max-width: 100%;
+    max-height: 80vh;
+    object-fit: contain;
+    border-radius: 12px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sonoai-lightbox-nav {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    transform: translateY(-50%);
+    display: flex;
+    justify-content: space-between;
+    padding: 0 40px;
+    pointer-events: none;
+    width: 100%;
+}
+
+.sonoai-lightbox-prev,
+.sonoai-lightbox-next {
+    pointer-events: auto;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #fff !important;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    font-size: 20px;
+}
+
+.sonoai-lightbox-prev:hover,
+.sonoai-lightbox-next:hover {
+    background: var(--sono-accent) !important;
+    border-color: var(--sono-accent) !important;
+}
+
+.sonoai-lightbox-prev:disabled,
+.sonoai-lightbox-next:disabled {
+    opacity: 0.1;
+    cursor: default;
+    background: transparent !important;
+}
+
+.sonoai-lightbox-caption {
+    margin-top: 30px;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 500;
+    text-align: center;
+    max-width: 600px;
+    padding: 0 20px;
+    opacity: 0.8;
+}
+
+.sonoai-lightbox-counter {
+    position: absolute;
+    bottom: 30px;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+}
+
+/* Light mode adjustments */
+#sonoai-app.sonoai-light .sonoai-lightbox {
+    background: rgba(255, 255, 255, 0.96);
+}
+#sonoai-app.sonoai-light .sonoai-lightbox-close,
+#sonoai-app.sonoai-light .sonoai-lightbox-prev,
+#sonoai-app.sonoai-light .sonoai-lightbox-next {
+    background: rgba(0, 0, 0, 0.05) !important;
+    border-color: rgba(0, 0, 0, 0.1) !important;
+    color: #111 !important;
+}
+#sonoai-app.sonoai-light .sonoai-lightbox-caption { color: #111; }
+#sonoai-app.sonoai-light .sonoai-lightbox-counter { color: #888; }

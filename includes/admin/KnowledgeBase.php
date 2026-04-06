@@ -77,6 +77,7 @@ class KnowledgeBase {
                 'updateMeta' => wp_create_nonce( 'sonoai_kb_update_meta' ),
                 'topics'     => wp_create_nonce( 'sonoai_kb_manage_topics' ),
                 'syncTopics' => wp_create_nonce( 'sonoai_kb_sync_topics' ),
+                'uploadImg'  => wp_create_nonce( 'sonoai_kb_upload_img' ),
             ],
             'postTypes'  => self::get_eligible_post_types(),
             'providerLabel' => sonoai_option( 'active_provider', 'openai' ),
@@ -697,20 +698,57 @@ class KnowledgeBase {
                 </div>
 
                 <div id="kb-txt-editor-wrap">
-                    <?php
-                    wp_editor(
-                        $editor_content,
-                        'sonoai_kb_txt_editor',
-                        [
-                            'textarea_name' => 'sonoai_kb_txt_content',
-                            'media_buttons' => true,
-                            'teeny'         => false,
-                            'quicktags'     => true,
-                            'tinymce'       => true,
-                            'editor_height' => 250,
-                        ]
-                    );
-                    ?>
+                <div id="kb-txt-editor-wrap">
+                    <label for="sonoai_kb_txt_editor" style="display:block; margin-bottom:10px; font-weight:600; font-size:14px;"><?php esc_html_e( 'Training Content (Notes/Guidelines)', 'sonoai' ); ?></label>
+                    <textarea name="sonoai_kb_txt_content" id="sonoai_kb_txt_editor" rows="12" class="large-text" placeholder="<?php esc_attr_e( 'Enter the medical notes or clinical guideline text here...', 'sonoai' ); ?>" style="font-family: inherit; line-height: 1.6; padding: 18px; border-radius: 10px; border: 1px solid var(--kb-border); background: var(--kb-surface-2); color: var(--kb-text); width: 100%; border-color: rgba(255,255,255,0.08);"><?php echo esc_textarea( $editor_content ); ?></textarea>
+                </div>
+
+                <div class="kb-txt-images-section" style="margin-top:30px; padding-top:25px; border-top:1px solid var(--kb-border);">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px;">
+                        <div>
+                            <h4 style="margin:0 0 5px 0; font-size:15px; color:var(--kb-text);"><?php esc_html_e( 'Linked Clinical Images', 'sonoai' ); ?></h4>
+                            <p class="description" style="margin:0; font-size:12px; opacity:0.8;"><?php esc_html_e( 'Manually label sonograms or reference visuals for the AI to cite in responses.', 'sonoai' ); ?></p>
+                        </div>
+                        <button type="button" id="kb-add-image-row" class="kb-btn-sm" style="background:#4a90e21a; color:#4a90e2; border:1px solid #4a90e233;">
+                            + <?php esc_html_e( 'Add Image', 'sonoai' ); ?>
+                        </button>
+                    </div>
+                    
+                    <div id="kb-txt-images-container">
+                        <?php 
+                        $images = ! empty( $editing_item->image_urls ) ? json_decode( $editing_item->image_urls, true ) : [];
+                        if ( ! is_array( $images ) ) $images = [];
+                        
+                        foreach ( $images as $idx => $img ) : ?>
+                            <div class="kb-image-row" style="display:flex; gap:12px; margin-bottom:12px; align-items: flex-end; background:var(--kb-surface-2); padding:12px; border-radius:8px; border:1px solid var(--kb-border); border-color:rgba(255,255,255,0.05);">
+                                <div style="flex:1.5;">
+                                    <label style="font-size:11px; font-weight:700; text-transform:uppercase; opacity:0.6; display:block; margin-bottom:5px;"><?php esc_html_e( 'Sonogram Reference', 'sonoai' ); ?></label>
+                                    <div class="kb-img-upload-wrap" style="display:flex; gap:10px; align-items:center;">
+                                        <div class="kb-img-preview" style="width:40px; height:40px; background:var(--kb-surface-1); border-radius:4px; border:1px solid var(--kb-border); overflow:hidden; display:flex; align-items:center; justify-content:center;">
+                                            <?php if ( ! empty( $img['url'] ) ) : ?>
+                                                <img src="<?php echo esc_url( $img['url'] ); ?>" style="width:100%; height:100%; object-fit:cover;">
+                                            <?php else : ?>
+                                                <span style="font-size:16px; opacity:0.3;">🖼</span>
+                                            <?php endif; ?>
+                                        </div>
+                                        <input type="hidden" class="kb-img-url" value="<?php echo esc_url( $img['url'] ?? '' ); ?>">
+                                        <button type="button" class="kb-btn-sm kb-choose-img-btn" style="flex:1; justify-content:center; background:rgba(255,255,255,0.05);">
+                                            <?php echo ! empty( $img['url'] ) ? esc_html__( 'Change Image', 'sonoai' ) : esc_html__( 'Upload Sonogram', 'sonoai' ); ?>
+                                        </button>
+                                        <input type="file" class="kb-file-input" accept="image/*" style="display:none;">
+                                    </div>
+                                </div>
+                                <div style="flex:1;">
+                                    <label style="font-size:11px; font-weight:700; text-transform:uppercase; opacity:0.6; display:block; margin-bottom:5px;"><?php esc_html_e( 'Clinical Label', 'sonoai' ); ?></label>
+                                    <input type="text" class="kb-img-label kb-input-sm" value="<?php echo esc_attr( $img['label'] ?? '' ); ?>" placeholder="<?php esc_attr_e( 'e.g. Gallbladder with Sludge', 'sonoai' ); ?>" style="width:100%;">
+                                </div>
+                                <button type="button" class="kb-btn-sm kb-remove-img-row" style="height:36px; padding:0 12px; color:#ef4444; background:rgba(239,68,68,0.08); border-color:rgba(239,68,68,0.15);">
+                                    🗑
+                                </button>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
                 </div>
 
                 <?php if ( $editing_item ) : ?>

@@ -500,6 +500,8 @@
         var btn    = document.getElementById('kb-txt-submit');
         var notice = document.getElementById('kb-txt-notice');
         var modeSel = document.getElementById('kb-txt-mode');
+        var container = document.getElementById('kb-txt-images-container');
+        var addBtn = document.getElementById('kb-add-image-row');
 
         if (!btn) return;
 
@@ -508,19 +510,125 @@
             toggleMetadataFields('txt');
         }
 
+        // Image Repeater Logic
+        if (addBtn && container) {
+            addBtn.addEventListener('click', function() {
+                var row = document.createElement('div');
+                row.className = 'kb-image-row';
+                row.style.cssText = 'display:flex; gap:12px; margin-bottom:12px; align-items: flex-end; background:var(--kb-surface-2); padding:12px; border-radius:8px; border:1px solid var(--kb-border); border-color:rgba(255,255,255,0.05);';
+                row.innerHTML = `
+                    <div style="flex:1.5;">
+                        <label style="font-size:11px; font-weight:700; text-transform:uppercase; opacity:0.6; display:block; margin-bottom:5px;">Sonogram Reference</label>
+                        <div class="kb-img-upload-wrap" style="display:flex; gap:10px; align-items:center;">
+                            <div class="kb-img-preview" style="width:40px; height:40px; background:var(--kb-surface-1); border-radius:4px; border:1px solid var(--kb-border); overflow:hidden; display:flex; align-items:center; justify-content:center;">
+                                <span style="font-size:16px; opacity:0.3;">🖼</span>
+                            </div>
+                            <input type="hidden" class="kb-img-url" value="">
+                            <button type="button" class="kb-btn-sm kb-choose-img-btn" style="flex:1; justify-content:center; background:rgba(255,255,255,0.05);">
+                                Upload Sonogram
+                            </button>
+                            <input type="file" class="kb-file-input" accept="image/*" style="display:none;">
+                        </div>
+                    </div>
+                    <div style="flex:1;">
+                        <label style="font-size:11px; font-weight:700; text-transform:uppercase; opacity:0.6; display:block; margin-bottom:5px;">Clinical Label</label>
+                        <input type="text" class="kb-img-label kb-input-sm" placeholder="e.g. Gallbladder with Sludge" style="width:100%;">
+                    </div>
+                    <button type="button" class="kb-btn-sm kb-remove-img-row" style="height:36px; padding:0 12px; color:#ef4444; background:rgba(239,68,68,0.08); border-color:rgba(239,68,68,0.15);">
+                        🗑
+                    </button>
+                `;
+                container.appendChild(row);
+            });
+
+            container.addEventListener('click', function(e) {
+                var delBtn = e.target.closest('.kb-remove-img-row');
+                if (delBtn) {
+                    delBtn.closest('.kb-image-row').remove();
+                    return;
+                }
+
+                var chooseBtn = e.target.closest('.kb-choose-img-btn');
+                if (chooseBtn) {
+                    var row = chooseBtn.closest('.kb-image-row');
+                    var label = row.querySelector('.kb-img-label').value.trim();
+                    if (!label) {
+                        alert('Please enter a Clinical Label first to name the file correctly.');
+                        return;
+                    }
+                    row.querySelector('.kb-file-input').click();
+                }
+            });
+
+            container.addEventListener('change', function(e) {
+                var fileInp = e.target.closest('.kb-file-input');
+                if (fileInp && fileInp.files[0]) {
+                    var row = fileInp.closest('.kb-image-row');
+                    var label = row.querySelector('.kb-img-label').value.trim();
+                    var btn = row.querySelector('.kb-choose-img-btn');
+                    var preview = row.querySelector('.kb-img-preview');
+                    var hiddenUrl = row.querySelector('.kb-img-url');
+
+                    btn.disabled = true;
+                    var originalText = btn.textContent;
+                    btn.textContent = 'Uploading...';
+
+                    var fd = new FormData();
+                    fd.append('action', 'sonoai_kb_upload_img');
+                    fd.append('nonce', nonces.uploadImg);
+                    fd.append('file', fileInp.files[0]);
+                    fd.append('label', label);
+
+                    $.ajax({
+                        url: ajax,
+                        type: 'POST',
+                        data: fd,
+                        processData: false,
+                        contentType: false,
+                        success: function(res) {
+                            if (res.success) {
+                                hiddenUrl.value = res.data.url;
+                                preview.innerHTML = `<img src="${res.data.url}" style="width:100%; height:100%; object-fit:cover;">`;
+                                btn.textContent = 'Change Image';
+                            } else {
+                                alert(res.data.message || 'Upload failed.');
+                                btn.textContent = originalText;
+                            }
+                        },
+                        error: function() {
+                            alert('Upload failed. Check your connection.');
+                            btn.textContent = originalText;
+                        },
+                        complete: function() {
+                            btn.disabled = false;
+                        }
+                    });
+                }
+            });
+        }
+
         btn.addEventListener('click', function () {
-            // Fetch content from TinyMCE or plain textarea.
-            var content = '';
-            if (typeof tinyMCE !== 'undefined' && tinyMCE.get('sonoai_kb_txt_editor')) {
-                content = tinyMCE.get('sonoai_kb_txt_editor').getContent();
-            } else {
-                var ta = document.getElementById('sonoai_kb_txt_editor');
-                content = ta ? ta.value : '';
-            }
+            var ta = document.getElementById('sonoai_kb_txt_editor');
+            var content = ta ? ta.value : '';
 
             if (!content.trim()) {
                 setNotice(notice, 'Please enter some content.', 'error');
                 return;
+            }
+
+            // Gather Images
+            var images = [];
+            if (container) {
+                container.querySelectorAll('.kb-image-row').forEach(function(row) {
+                    var urlEl = row.querySelector('.kb-img-url');
+                    var labelEl = row.querySelector('.kb-img-label');
+                    if (urlEl && urlEl.value.trim()) {
+                        images.push({ 
+                            url: urlEl.value.trim(), 
+                            label: labelEl ? labelEl.value.trim() : '' 
+                        });
+                    }
+                });
             }
 
             var action = btn.dataset.action === 'edit' ? 'sonoai_kb_edit_txt' : 'sonoai_kb_add_txt';
@@ -533,9 +641,14 @@
             if (spinner) spinner.style.display = 'inline-block';
             if (btnText) btnText.style.opacity  = '0.5';
 
-            var data = { action: action, nonce: nonce, content: content };
+            var payload = { 
+                action: action, 
+                nonce: nonce, 
+                content: content,
+                images: JSON.stringify(images)
+            };
             var editId = document.getElementById('kb-edit-knowledge-id');
-            if (editId) data.knowledge_id = editId.value;
+            if (editId) payload.knowledge_id = editId.value;
 
             var mSel = document.getElementById('kb-txt-mode');
             var tSel = document.getElementById('kb-txt-topic');
@@ -543,13 +656,13 @@
             var snInp = document.getElementById('kb-txt-source-name');
             var suInp = document.getElementById('kb-txt-source-url');
 
-            if (mSel) data.mode = mSel.value;
-            if (tSel) data.topic_id = tSel.value;
-            if (cInp) data.country = cInp.value;
-            if (snInp) data.source_name = snInp.value;
-            if (suInp) data.source_url = suInp.value;
+            if (mSel) payload.mode = mSel.value;
+            if (tSel) payload.topic_id = tSel.value;
+            if (cInp) payload.country = cInp.value;
+            if (snInp) payload.source_name = snInp.value;
+            if (suInp) payload.source_url = suInp.value;
 
-            $.post(ajax, data, function (res) {
+            $.post(ajax, payload, function (res) {
                 if (res.success) {
                     setNotice(notice, '✓ ' + (res.data.message || 'Saved.'), 'success');
                     setTimeout(function () {

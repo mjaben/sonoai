@@ -37,6 +37,7 @@ class KnowledgeBaseAjax {
             'sonoai_kb_delete_topic',
             'sonoai_kb_update_meta',
             'sonoai_kb_sync_topics',
+            'sonoai_kb_upload_img',
         ];
         foreach ( $actions as $action ) {
             add_action( "wp_ajax_{$action}", [ $this, str_replace( 'sonoai_kb_', 'handle_', $action ) ] );
@@ -83,17 +84,55 @@ class KnowledgeBaseAjax {
     }
 
     /**
-     * Extract image src URLs from HTML.
+     * Extract image src URLs and their labels (alt/title) from HTML or manual input.
+     * Returns an array of objects: [ ['url' => '...', 'label' => '...'], ... ]
      */
-    private function extract_image_urls( string $html ): array {
-        if ( empty( $html ) ) {
-            return [];
+    private function extract_image_urls( string $html, array $manual_images = [] ): array {
+        $images = [];
+
+        // 1. Process Manual Images (Priority)
+        foreach ( $manual_images as $img ) {
+            if ( ! empty( $img['url'] ) ) {
+                $images[ $img['url'] ] = [
+                    'url'   => esc_url_raw( $img['url'] ),
+                    'label' => sanitize_text_field( $img['label'] ?? '' ) ?: __( 'Clinical Image', 'sonoai' ),
+                ];
+            }
         }
-        $urls = [];
-        if ( preg_match_all( '/<img[^>]+src=["\']([^"\']+)["\']/', $html, $m ) ) {
-            $urls = array_values( array_unique( $m[1] ) );
+
+        // 2. Extract from HTML (Fallback/Complement)
+        if ( ! empty( $html ) ) {
+            if ( preg_match_all( '/<img[^>]+src=["\']([^"\']+)["\'][^>]*>/i', $html, $matches ) ) {
+                foreach ( $matches[0] as $i => $full_tag ) {
+                    $url = $matches[1][$i];
+                    
+                    // Skip if already in manual list (don't overwrite manual labels)
+                    if ( isset( $images[$url] ) ) {
+                        continue;
+                    }
+
+                    // Try to find alt or title
+                    $label = '';
+                    if ( preg_match( '/alt=["\']([^"\']+)["\']/', $full_tag, $alt_match ) ) {
+                        $label = $alt_match[1];
+                    } elseif ( preg_match( '/title=["\']([^"\']+)["\']/', $full_tag, $title_match ) ) {
+                        $label = $title_match[1];
+                    }
+                    
+                    // Fallback to filename
+                    if ( empty( $label ) ) {
+                        $label = ucwords( str_replace( [ '-', '_' ], ' ', pathinfo( parse_url( $url, PHP_URL_PATH ) ?: '', PATHINFO_FILENAME ) ) );
+                    }
+
+                    $images[$url] = [
+                        'url'   => $url,
+                        'label' => $label ?: __( 'Clinical Image', 'sonoai' ),
+                    ];
+                }
+            }
         }
-        return $urls;
+        
+        return array_values( $images );
     }
 
     /**
@@ -501,7 +540,10 @@ class KnowledgeBaseAjax {
             wp_send_json_error( [ 'message' => __( 'Content cannot be empty.', 'sonoai' ) ] );
         }
 
-        $image_urls = $this->extract_image_urls( $raw_html );
+        $manual_images = isset( $_POST['images'] ) ? json_decode( wp_unslash( $_POST['images'] ), true ) : [];
+        if ( ! is_array( $manual_images ) ) $manual_images = [];
+
+        $image_urls = $this->extract_image_urls( $raw_html, $manual_images );
         $plain      = sonoai_clean_content( $raw_html );
         $title      = wp_trim_words( $plain, 10, '…' );
 
@@ -545,7 +587,10 @@ class KnowledgeBaseAjax {
         $wpdb->delete( $this->emb_table(), [ 'knowledge_id' => $knowledge_id ], [ '%s' ] );
         $wpdb->delete( $this->kb_table(),  [ 'knowledge_id' => $knowledge_id ], [ '%s' ] );
 
-        $image_urls = $this->extract_image_urls( $raw_html );
+        $manual_images = isset( $_POST['images'] ) ? json_decode( wp_unslash( $_POST['images'] ), true ) : [];
+        if ( ! is_array( $manual_images ) ) $manual_images = [];
+
+        $image_urls = $this->extract_image_urls( $raw_html, $manual_images );
         $plain      = sonoai_clean_content( $raw_html );
         $title      = wp_trim_words( $plain, 10, '…' );
 
@@ -725,6 +770,61 @@ class KnowledgeBaseAjax {
 
         wp_send_json_success( [
             'message' => sprintf( __( 'Synced %d topics from WordPress categories and tags.', 'sonoai' ), $count ),
+        ] );
+    }
+
+    /**
+     * Handle custom clinical image upload
+     */
+    public function handle_upload_img(): void {
+        $this->check( 'sonoai_kb_upload_img' );
+
+        if ( empty( $_FILES['file'] ) ) {
+            wp_send_json_error( [ 'message' => __( 'No file uploaded.', 'sonoai' ) ] );
+        }
+
+        $label = sanitize_title( $_POST['label'] ?? 'clinical-image' );
+        
+        // Filter to change the upload directory
+        $upload_dir_filter = function( $dirs ) {
+            $custom_dir = 'sonoai-Clinical-img-lib/' . date( 'Y' ) . '/' . date( 'm' );
+            $dirs['path']    = $dirs['basedir'] . '/' . $custom_dir;
+            $dirs['url']     = $dirs['baseurl'] . '/' . $custom_dir;
+            $dirs['subdir']  = '/' . $custom_dir;
+
+            if ( ! file_exists( $dirs['path'] ) ) {
+                wp_mkdir_p( $dirs['path'] );
+            }
+
+            return $dirs;
+        };
+
+        // Filter to rename the file based on the clinical label
+        $rename_filter = function( $file ) use ( $label ) {
+            $ext  = pathinfo( $file['name'], PATHINFO_EXTENSION );
+            $file['name'] = $label . '.' . $ext;
+            return $file;
+        };
+
+        add_filter( 'upload_dir', $upload_dir_filter );
+        add_filter( 'wp_handle_upload_prefilter', $rename_filter );
+
+        if ( ! function_exists( 'wp_handle_upload' ) ) {
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+        }
+
+        $upload = wp_handle_upload( $_FILES['file'], [ 'test_form' => false ] );
+
+        remove_filter( 'upload_dir', $upload_dir_filter );
+        remove_filter( 'wp_handle_upload_prefilter', $rename_filter );
+
+        if ( isset( $upload['error'] ) ) {
+            wp_send_json_error( [ 'message' => $upload['error'] ] );
+        }
+
+        wp_send_json_success( [
+            'url'  => $upload['url'],
+            'file' => $upload['file']
         ] );
     }
 }

@@ -20,11 +20,19 @@ if ( empty( $opts['delete_on_uninstall'] ) ) {
 global $wpdb;
 
 // 1. Drop Custom Tables
-$embeddings_table = $wpdb->prefix . 'sonoai_embeddings';
-$sessions_table   = $wpdb->prefix . 'sonoai_sessions';
+$tables = [
+    $wpdb->prefix . 'sonoai_embeddings',
+    $wpdb->prefix . 'sonoai_kb_items',
+    $wpdb->prefix . 'sonoai_kb_topics',
+    $wpdb->prefix . 'sonoai_sessions',
+    $wpdb->prefix . 'sonoai_query_logs',
+    $wpdb->prefix . 'sonoai_saved_responses',
+    $wpdb->prefix . 'sonoai_feedback',
+];
 
-$wpdb->query( "DROP TABLE IF EXISTS `$embeddings_table`" );
-$wpdb->query( "DROP TABLE IF EXISTS `$sessions_table`" );
+foreach ( $tables as $table ) {
+    $wpdb->query( "DROP TABLE IF EXISTS `$table`" );
+}
 
 // 2. Delete Options
 delete_option( 'sonoai_settings' );

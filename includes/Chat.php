@@ -73,7 +73,7 @@ class Chat {
      * @param string $image_url    Optional stored image URL.
      * @return bool
      */
-    public static function add_message( string $session_uuid, string $role, string $content, string $image_url = '' ): bool {
+    public static function add_message( string $session_uuid, string $role, string $content, string $image_url = '', array $images = [] ): bool {
         global $wpdb;
         $table   = self::table();
         $session = self::get_raw( $session_uuid );

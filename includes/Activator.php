@@ -51,6 +51,9 @@ class Activator {
             `source_url`        TEXT                     DEFAULT NULL,
             `source_title`      VARCHAR(255)             DEFAULT NULL,
             `image_urls`        LONGTEXT                 DEFAULT NULL,
+            `mode`              VARCHAR(20)     NOT NULL DEFAULT 'guideline',
+            `topic_slug`        VARCHAR(100)             DEFAULT NULL,
+            `country`           VARCHAR(100)             DEFAULT NULL,
             `chunk_index`       INT             NOT NULL DEFAULT 0,
             `chunk_text`        LONGTEXT        NOT NULL,
             `embedding`         LONGTEXT        NOT NULL,
@@ -61,6 +64,8 @@ class Activator {
             KEY `idx_post_id`      (`post_id`),
             KEY `idx_post_type`    (`post_type`),
             KEY `idx_type`         (`type`),
+            KEY `idx_mode`         (`mode`),
+            KEY `idx_topic_slug`   (`topic_slug`(100)),
             KEY `idx_knowledge_id` (`knowledge_id`(36))
         ) $charset_collate;";
         dbDelta( $sql_embeddings );
@@ -98,6 +103,9 @@ class Activator {
             `source_url`      TEXT                     DEFAULT NULL,
             `raw_content`     LONGTEXT                 DEFAULT NULL,
             `image_urls`      LONGTEXT                 DEFAULT NULL,
+            `mode`            VARCHAR(20)     NOT NULL DEFAULT 'guideline',
+            `topic_id`        INT UNSIGNED             DEFAULT NULL,
+            `country`         VARCHAR(100)             DEFAULT NULL,
             `provider`        VARCHAR(20)     NOT NULL DEFAULT 'openai',
             `embedding_model` VARCHAR(100)             DEFAULT NULL,
             `chunk_count`     INT             NOT NULL DEFAULT 0,
