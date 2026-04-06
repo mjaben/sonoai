@@ -122,8 +122,8 @@ class RAG {
 
         // Mode-specific preamble
         $mode_preamble = ( $mode === 'research' ) 
-            ? "\n\nYou are in RESEARCH MODE. Priority: Peer-reviewed evidence. Acknowledge uncertainty."
-            : "\n\nYou are in GUIDELINE MODE. Priority: Established protocols. Be precise and cite source numbers.";
+            ? "\n\nYou are in RESEARCH MODE. Priority: Peer-reviewed evidence. Acknowledge uncertainty. Provide highly detailed citations using the Source Title and Topic (e.g. [Source: Clinical Pathology, Topic: Liver])."
+            : "\n\nYou are in GUIDELINE MODE. Priority: Established protocols. Be precise and provide professional citations citing both Source Name and Country (e.g. [Source: ISUOG Protocol, UK]).";
         
         $base_prompt .= $mode_preamble . $history_context;
 
@@ -132,13 +132,17 @@ class RAG {
 
         if ( ! empty( $chunks ) ) {
             foreach ( $chunks as $i => $chunk ) {
-                $source    = self::get_source_label( $chunk['post_id'], $chunk['post_type'] );
-                $topic_tag = ! empty( $chunk['topic_slug'] ) ? '[' . $chunk['topic_slug'] . '] ' : '';
-                $lines[]   = sprintf(
-                    "## Source %d — %s%s\n%s",
-                    $i + 1,
+                $source_name = ! empty( $chunk['source_name'] ) ? $chunk['source_name'] : self::get_source_label( $chunk['post_id'], $chunk['post_type'] );
+                $country     = ! empty( $chunk['country'] ) ? ' (' . $chunk['country'] . ')' : '';
+                $source_url  = ! empty( $chunk['source_url'] ) ? ' (URL: ' . $chunk['source_url'] . ')' : '';
+                $topic_tag   = ! empty( $chunk['topic_slug'] ) ? '[' . strtoupper($chunk['topic_slug']) . '] ' : '';
+                
+                $lines[] = sprintf(
+                    "## %s%s%s\n%s\n%s",
                     $topic_tag,
-                    $source,
+                    $source_name,
+                    $country,
+                    $source_url,
                     trim( $chunk['chunk_text'] )
                 );
                 if ( ! empty( $chunk['image_urls'] ) && is_array( $chunk['image_urls'] ) ) {
@@ -148,11 +152,18 @@ class RAG {
         }
 
         $base_prompt .= "\n\n---\n\n";
-        $base_prompt .= "Use the following knowledge base excerpts to inform your answer. " .
+        $base_prompt .= "Use the following medical knowledge base excerpts to inform your answer. " .
+                        "Cite specific source titles and avoid generic [Source 1] numbering in your response. " .
                         "If the answer is not contained here, you MUST output the exact fallback phrase.\n\n";
         
         $kb_content = empty( $lines ) ? "No external knowledge provided for this query." : implode( "\n\n", $lines );
-        $base_prompt .= "<KNOWLEDGE_BASE>\n" . $kb_content . "\n</KNOWLEDGE_BASE>";
+        $base_prompt .= "<KNOWLEDGE_BASE>\n" . $kb_content . "\n</KNOWLEDGE_BASE>
+
+Finally, you MUST end your response with a structured sources block using the following format:
+:::sources
+Source Name | https://url.com
+:::
+(Use the exact Source Name provided in the ## headers above. Only include valid URLs if provided in the context.)";
 
         return [
             'prompt' => $base_prompt,

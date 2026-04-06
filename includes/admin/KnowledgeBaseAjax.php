@@ -171,6 +171,7 @@ class KnowledgeBaseAjax {
         $image_urls   = $args['image_urls']   ?? [];
         $mode         = in_array( $args['mode'] ?? 'guideline', [ 'guideline', 'research' ], true ) ? $args['mode'] : 'guideline';
         $topic_id     = ! empty( $args['topic_id'] ) ? (int) $args['topic_id'] : null;
+        $country      = $args['country']     ?? '';
 
         if ( empty( $plain_text ) ) {
             return new \WP_Error( 'empty_content', __( 'Content is empty.', 'sonoai' ) );
@@ -188,7 +189,7 @@ class KnowledgeBaseAjax {
         }
 
         // Use the centralized Embedding class for actual vector storage.
-        $knowledge_id = Embedding::insert( (int) $post_id, $type, $plain_text, $image_urls, $mode, $topic_slug );
+        $knowledge_id = Embedding::insert( (int) $post_id, $type, $plain_text, $image_urls, $mode, $topic_slug, $country, $source_title, $source_url );
         
         if ( is_wp_error( $knowledge_id ) ) {
             return $knowledge_id;
@@ -206,6 +207,7 @@ class KnowledgeBaseAjax {
                 'type'            => $type,
                 'mode'            => $mode,
                 'topic_id'        => $topic_id,
+                'country'         => $country,
                 'post_id'         => (int) $post_id,
                 'source_title'    => $source_title,
                 'source_url'      => $source_url,
@@ -215,7 +217,7 @@ class KnowledgeBaseAjax {
                 'embedding_model' => $embedding_model,
                 'chunk_count'     => count( $chunks ),
             ],
-            [ '%s','%s','%s','%d','%d','%s','%s','%s','%s','%s','%s','%d' ]
+            [ '%s','%s','%s','%d','%s','%d','%s','%s','%s','%s','%s','%s','%d' ]
         );
 
         return [
@@ -428,8 +430,9 @@ class KnowledgeBaseAjax {
         $result = $this->embed_and_store( [
             'type'         => 'pdf',
             'text'         => $content,
-            'source_url'   => $moved['url'],
-            'source_title' => sanitize_file_name( $file['name'] ),
+            'source_url'   => sanitize_text_field( $_POST['source_url'] ?? $moved['url'] ),
+            'source_title' => sanitize_text_field( $_POST['source_name'] ?? $file['name'] ),
+            'country'      => sanitize_text_field( $_POST['country'] ?? '' ),
             'mode'         => sanitize_text_field( $_POST['mode'] ?? 'guideline' ),
             'topic_id'     => intval( $_POST['topic_id'] ?? 0 ),
         ] );
@@ -470,8 +473,9 @@ class KnowledgeBaseAjax {
         $result = $this->embed_and_store( [
             'type'         => 'url',
             'text'         => $content,
-            'source_url'   => $url,
-            'source_title' => $url,
+            'source_url'   => sanitize_text_field( $_POST['source_url'] ?? $url ),
+            'source_title' => sanitize_text_field( $_POST['source_name'] ?? $url ),
+            'country'      => sanitize_text_field( $_POST['country'] ?? '' ),
             'mode'         => sanitize_text_field( $_POST['mode'] ?? 'guideline' ),
             'topic_id'     => intval( $_POST['topic_id'] ?? 0 ),
         ] );
@@ -505,7 +509,9 @@ class KnowledgeBaseAjax {
             'type'         => 'txt',
             'text'         => $plain,
             'raw_content'  => $raw_html,
-            'source_title' => $title,
+            'source_title' => sanitize_text_field( $_POST['source_name'] ?? $title ),
+            'source_url'   => sanitize_text_field( $_POST['source_url'] ?? '' ),
+            'country'      => sanitize_text_field( $_POST['country'] ?? '' ),
             'image_urls'   => $image_urls,
             'mode'         => sanitize_text_field( $_POST['mode'] ?? 'guideline' ),
             'topic_id'     => intval( $_POST['topic_id'] ?? 0 ),
@@ -547,7 +553,9 @@ class KnowledgeBaseAjax {
             'type'         => 'txt',
             'text'         => $plain,
             'raw_content'  => $raw_html,
-            'source_title' => $title,
+            'source_title' => sanitize_text_field( $_POST['source_name'] ?? $title ),
+            'source_url'   => sanitize_text_field( $_POST['source_url'] ?? '' ),
+            'country'      => sanitize_text_field( $_POST['country'] ?? '' ),
             'image_urls'   => $image_urls,
             'mode'         => sanitize_text_field( $_POST['mode'] ?? 'guideline' ),
             'topic_id'     => intval( $_POST['topic_id'] ?? 0 ),

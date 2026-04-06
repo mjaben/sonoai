@@ -778,6 +778,97 @@
     background: #fff !important;
 }
 
+/* ── Training Fields (Mode-based) ───────────────────────────── */
+.kb-training-fields {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.kb-field-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.kb-field-row:last-child {
+    margin-bottom: 0;
+}
+
+.kb-field-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.kb-field-group label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #64748b;
+}
+
+/* Initially hidden, toggled by JS */
+.kb-field-topic,
+.kb-field-country {
+    display: none;
+}
+
+.kb-wrap.kb-dark .kb-training-fields {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.kb-wrap.kb-dark .kb-field-group label {
+    color: #94a3b8;
+}
+
+/* ── Frontend Citation Pills ─────────────────────────────────── */
+.sonoai-sources-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sonoai-source-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(74, 144, 226, 0.1);
+    border: 1px solid rgba(74, 144, 226, 0.2);
+    border-radius: 9999px;
+    color: #4a90e2;
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.sonoai-source-pill:hover {
+    background: rgba(74, 144, 226, 0.2);
+    border-color: rgba(74, 144, 226, 0.3);
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+.sonoai-source-pill svg {
+    opacity: 0.7;
+}
+
+.sonoai-light .sonoai-source-pill {
+    background: #f0f7ff;
+    border-color: #c6e2ff;
+    color: #0056b3;
+}
+
 /* ── Buttons ────────────────────────────────────────────────── */
 .kb-wrap .kb-btn-primary {
     display: inline-flex !important;

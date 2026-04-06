@@ -1078,6 +1078,26 @@
             return protect(h);
         });
 
+        // 3a. Parse :::sources fences.
+        var linkSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';
+        text = text.replace(/:::sources\n([\s\S]*?):::/g, function(_, inner) {
+            var lines = inner.trim().split('\n').filter(function(l) { return l.trim(); });
+            var h = '<div class="sonoai-sources-container">';
+            lines.forEach(function(line) {
+                var parts = line.split('|').map(function(p) { return p.trim(); });
+                var name  = escapeHtml(parts[0]);
+                var url   = parts[1] || '';
+                
+                if (url && (url.startsWith('http') || url.startsWith('www'))) {
+                    h += '<a href="' + url + '" target="_blank" class="sonoai-source-pill">' + linkSvg + '<span>' + name + '</span></a>';
+                } else {
+                    h += '<span class="sonoai-source-pill"><span>' + name + '</span></span>';
+                }
+            });
+            h += '</div>';
+            return protect(h);
+        });
+
         // 4. Escape remaining raw HTML.
         var html = escapeHtml(text);
 

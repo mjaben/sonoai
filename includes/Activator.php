@@ -73,7 +73,7 @@ class Activator {
             $wpdb->query( "ALTER TABLE `$embeddings_table` ADD COLUMN `source_title` VARCHAR(255) DEFAULT NULL AFTER `source_url`" );
             $wpdb->query( "ALTER TABLE `$embeddings_table` ADD COLUMN `image_urls` LONGTEXT DEFAULT NULL AFTER `source_title`" );
         }
-        // Add mode + topic_slug columns if missing (v1.3.0)
+        // Add mode + topic_slug + country columns if missing (v1.3.0)
         if ( ! empty( $cols ) && ! in_array( 'mode', $cols, true ) ) {
             $wpdb->query( "ALTER TABLE `$embeddings_table` ADD COLUMN `mode` VARCHAR(20) NOT NULL DEFAULT 'guideline' AFTER `image_urls`" );
             $wpdb->query( "ALTER TABLE `$embeddings_table` ADD KEY `idx_mode` (`mode`)" );
@@ -81,6 +81,9 @@ class Activator {
         if ( ! empty( $cols ) && ! in_array( 'topic_slug', $cols, true ) ) {
             $wpdb->query( "ALTER TABLE `$embeddings_table` ADD COLUMN `topic_slug` VARCHAR(100) DEFAULT NULL AFTER `mode`" );
             $wpdb->query( "ALTER TABLE `$embeddings_table` ADD KEY `idx_topic_slug` (`topic_slug`(100))" );
+        }
+        if ( ! empty( $cols ) && ! in_array( 'country', $cols, true ) ) {
+            $wpdb->query( "ALTER TABLE `$embeddings_table` ADD COLUMN `country` VARCHAR(100) DEFAULT NULL AFTER `topic_slug`" );
         }
 
         // ── KB Items table ─────────────────────────────────────────────────────
@@ -114,6 +117,9 @@ class Activator {
         }
         if ( ! empty( $kb_cols ) && ! in_array( 'topic_id', $kb_cols, true ) ) {
             $wpdb->query( "ALTER TABLE `$kb_items_table` ADD COLUMN `topic_id` INT UNSIGNED DEFAULT NULL AFTER `mode`" );
+        }
+        if ( ! empty( $kb_cols ) && ! in_array( 'country', $kb_cols, true ) ) {
+            $wpdb->query( "ALTER TABLE `$kb_items_table` ADD COLUMN `country` VARCHAR(100) DEFAULT NULL AFTER `topic_id`" );
         }
 
         // ── Sessions table ────────────────────────────────────────────────────

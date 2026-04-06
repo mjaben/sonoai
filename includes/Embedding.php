@@ -83,7 +83,7 @@ class Embedding {
      * @param string[] $image_urls Optional array of image source URLs.
      * @return string|\WP_Error
      */
-    public static function insert( int $post_id, string $post_type, string $content, array $image_urls = [], string $mode = 'guideline', string $topic_slug = '' ) {
+    public static function insert( int $post_id, string $post_type, string $content, array $image_urls = [], string $mode = 'guideline', string $topic_slug = '', string $country = '', string $source_name = '', string $source_url = '' ) {
         $content = trim( $content );
         if ( empty( $content ) ) {
             return new \WP_Error( 'empty_content', __( 'Content is empty.', 'sonoai' ) );
@@ -127,8 +127,11 @@ class Embedding {
                     'post_modified_gmt' => $modified_gmt,
                     'mode'              => in_array( $mode, [ 'guideline', 'research' ], true ) ? $mode : 'guideline',
                     'topic_slug'        => $topic_slug ?: null,
+                    'country'           => $country ?: null,
+                    'source_name'       => $source_name ?: null,
+                    'source_url'        => $source_url ?: null,
                 ],
-                [ '%s', '%d', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s' ]
+                [ '%s', '%d', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' ]
             );
 
             // Cache in Redis for high-performance retrieval
@@ -138,6 +141,10 @@ class Embedding {
                     'post_type'  => $post_type,
                     'chunk_text' => $chunk_text,
                     'mode'       => $mode,
+                    'topic_slug' => $topic_slug,
+                    'country'    => $country,
+                    'source_name' => $source_name,
+                    'source_url'  => $source_url,
                     'image_urls' => $image_urls,
                 ]);
             }
@@ -234,7 +241,7 @@ class Embedding {
         }
 
         // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-        $rows = $wpdb->get_results( "SELECT id, post_id, post_type, chunk_text, embedding, image_urls FROM `$table` WHERE $where_sql", ARRAY_A );
+        $rows = $wpdb->get_results( "SELECT id, post_id, post_type, chunk_text, embedding, image_urls, country, topic_slug, source_name, source_url FROM `$table` WHERE $where_sql", ARRAY_A );
 
         if ( empty( $rows ) ) {
             return [];
@@ -259,6 +266,10 @@ class Embedding {
                 'post_id'    => (int) $row['post_id'],
                 'post_type'  => $row['post_type'],
                 'image_urls' => $row['image_urls'] ? json_decode( $row['image_urls'], true ) : [],
+                'country'    => $row['country'],
+                'topic_slug' => $row['topic_slug'],
+                'source_name' => $row['source_name'],
+                'source_url'  => $row['source_url'],
                 'similarity' => $sim,
             ];
 

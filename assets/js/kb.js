@@ -370,7 +370,14 @@
         var fileHint = document.getElementById('kb-pdf-filename');
         var submitBtn = document.getElementById('kb-pdf-submit');
         var notice   = document.getElementById('kb-pdf-notice');
+        var modeSel  = document.getElementById('kb-pdf-mode');
+
         if (!form) return;
+
+        if (modeSel) {
+            modeSel.addEventListener('change', function() { toggleMetadataFields('pdf'); });
+            toggleMetadataFields('pdf');
+        }
 
         if (fileInp) {
             fileInp.addEventListener('change', function () {
@@ -394,8 +401,15 @@
 
             var mSel = document.getElementById('kb-pdf-mode');
             var tSel = document.getElementById('kb-pdf-topic');
+            var cInp = document.getElementById('kb-pdf-country');
+            var snInp = document.getElementById('kb-pdf-source-name');
+            var suInp = document.getElementById('kb-pdf-source-url');
+
             if (mSel) fd.append('mode', mSel.value);
             if (tSel) fd.append('topic_id', tSel.value);
+            if (cInp) fd.append('country', cInp.value);
+            if (snInp) fd.append('source_name', snInp.value);
+            if (suInp) fd.append('source_url', suInp.value);
 
             $.ajax({
                 url:         ajax,
@@ -420,13 +434,20 @@
         });
     }
 
-    // ── URL Tab ───────────────────────────────────────────────────────────────
+    // ── Website URL Tab ───────────────────────────────────────────────────────
     function initUrlTab() {
         var form   = document.getElementById('kb-url-form');
         var input  = document.getElementById('kb-url-input');
         var submit = document.getElementById('kb-url-submit');
         var notice = document.getElementById('kb-url-notice');
+        var modeSel = document.getElementById('kb-url-mode');
+
         if (!form) return;
+
+        if (modeSel) {
+            modeSel.addEventListener('change', function() { toggleMetadataFields('url'); });
+            toggleMetadataFields('url');
+        }
 
         form.addEventListener('submit', function (e) {
             e.preventDefault();
@@ -446,8 +467,15 @@
             };
             var mSel = document.getElementById('kb-url-mode');
             var tSel = document.getElementById('kb-url-topic');
+            var cInp = document.getElementById('kb-url-country');
+            var snInp = document.getElementById('kb-url-source-name');
+            var suInp = document.getElementById('kb-url-source-url');
+
             if (mSel) payload.mode = mSel.value;
             if (tSel) payload.topic_id = tSel.value;
+            if (cInp) payload.country = cInp.value;
+            if (snInp) payload.source_name = snInp.value;
+            if (suInp) payload.source_url = suInp.value;
 
             $.post(ajax, payload, function (res) {
                 if (res.success) {
@@ -471,7 +499,14 @@
     function initTxtTab() {
         var btn    = document.getElementById('kb-txt-submit');
         var notice = document.getElementById('kb-txt-notice');
+        var modeSel = document.getElementById('kb-txt-mode');
+
         if (!btn) return;
+
+        if (modeSel) {
+            modeSel.addEventListener('change', function() { toggleMetadataFields('txt'); });
+            toggleMetadataFields('txt');
+        }
 
         btn.addEventListener('click', function () {
             // Fetch content from TinyMCE or plain textarea.
@@ -504,8 +539,15 @@
 
             var mSel = document.getElementById('kb-txt-mode');
             var tSel = document.getElementById('kb-txt-topic');
+            var cInp = document.getElementById('kb-txt-country');
+            var snInp = document.getElementById('kb-txt-source-name');
+            var suInp = document.getElementById('kb-txt-source-url');
+
             if (mSel) data.mode = mSel.value;
             if (tSel) data.topic_id = tSel.value;
+            if (cInp) data.country = cInp.value;
+            if (snInp) data.source_name = snInp.value;
+            if (suInp) data.source_url = suInp.value;
 
             $.post(ajax, data, function (res) {
                 if (res.success) {
@@ -677,6 +719,30 @@
                 submitBtn.textContent = originalText;
             });
         });
+    }
+
+    /**
+     * Toggles field visibility based on Guideline vs Research mode
+     */
+    function toggleMetadataFields(prefix) {
+        var modeSel = document.getElementById('kb-' + prefix + '-mode');
+        if (!modeSel) return;
+
+        var isResearch = modeSel.value === 'research';
+        
+        // Find Groups
+        var form = document.getElementById('kb-' + prefix + '-form');
+        if (!form) return;
+
+        var topicGroup = form.querySelector('.kb-field-topic');
+        var countryGroup = form.querySelector('.kb-field-country');
+
+        if (topicGroup) {
+            topicGroup.style.display = isResearch ? 'block' : 'none';
+        }
+        if (countryGroup) {
+            countryGroup.style.display = isResearch ? 'none' : 'block';
+        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

@@ -497,17 +497,39 @@ class KnowledgeBase {
         <div class="kb-card">
             <h3 class="kb-card-title">📄 <?php esc_html_e( 'Upload PDF', 'sonoai' ); ?></h3>
             <form id="kb-pdf-form" enctype="multipart/form-data">
-                <div class="kb-upload-meta" style="margin-bottom: 12px; display: flex; gap: 10px;">
-                    <select name="mode" id="kb-pdf-mode" class="kb-select-sm" required>
-                        <option value="guideline"><?php esc_html_e( 'Guideline', 'sonoai' ); ?></option>
-                        <option value="research"><?php esc_html_e( 'Research', 'sonoai' ); ?></option>
-                    </select>
-                    <select name="topic_id" id="kb-pdf-topic" class="kb-select-sm">
-                        <option value=""><?php esc_html_e( '— No Topic —', 'sonoai' ); ?></option>
-                        <?php foreach ( self::get_topics() as $t ) : ?>
-                            <option value="<?php echo esc_attr( $t->id ); ?>"><?php echo esc_html( $t->name ); ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                <div class="kb-training-fields">
+                    <div class="kb-field-row">
+                        <div class="kb-field-group">
+                            <label for="kb-pdf-mode"><?php esc_html_e( 'Training Mode', 'sonoai' ); ?></label>
+                            <select name="mode" id="kb-pdf-mode" class="kb-select-sm" required>
+                                <option value="guideline"><?php esc_html_e( 'Guideline', 'sonoai' ); ?></option>
+                                <option value="research"><?php esc_html_e( 'Research', 'sonoai' ); ?></option>
+                            </select>
+                        </div>
+                        <div class="kb-field-group kb-field-topic">
+                            <label for="kb-pdf-topic"><?php esc_html_e( 'Topic', 'sonoai' ); ?></label>
+                            <select name="topic_id" id="kb-pdf-topic" class="kb-select-sm">
+                                <option value=""><?php esc_html_e( '— No Topic —', 'sonoai' ); ?></option>
+                                <?php foreach ( self::get_topics() as $t ) : ?>
+                                    <option value="<?php echo esc_attr( $t->id ); ?>"><?php echo esc_html( $t->name ); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="kb-field-group kb-field-country">
+                            <label for="kb-pdf-country"><?php esc_html_e( 'Country', 'sonoai' ); ?></label>
+                            <input type="text" name="country" id="kb-pdf-country" class="kb-input-sm" placeholder="<?php esc_attr_e( 'e.g. UK, USA', 'sonoai' ); ?>">
+                        </div>
+                    </div>
+                    <div class="kb-field-row">
+                        <div class="kb-field-group">
+                            <label for="kb-pdf-source-name"><?php esc_html_e( 'Source Name', 'sonoai' ); ?></label>
+                            <input type="text" name="source_name" id="kb-pdf-source-name" class="kb-input-sm" placeholder="<?php esc_attr_e( 'e.g. Fetal Care Protocol', 'sonoai' ); ?>">
+                        </div>
+                        <div class="kb-field-group">
+                            <label for="kb-pdf-source-url"><?php esc_html_e( 'Source URL', 'sonoai' ); ?></label>
+                            <input type="url" name="source_url" id="kb-pdf-source-url" class="kb-input-sm" placeholder="https://...">
+                        </div>
+                    </div>
                 </div>
                 <div class="kb-upload-row">
                     <label class="kb-file-btn" for="kb-pdf-file">
@@ -544,17 +566,39 @@ class KnowledgeBase {
         <div class="kb-card">
             <h3 class="kb-card-title">🌐 <?php esc_html_e( 'Enter Website URL', 'sonoai' ); ?></h3>
             <form id="kb-url-form">
-                <div class="kb-upload-meta" style="margin-bottom: 12px; display: flex; gap: 10px;">
-                    <select name="mode" id="kb-url-mode" class="kb-select-sm" required>
-                        <option value="guideline"><?php esc_html_e( 'Guideline', 'sonoai' ); ?></option>
-                        <option value="research"><?php esc_html_e( 'Research', 'sonoai' ); ?></option>
-                    </select>
-                    <select name="topic_id" id="kb-url-topic" class="kb-select-sm">
-                        <option value=""><?php esc_html_e( '— No Topic —', 'sonoai' ); ?></option>
-                        <?php foreach ( self::get_topics() as $t ) : ?>
-                            <option value="<?php echo esc_attr( $t->id ); ?>"><?php echo esc_html( $t->name ); ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                <div class="kb-training-fields">
+                    <div class="kb-field-row">
+                        <div class="kb-field-group">
+                            <label for="kb-url-mode"><?php esc_html_e( 'Training Mode', 'sonoai' ); ?></label>
+                            <select name="mode" id="kb-url-mode" class="kb-select-sm" required>
+                                <option value="guideline"><?php esc_html_e( 'Guideline', 'sonoai' ); ?></option>
+                                <option value="research"><?php esc_html_e( 'Research', 'sonoai' ); ?></option>
+                            </select>
+                        </div>
+                        <div class="kb-field-group kb-field-topic">
+                            <label for="kb-url-topic"><?php esc_html_e( 'Topic', 'sonoai' ); ?></label>
+                            <select name="topic_id" id="kb-url-topic" class="kb-select-sm">
+                                <option value=""><?php esc_html_e( '— No Topic —', 'sonoai' ); ?></option>
+                                <?php foreach ( self::get_topics() as $t ) : ?>
+                                    <option value="<?php echo esc_attr( $t->id ); ?>"><?php echo esc_html( $t->name ); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="kb-field-group kb-field-country">
+                            <label for="kb-url-country"><?php esc_html_e( 'Country', 'sonoai' ); ?></label>
+                            <input type="text" name="country" id="kb-url-country" class="kb-input-sm" placeholder="<?php esc_attr_e( 'e.g. UK, USA', 'sonoai' ); ?>">
+                        </div>
+                    </div>
+                    <div class="kb-field-row">
+                        <div class="kb-field-group">
+                            <label for="kb-url-source-name"><?php esc_html_e( 'Source Name', 'sonoai' ); ?></label>
+                            <input type="text" name="source_name" id="kb-url-source-name" class="kb-input-sm" placeholder="<?php esc_attr_e( 'e.g. Fetal Care Protocol', 'sonoai' ); ?>">
+                        </div>
+                        <div class="kb-field-group">
+                            <label for="kb-url-source-url"><?php esc_html_e( 'Source URL', 'sonoai' ); ?></label>
+                            <input type="url" name="source_url" id="kb-url-source-url" class="kb-input-sm" placeholder="https://...">
+                        </div>
+                    </div>
                 </div>
                 <div class="kb-upload-row">
                     <input type="url" id="kb-url-input" class="kb-url-input"
@@ -610,51 +654,82 @@ class KnowledgeBase {
                    class="kb-cancel-edit-link">← <?php esc_html_e( 'Cancel edit', 'sonoai' ); ?></a>
             <?php endif; ?>
 
-            <div class="kb-upload-meta" style="margin-bottom: 12px; display: flex; gap: 10px; margin-top: 10px;">
-                <select name="mode" id="kb-txt-mode" class="kb-select-sm" required>
-                    <option value="guideline" <?php selected( $editing_item->mode ?? 'guideline', 'guideline' ); ?>><?php esc_html_e( 'Guideline', 'sonoai' ); ?></option>
-                    <option value="research" <?php selected( $editing_item->mode ?? 'guideline', 'research' ); ?>><?php esc_html_e( 'Research', 'sonoai' ); ?></option>
-                </select>
-                <select name="topic_id" id="kb-txt-topic" class="kb-select-sm">
-                    <option value=""><?php esc_html_e( '— No Topic —', 'sonoai' ); ?></option>
-                    <?php foreach ( self::get_topics() as $t ) : ?>
-                        <option value="<?php echo esc_attr( $t->id ); ?>" <?php selected( $editing_item->topic_id ?? null, $t->id ); ?>><?php echo esc_html( $t->name ); ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
+            <form id="kb-txt-form">
+                <div class="kb-training-fields">
+                    <div class="kb-field-row">
+                        <div class="kb-field-group">
+                            <label for="kb-txt-mode"><?php esc_html_e( 'Training Mode', 'sonoai' ); ?></label>
+                            <select name="mode" id="kb-txt-mode" class="kb-select-sm" required>
+                                <option value="guideline" <?php selected( $editing_item->mode ?? 'guideline', 'guideline' ); ?>><?php esc_html_e( 'Guideline', 'sonoai' ); ?></option>
+                                <option value="research" <?php selected( $editing_item->mode ?? 'guideline', 'research' ); ?>><?php esc_html_e( 'Research', 'sonoai' ); ?></option>
+                            </select>
+                        </div>
+                        <div class="kb-field-group kb-field-topic" style="display:none;">
+                            <label for="kb-txt-topic"><?php esc_html_e( 'Topic', 'sonoai' ); ?></label>
+                            <select name="topic_id" id="kb-txt-topic" class="kb-select-sm">
+                                <option value=""><?php esc_html_e( '— No Topic —', 'sonoai' ); ?></option>
+                                <?php foreach ( self::get_topics() as $t ) : ?>
+                                    <option value="<?php echo esc_attr( $t->id ); ?>" <?php selected( $editing_item->topic_id ?? null, $t->id ); ?>><?php echo esc_html( $t->name ); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="kb-field-group kb-field-country">
+                            <label for="kb-txt-country"><?php esc_html_e( 'Country', 'sonoai' ); ?></label>
+                            <input type="text" name="country" id="kb-txt-country" class="kb-input-sm" 
+                                   value="<?php echo esc_attr( $editing_item->country ?? '' ); ?>"
+                                   placeholder="<?php esc_attr_e( 'e.g. UK, USA', 'sonoai' ); ?>">
+                        </div>
+                    </div>
+                    <div class="kb-field-row">
+                        <div class="kb-field-group">
+                            <label for="kb-txt-source-name"><?php esc_html_e( 'Source Name', 'sonoai' ); ?></label>
+                            <input type="text" name="source_name" id="kb-txt-source-name" class="kb-input-sm" 
+                                   value="<?php echo esc_attr( $editing_item->source_title ?? '' ); ?>"
+                                   placeholder="<?php esc_attr_e( 'e.g. Fetal Care Protocol', 'sonoai' ); ?>">
+                        </div>
+                        <div class="kb-field-group">
+                            <label for="kb-txt-source-url"><?php esc_html_e( 'Source URL', 'sonoai' ); ?></label>
+                            <input type="url" name="source_url" id="kb-txt-source-url" class="kb-input-sm" 
+                                   value="<?php echo esc_attr( $editing_item->source_url ?? '' ); ?>"
+                                   placeholder="https://...">
+                        </div>
+                    </div>
+                </div>
 
-            <div id="kb-txt-editor-wrap">
-                <?php
-                wp_editor(
-                    $editor_content,
-                    'sonoai_kb_txt_editor',
-                    [
-                        'textarea_name' => 'sonoai_kb_txt_content',
-                        'media_buttons' => true,
-                        'teeny'         => false,
-                        'quicktags'     => true,
-                        'tinymce'       => true,
-                        'editor_height' => 250,
-                    ]
-                );
-                ?>
-            </div>
+                <div id="kb-txt-editor-wrap">
+                    <?php
+                    wp_editor(
+                        $editor_content,
+                        'sonoai_kb_txt_editor',
+                        [
+                            'textarea_name' => 'sonoai_kb_txt_content',
+                            'media_buttons' => true,
+                            'teeny'         => false,
+                            'quicktags'     => true,
+                            'tinymce'       => true,
+                            'editor_height' => 250,
+                        ]
+                    );
+                    ?>
+                </div>
 
-            <?php if ( $editing_item ) : ?>
-                <input type="hidden" id="kb-edit-knowledge-id" value="<?php echo esc_attr( $editing_item->knowledge_id ); ?>">
-            <?php endif; ?>
+                <?php if ( $editing_item ) : ?>
+                    <input type="hidden" id="kb-edit-knowledge-id" value="<?php echo esc_attr( $editing_item->knowledge_id ); ?>">
+                <?php endif; ?>
 
-            <div class="kb-txt-footer">
-                <button type="button" id="kb-txt-submit" class="kb-btn-primary" data-action="<?php echo esc_attr( $form_action ); ?>">
-                    <span class="kb-btn-text">
-                        <?php echo $editing_item
-                            ? esc_html__( 'Update Knowledge Base', 'sonoai' )
-                            : esc_html__( 'Add to Knowledge Base', 'sonoai' ); ?>
-                    </span>
-                    <span class="kb-spinner" style="display:none;"></span>
-                </button>
-            </div>
-            <p id="kb-txt-notice" class="kb-notice" style="display:none;"></p>
+                <div class="kb-txt-footer">
+                    <button type="button" id="kb-txt-submit" class="kb-btn-primary" data-action="<?php echo esc_attr( $form_action ); ?>">
+                        <span class="kb-btn-text">
+                            <?php echo $editing_item
+                                ? esc_html__( 'Update Knowledge Base', 'sonoai' )
+                                : esc_html__( 'Add to Knowledge Base', 'sonoai' ); ?>
+                        </span>
+                        <span class="kb-spinner" style="display:none;"></span>
+                    </button>
+                </div>
+                <p id="kb-txt-notice" class="kb-notice" style="display:none;"></p>
+            </form>
+        </div>
         </div>
 
         <?php
