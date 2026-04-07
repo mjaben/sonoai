@@ -222,6 +222,45 @@ class KnowledgeBase {
                 <?php endif; ?>
 
             </div><!-- .kb-panel-wrap -->
+            
+            <!-- Quick Edit Modal -->
+            <div id="kb-quick-edit-modal" class="kb-modal" style="display:none;">
+                <div class="kb-modal-content">
+                    <div class="kb-modal-header">
+                        <h3><?php esc_html_e( 'Quick Edit KB Item', 'sonoai' ); ?></h3>
+                        <span class="kb-modal-close" id="qe-close-btn">&times;</span>
+                    </div>
+                    <div class="kb-modal-body">
+                        <input type="hidden" id="qe-post-id" value="">
+                        <input type="hidden" id="qe-knowledge-id" value="">
+                        <input type="hidden" id="qe-type" value="wp">
+                        <div class="kb-form-row">
+                            <label><?php esc_html_e('Mode', 'sonoai'); ?></label>
+                            <select id="qe-mode">
+                                <option value="guideline"><?php esc_html_e('Guideline', 'sonoai'); ?></option>
+                                <option value="research"><?php esc_html_e('Research', 'sonoai'); ?></option>
+                            </select>
+                        </div>
+                        <div class="kb-form-row" id="qe-topic-row">
+                            <label><?php esc_html_e('Topic', 'sonoai'); ?></label>
+                            <select id="qe-topic">
+                                <option value="0"><?php esc_html_e('— None —', 'sonoai'); ?></option>
+                                <?php foreach ( self::get_topics() as $t ) : ?>
+                                    <option value="<?php echo esc_attr( $t->id ); ?>"><?php echo esc_html( $t->name ); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="kb-form-row" id="qe-country-row" style="display:none;">
+                            <label><?php esc_html_e('Country', 'sonoai'); ?></label>
+                            <input type="text" id="qe-country" placeholder="<?php esc_attr_e('e.g. UK, USA', 'sonoai'); ?>">
+                        </div>
+                    </div>
+                        <div class="kb-modal-footer">
+                            <button type="button" id="qe-save-btn" class="kb-btn-primary"><?php esc_html_e('Save Changes', 'sonoai'); ?></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div><!-- .kb-wrap -->
         <?php
     }
@@ -448,38 +487,9 @@ class KnowledgeBase {
             </table>
             <div class="kb-pagination" id="kb-wp-pagination"></div>
             
-            <!-- Quick Edit Modal -->
-            <div id="kb-quick-edit-modal" class="kb-modal" style="display:none;">
-                <div class="kb-modal-content">
-                    <div class="kb-modal-header">
-                        <h3><?php esc_html_e( 'Quick Edit KB Item', 'sonoai' ); ?></h3>
-                        <span class="kb-modal-close" id="qe-close-btn">&times;</span>
-                    </div>
-                    <div class="kb-modal-body">
-                        <input type="hidden" id="qe-post-id" value="">
-                        <div class="kb-form-row">
-                            <label><?php esc_html_e('Mode', 'sonoai'); ?></label>
-                            <select id="qe-mode">
-                                <option value="guideline"><?php esc_html_e('Guideline', 'sonoai'); ?></option>
-                                <option value="research"><?php esc_html_e('Research', 'sonoai'); ?></option>
-                            </select>
-                        </div>
-                        <div class="kb-form-row">
-                            <label><?php esc_html_e('Topic', 'sonoai'); ?></label>
-                            <select id="qe-topic">
-                                <option value="0"><?php esc_html_e('— None —', 'sonoai'); ?></option>
-                                <?php foreach ( self::get_topics() as $t ) : ?>
-                                    <option value="<?php echo esc_attr( $t->id ); ?>"><?php echo esc_html( $t->name ); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="kb-modal-footer" style="margin-top:20px; text-align:right;">
-                        <button type="button" id="qe-save-btn" class="kb-btn"><?php esc_html_e('Save Changes', 'sonoai'); ?></button>
-                    </div>
-                </div>
-            </div>
             
+        </div>
+        <input type="hidden" id="kb-current-pt" value="<?php echo esc_attr( $current_pt ); ?>">
         </div>
         <input type="hidden" id="kb-current-pt" value="<?php echo esc_attr( $current_pt ); ?>">
         <?php

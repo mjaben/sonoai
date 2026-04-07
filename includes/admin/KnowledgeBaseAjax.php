@@ -141,18 +141,24 @@ class KnowledgeBaseAjax {
     public function handle_update_meta() {
         $this->check( 'sonoai_kb_update_meta' );
 
-        $post_id  = isset( $_POST['post_id'] ) ? intval( $_POST['post_id'] ) : 0;
-        $type     = isset( $_POST['type'] ) ? sanitize_text_field( wp_unslash( $_POST['type'] ) ) : 'wp';
-        $mode     = isset( $_POST['mode'] ) ? sanitize_text_field( wp_unslash( $_POST['mode'] ) ) : 'guideline';
-        $topic_id = isset( $_POST['topic_id'] ) ? intval( $_POST['topic_id'] ) : 0;
+        $knowledge_id = isset( $_POST['knowledge_id'] ) ? sanitize_key( $_POST['knowledge_id'] ) : '';
+        $post_id      = isset( $_POST['post_id'] ) ? intval( $_POST['post_id'] ) : 0;
+        $type         = isset( $_POST['type'] ) ? sanitize_text_field( wp_unslash( $_POST['type'] ) ) : 'wp';
+        $mode         = isset( $_POST['mode'] ) ? sanitize_text_field( wp_unslash( $_POST['mode'] ) ) : 'guideline';
+        $country      = isset( $_POST['country'] ) ? sanitize_text_field( wp_unslash( $_POST['country'] ) ) : '';
 
-        if ( ! $post_id ) {
-            wp_send_json_error( [ 'message' => __( 'Invalid post ID.', 'sonoai' ) ] );
+        if ( ! $knowledge_id && ! $post_id ) {
+            wp_send_json_error( [ 'message' => __( 'Missing item identifier.', 'sonoai' ) ] );
         }
 
         global $wpdb;
         $table_name = $this->kb_table();
         $emb_table  = $this->emb_table();
+
+        // Topic should only be set in research mode
+        if ( $mode === 'guideline' ) {
+            $topic_id = 0;
+        }
 
         // Get topic slug for embedding update
         $topic_slug = null;
@@ -163,28 +169,38 @@ class KnowledgeBaseAjax {
             }
         }
 
+        $where = [];
+        $where_format = [];
+        if ( $knowledge_id ) {
+            $where['knowledge_id'] = $knowledge_id;
+            $where_format[] = '%s';
+        } else {
+            $where['post_id'] = $post_id;
+            $where_format[]  = '%d';
+            $where['type']    = $type;
+            $where_format[]  = '%s';
+        }
+
         // Update KB items table
         $updated = $wpdb->update(
             $table_name,
             [
                 'mode'     => $mode,
-                'topic_id' => $topic_id ?: null
+                'topic_id' => $topic_id ?: null,
+                'country'  => $country
             ],
-            [
-                'post_id' => $post_id,
-                'type'    => $type
-            ],
-            [ '%s', '%d' ],
-            [ '%d', '%s' ]
+            $where,
+            [ '%s', '%d', '%s' ],
+            $where_format
         );
 
         // Also update embeddings table for correct RAG filtering
         $wpdb->update(
             $emb_table,
             [ 'mode' => $mode, 'topic_slug' => $topic_slug ],
-            [ 'post_id' => $post_id, 'type' => $type ],
+            $where,
             [ '%s', '%s' ],
-            [ '%d', '%s' ]
+            $where_format
         );
 
         if ( $updated === false ) {
@@ -311,24 +327,7 @@ class KnowledgeBaseAjax {
                 kb.embedding_model as model,
                 kb.mode as mode,
                 kb.topic_id as topic_id,
-                t.name as topic_name
-            FROM $posts_tbl p
-            LEFT JOIN $kb_tbl kb ON kb.post_id = p.ID AND kb.type = 'wp'
-            LEFT JOIN $topics_tbl t ON t.id = kb.topic_id
-            WHERE $where
-            ORDER BY p.post_date DESC
-        ";
-
-        $query = "
-            SELECT 
-                p.ID as id, 
-                p.post_title as title, 
-                p.post_modified_gmt as last_modified,
-                kb.created_at as kb_added,
-                kb.provider as provider,
-                kb.embedding_model as model,
-                kb.mode as mode,
-                kb.topic_id as topic_id,
+                kb.country as country,
                 t.name as topic_name
             FROM $posts_tbl p
             LEFT JOIN $kb_tbl kb ON kb.post_id = p.ID AND kb.type = 'wp'
@@ -413,8 +412,7 @@ class KnowledgeBaseAjax {
             if ( $mode === 'research' && $topic_id ) {
                 $where .= $wpdb->prepare( " AND kb.topic_id = %d", $topic_id );
             } elseif ( $mode === 'guideline' && $country ) {
-                $like_country = '%' . $wpdb->esc_like( $country ) . '%';
-                $where .= $wpdb->prepare( " AND kb.country LIKE %s", $like_country );
+                $where .= $wpdb->prepare( " AND kb.country LIKE %s", '%' . $wpdb->esc_like( $country ) . '%' );
             }
         }
 

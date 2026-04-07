@@ -37,7 +37,109 @@
         initDeleteButtons();
         initViewModal();
         initTopicsTab();
+        initQuickEditModal();
     });
+
+    /**
+     * Shared Clinical Meta Helpers
+     */
+    function toggleQuickEditFields() {
+        var qeMode = document.getElementById('qe-mode');
+        if (!qeMode) return;
+        var mode = qeMode.value;
+        var tRow = document.getElementById('qe-topic-row');
+        var cRow = document.getElementById('qe-country-row');
+        if (tRow) tRow.style.display = (mode === 'research') ? 'block' : 'none';
+        if (cRow) cRow.style.display = (mode === 'guideline') ? 'block' : 'none';
+    }
+
+    function toggleMetadataFields(tab) {
+        var form = document.getElementById('kb-' + tab + '-form');
+        if (!form) return;
+        var modeSel = document.getElementById('kb-' + tab + '-mode');
+        if (!modeSel) return;
+        
+        var mode = modeSel.value;
+        var topicGroup = form.querySelector('.kb-field-topic');
+        var countryGroup = form.querySelector('.kb-field-country');
+        
+        if (topicGroup) topicGroup.style.display = (mode === 'research' ? 'block' : 'none');
+        if (countryGroup) countryGroup.style.display = (mode === 'guideline' ? 'block' : 'none');
+    }
+
+    function initQuickEditModal() {
+        var qeModal = document.getElementById('kb-quick-edit-modal');
+        var qeClose = document.getElementById('qe-close-btn');
+        var qeSave  = document.getElementById('qe-save-btn');
+        var qeModeSelect = document.getElementById('qe-mode');
+
+        if (!qeModal) return;
+
+        if (qeClose) {
+            qeClose.addEventListener('click', function () {
+                qeModal.style.display = 'none';
+            });
+        }
+
+        window.addEventListener('click', function (e) {
+            if (e.target === qeModal) qeModal.style.display = 'none';
+        });
+
+        if (qeModeSelect) {
+            qeModeSelect.addEventListener('change', toggleQuickEditFields);
+        }
+
+        if (qeSave) {
+            qeSave.addEventListener('click', function () {
+                var pid   = document.getElementById('qe-post-id').value;
+                var kid   = document.getElementById('qe-knowledge-id').value;
+                var type  = document.getElementById('qe-type').value;
+                var mode  = document.getElementById('qe-mode').value;
+                var topic = document.getElementById('qe-topic').value;
+                var country = document.getElementById('qe-country').value;
+                var btnText = qeSave.innerText;
+
+                qeSave.innerText = 'Saving…';
+                qeSave.disabled = true;
+
+                var payload = {
+                    action: 'sonoai_kb_update_meta',
+                    nonce: nonces.updateMeta,
+                    post_id: pid,
+                    knowledge_id: kid,
+                    type: type,
+                    mode: mode,
+                    topic_id: topic,
+                    country: country
+                };
+
+                $.post(ajax, payload, function(res) {
+                    qeModal.style.display = 'none';
+                    qeSave.innerText = btnText;
+                    qeSave.disabled = false;
+                    // Logic to find current tab and reload
+                    var activeTab = document.querySelector('.kb-tab-active');
+                    if (activeTab) {
+                        var tabId = activeTab.getAttribute('href').split('kb_tab=')[1] || 'overview';
+                        if (tabId === 'overview') {
+                            loadPosts(1, '');
+                        } else if (tabId === 'pdf' || tabId === 'url' || tabId === 'txt') {
+                            if (window.loadItems) window.loadItems(1, '');
+                            else location.reload();
+                        } else {
+                            location.reload();
+                        }
+                    } else {
+                        location.reload();
+                    }
+                }).fail(function() {
+                    alert('Error saving meta');
+                    qeSave.innerText = btnText;
+                    qeSave.disabled = false;
+                });
+            });
+        }
+    }
 
     /**
      * Safe open for <dialog> elements
@@ -169,16 +271,22 @@
 
                 if (p.kb_status === 'added') {
                     badgeHtml = '<span class="kb-badge-added">Added</span>';
-                    btnsHtml  = '<button type="button" class="kb-add-btn kb-quick-edit-btn" data-post-id="' + p.id + '" data-mode="' + p.raw_mode + '" data-topic="' + p.topic_id + '">Quick Edit</button>'
-                              + '<button type="button" class="kb-add-btn kb-remove-btn" data-post-id="' + p.id + '">Remove</button>';
+                    btnsHtml  = '<button type="button" class="kb-btn-sm kb-quick-edit-btn" data-post-id="' + p.id + '" data-mode="' + p.raw_mode + '" data-topic="' + p.topic_id + '" data-country="' + (p.country || '') + '">Quick Edit</button>'
+                              + '<button type="button" class="kb-btn-sm kb-remove-btn" data-post-id="' + p.id + '">Remove</button>';
                 } else if (p.kb_status === 'update') {
                     badgeHtml = '<span class="kb-badge-update">Requires Update</span>';
-                    btnsHtml  = '<button type="button" class="kb-add-btn kb-update-btn" data-post-id="' + p.id + '">Update</button>'
-                              + '<button type="button" class="kb-add-btn kb-quick-edit-btn" data-post-id="' + p.id + '" data-mode="' + p.raw_mode + '" data-topic="' + p.topic_id + '">Quick Edit</button>'
-                              + '<button type="button" class="kb-add-btn kb-remove-btn" data-post-id="' + p.id + '">Remove</button>';
+                    btnsHtml  = '<button type="button" class="kb-btn-sm kb-update-btn" data-post-id="' + p.id + '">Update</button>'
+                              + '<button type="button" class="kb-btn-sm kb-quick-edit-btn" data-post-id="' + p.id + '" data-mode="' + p.raw_mode + '" data-topic="' + p.topic_id + '" data-country="' + (p.country || '') + '">Quick Edit</button>'
+                              + '<button type="button" class="kb-btn-sm kb-remove-btn" data-post-id="' + p.id + '">Remove</button>';
                 } else {
                     badgeHtml = '<span class="kb-badge-not-added">Not Added</span>';
                     btnsHtml  = '<button type="button" class="kb-add-btn" data-post-id="' + p.id + '"><span class="kb-btn-text">Add to KB</span><span class="kb-spinner" style="display:none"></span></button>';
+                }
+
+                if (p.kb_status === 'added' || p.kb_status === 'update') {
+                    //btnsHtml already includes Quick Edit if added
+                } else {
+                    // Optional: maybe allow quick edit even if not added? Probably not needed.
                 }
 
                 html += '<tr data-post-id="' + p.id + '">'
@@ -195,24 +303,32 @@
             });
             tbody.innerHTML = html;
 
-            // Bind add/remove buttons.
-            tbody.querySelectorAll('.kb-add-btn').forEach(function (btn) {
+            // Bind add/remove/update buttons explicitly
+            tbody.querySelectorAll('.kb-add-btn, .kb-remove-btn, .kb-update-btn').forEach(function (btn) {
                 btn.addEventListener('click', function () {
-                    var pid     = this.dataset.postId;
+                    var pid      = this.dataset.postId;
                     var isRemove = this.classList.contains('kb-remove-btn');
+                    var isUpdate = this.classList.contains('kb-update-btn');
                     var spinner  = this.querySelector('.kb-spinner');
                     var btnText  = this.querySelector('.kb-btn-text');
+                    
                     this.disabled = true;
                     if (spinner) spinner.style.display = 'inline-block';
                     if (btnText) btnText.style.opacity  = '0.5';
 
+                    var action = 'sonoai_kb_add_post';
+                    var nonce  = nonces.addPost;
+                    if (isRemove) {
+                        action = 'sonoai_kb_remove_post';
+                        nonce  = nonces.removePost;
+                    }
+
                     var payload = {
-                        action:  isRemove ? 'sonoai_kb_remove_post' : 'sonoai_kb_add_post',
-                        nonce:   isRemove ? nonces.removePost : nonces.addPost,
+                        action:  action,
+                        nonce:   nonce,
                         post_id: pid,
                     };
                     if (!isRemove) {
-                        var mSel = document.getElementById('kb-wp-bulk-mode'); // Should use a different ID if possible, but let's fall back to wp-mode for bulk
                         var bSelItemM = document.getElementById('kb-wp-mode');
                         if (bSelItemM) payload.mode = bSelItemM.value;
                         
@@ -235,67 +351,29 @@
             tbody.querySelectorAll('.kb-quick-edit-btn').forEach(function (btn) {
                 btn.addEventListener('click', function () {
                     var pid = this.dataset.postId;
-                    var mode = this.dataset.mode;
-                    var topic = this.dataset.topic;
-
-                    document.getElementById('qe-post-id').value = pid;
-                    var qeMode = document.getElementById('qe-mode');
-                    if(qeMode) {
-                        qeMode.value = mode || 'guideline';
-                    }
-                    var qeTopic = document.getElementById('qe-topic');
-                    if(qeTopic) {
-                        qeTopic.value = topic || 0;
-                    }
                     var modal = document.getElementById('kb-quick-edit-modal');
                     if(modal) {
+                        document.getElementById('qe-post-id').value = pid;
+                        document.getElementById('qe-knowledge-id').value = '';
+                        document.getElementById('qe-type').value = 'wp';
+                        
+                        var qeMode = document.getElementById('qe-mode');
+                        if (qeMode) qeMode.value = this.dataset.mode || 'guideline';
+                        
+                        var qeTopic = document.getElementById('qe-topic');
+                        if (qeTopic) qeTopic.value = this.dataset.topic || 0;
+
+                        var qeCountry = document.getElementById('qe-country');
+                        if (qeCountry) qeCountry.value = this.dataset.country || '';
+
+                        toggleQuickEditFields();
+                        
                         modal.style.display = 'flex';
                     }
                 });
             });
 
             renderPagination(data, pagDiv);
-        }
-
-        // Quick Edit Modal events
-        var qeModal = document.getElementById('kb-quick-edit-modal');
-        var qeClose = document.getElementById('qe-close-btn');
-        var qeSave  = document.getElementById('qe-save-btn');
-        if (qeModal && qeClose) {
-            qeClose.addEventListener('click', function() {
-                qeModal.style.display = 'none';
-            });
-        }
-        if (qeSave) {
-            qeSave.addEventListener('click', function() {
-                var pid = document.getElementById('qe-post-id').value;
-                var mode = document.getElementById('qe-mode').value;
-                var topic = document.getElementById('qe-topic').value;
-
-                var btnText = this.innerText;
-                this.innerText = 'Saving...';
-                this.disabled = true;
-                
-                var payload = {
-                    action: 'sonoai_kb_update_meta',
-                    nonce: nonces.updateMeta, // Corrected from nonces.topics
-                    post_id: pid,
-                    type: 'wp',
-                    mode: mode,
-                    topic_id: topic
-                };
-
-                $.post(ajax, payload, function(res) {
-                    qeModal.style.display = 'none';
-                    qeSave.innerText = btnText;
-                    qeSave.disabled = false;
-                    loadPosts(currentPage, currentSearch);
-                }).fail(function() {
-                    alert('Error saving meta');
-                    qeSave.innerText = btnText;
-                    qeSave.disabled = false;
-                });
-            });
         }
 
         function renderPagination(data, container) {
@@ -339,6 +417,19 @@
                 var q = this.value;
                 searchTimer = setTimeout(function () { loadPosts(1, q); }, 400);
             });
+        }
+
+        // Quick Edit helper
+        function toggleQuickEditFields() {
+            var mode = document.getElementById('qe-mode').value;
+            var tRow = document.getElementById('qe-topic-row');
+            var cRow = document.getElementById('qe-country-row');
+            if (tRow) tRow.style.display = (mode === 'research') ? 'block' : 'none';
+            if (cRow) cRow.style.display = (mode === 'guideline') ? 'block' : 'none';
+        }
+        var qeModeSelect = document.getElementById('qe-mode');
+        if (qeModeSelect) {
+            qeModeSelect.addEventListener('change', toggleQuickEditFields);
         }
 
         // Mode and Topic Filters
@@ -535,6 +626,7 @@
                 if (type === 'txt') {
                     sourceHtml = '<span class="kb-content-preview">' + escHtml(it.source_title) + '</span>';
                     actionsHtml = '<button type="button" class="kb-action-link kb-view-txt-btn" data-content="' + escHtml(it.raw_content) + '">👁 View</button>';
+                    actionsHtml += '<button type="button" class="kb-action-link kb-full-edit-btn" data-knowledge-id="' + it.knowledge_id + '">📝 Edit</button>';
                 } else if (type === 'pdf') {
                     sourceHtml = '<a href="' + it.source_url + '" target="_blank">' + escHtml(it.source_title) + '</a>';
                     actionsHtml = '<a href="' + it.source_url + '" target="_blank" class="kb-action-link">👁 View PDF</a>';
@@ -543,6 +635,7 @@
                     actionsHtml = '<a href="' + it.source_url + '" target="_blank" class="kb-action-link">👁 View Source</a>';
                 }
 
+                actionsHtml += '<button type="button" class="kb-action-link kb-quick-edit-btn" data-knowledge-id="' + it.knowledge_id + '" data-mode="' + it.raw_mode + '" data-topic="' + it.topic_id + '" data-country="' + (it.country || '') + '">⚙️ Meta</button>';
                 actionsHtml += '<button type="button" class="kb-action-link kb-delete-btn" data-knowledge-id="' + it.knowledge_id + '">🗑 Delete</button>';
 
                 html += '<tr data-knowledge-id="' + it.knowledge_id + '">'
@@ -556,6 +649,44 @@
                     + '</tr>';
             });
             tbody.innerHTML = html;
+
+            // Bind Full Edit buttons (for TXT content)
+            tbody.querySelectorAll('.kb-full-edit-btn').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var kid = this.dataset.knowledgeId;
+                    window.location.href = 'admin.php?page=sonoai-kb&kb_tab=txt&edit_item=' + kid;
+                });
+            });
+
+            // Bind Quick Edit buttons for items
+            tbody.querySelectorAll('.kb-quick-edit-btn').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var kid = this.dataset.knowledgeId;
+                    var mode = this.dataset.mode;
+                    var topic = this.dataset.topic;
+
+                    var modal = document.getElementById('kb-quick-edit-modal');
+                    if (modal) {
+                        document.getElementById('qe-post-id').value = '';
+                        document.getElementById('qe-knowledge-id').value = kid;
+                        document.getElementById('qe-type').value = type; // 'pdf', 'url', 'txt'
+                        
+                        var qeMode = document.getElementById('qe-mode');
+                        if (qeMode) qeMode.value = mode || 'guideline';
+                        
+                        var qeTopic = document.getElementById('qe-topic');
+                        if (qeTopic) qeTopic.value = topic || 0;
+
+                        var qeCountry = document.getElementById('qe-country');
+                        if (qeCountry) qeCountry.value = this.dataset.country || '';
+
+                        toggleQuickEditFields();
+                        
+                        modal.style.display = 'flex';
+                    }
+                });
+            });
+
             renderPagination(data, pagDiv, loadItems);
         }
 
@@ -1034,30 +1165,6 @@
                 submitBtn.textContent = originalText;
             });
         });
-    }
-
-    /**
-     * Toggles field visibility based on Guideline vs Research mode
-     */
-    function toggleMetadataFields(prefix) {
-        var modeSel = document.getElementById('kb-' + prefix + '-mode');
-        if (!modeSel) return;
-
-        var isResearch = modeSel.value === 'research';
-        
-        // Find Groups
-        var form = document.getElementById('kb-' + prefix + '-form');
-        if (!form) return;
-
-        var topicGroup = form.querySelector('.kb-field-topic');
-        var countryGroup = form.querySelector('.kb-field-country');
-
-        if (topicGroup) {
-            topicGroup.style.display = isResearch ? 'block' : 'none';
-        }
-        if (countryGroup) {
-            countryGroup.style.display = isResearch ? 'none' : 'block';
-        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

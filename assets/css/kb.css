@@ -983,21 +983,127 @@
 
 /* ── View modal & Dialogs ───────────────────────────────────── */
 .kb-modal {
-    border: none;
-    border-radius: 12px;
-    padding: 0;
-    max-width: 480px;
-    width: 100%;
-    background: #fff;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
-    color: #1a1d23;
-    display: none; /* Hidden by default */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100% !important;
+    height: 100% !important;
+    background: rgba(10, 15, 25, 0.65) !important;
+    backdrop-filter: blur(4px);
+    z-index: 99999 !important;
+    display: none; /* Controlled by JS: display: flex */
+    align-items: center;
+    justify-content: center;
 }
 
-/* Show when open attribute or class is present */
+.kb-modal-content {
+    background: #fff;
+    border-radius: 14px;
+    width: 90%;
+    max-width: 420px;
+    padding: 28px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+    position: relative;
+    animation: kb-modal-pop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards;
+}
+
+@keyframes kb-modal-pop {
+    from { opacity: 0; transform: scale(0.92) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.kb-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 22px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.kb-modal-header h3 {
+    margin: 0 !important;
+    font-size: 17px !important;
+    font-weight: 700 !important;
+    color: #1a1d23 !important;
+}
+
+.kb-modal-close {
+    font-size: 26px;
+    line-height: 1;
+    cursor: pointer;
+    color: #94a3b8;
+    transition: color 0.2s;
+}
+
+.kb-modal-close:hover {
+    color: #ef4444;
+}
+
+.kb-modal-body .kb-form-row {
+    margin-bottom: 18px;
+}
+
+.kb-modal-body label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #64748b;
+}
+
+.kb-modal-body select,
+.kb-modal-body input {
+    width: 100% !important;
+    padding: 9px 12px !important;
+    border-radius: 8px !important;
+    border: 1px solid #e2e8f0 !important;
+    font-size: 14px !important;
+    background: #f8fafc !important;
+    box-shadow: none !important;
+}
+
+.kb-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 28px;
+}
+
+/* Dark mode modal */
+.kb-dark .kb-modal {
+    background: rgba(0, 0, 0, 0.8) !important;
+}
+
+.kb-dark .kb-modal-content {
+    background: #161a22;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+}
+
+.kb-dark .kb-modal-header {
+    border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+.kb-dark .kb-modal-header h3 {
+    color: #fff !important;
+}
+
+.kb-dark .kb-modal-body label {
+    color: #94a3b8;
+}
+
+.kb-dark .kb-modal-body select,
+.kb-dark .kb-modal-body input {
+    background: #0d1117 !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    color: #fff !important;
+}
+
 .kb-modal[open],
 .kb-modal.is-open {
-    display: block !important;
+    display: flex !important;
 }
 
 dialog.kb-modal::backdrop {
