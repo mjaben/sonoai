@@ -114,26 +114,42 @@ class RedisManager {
         $client = $this->get_client();
         if ( ! $client ) return;
 
-        $key = "sonoai:vector:{$meta['mode']}:{$knowledge_id}";
+        $mode = $meta['mode'] ?? 'guideline';
+        $key  = "sonoai:vector:{$mode}:{$knowledge_id}";
+
         $client->hset( $key, 'v', wp_json_encode( $vector ) );
         $client->hset( $key, 'm', wp_json_encode( $meta ) );
         $client->expire( $key, 86400 * 7 ); // Cache for 7 days
+
+        // Register in mode-specific set index to avoid expensive KEYS scans.
+        $index_key = "sonoai:idx:{$mode}";
+        $client->sadd( $index_key, [ $key ] );
+        $client->expire( $index_key, 86400 * 7 );
     }
 
     /**
      * Perform a fast similarity search across cached vectors in Redis.
-     * Note: This uses a simple brute-force loop for small-to-medium sets.
-     * For large scale, we would use RediSearch FT.SEARCH.
+     *
+     * Uses a Set index (sonoai:idx:{mode}) instead of a KEYS scan, which
+     * avoids O(N) keyspace scans and scales to any KB size with standard Redis.
      */
     public function search_vectors( array $query_vector, string $mode, float $min_sim = 0.70, int $limit = 5 ): array {
         $client = $this->get_client();
         if ( ! $client ) return [];
 
-        $keys = $client->keys( "sonoai:vector:{$mode}:*" );
+        // Use the mode-specific set index instead of a full KEYS scan.
+        $index_key = "sonoai:idx:{$mode}";
+        $keys      = $client->smembers( $index_key );
         if ( empty( $keys ) ) return [];
 
         $results = [];
         foreach ( $keys as $key ) {
+            // Verify the vector key still exists (may have expired).
+            if ( ! $client->exists( $key ) ) {
+                $client->srem( $index_key, $key ); // Clean up stale index entry.
+                continue;
+            }
+
             $data = $client->hgetall( $key );
             if ( empty( $data['v'] ) ) continue;
 
@@ -151,14 +167,44 @@ class RedisManager {
     }
 
     /**
-     * Clear all cached vectors.
+     * Remove a specific vector from the Redis cache and its set index.
+     * Call this before re-embedding or deleting a KB item.
+     *
+     * @param string $knowledge_id The knowledge_id:chunk_index key fragment.
+     * @param string $mode         The mode the vector was indexed under.
+     */
+    public function evict_vector( string $knowledge_id, string $mode ): void {
+        $client = $this->get_client();
+        if ( ! $client ) return;
+
+        // knowledge_id may be a prefix — evict all matching chunks from the index.
+        $index_key = "sonoai:idx:{$mode}";
+        $all_keys  = $client->smembers( $index_key );
+
+        foreach ( $all_keys as $key ) {
+            if ( str_contains( $key, $knowledge_id ) ) {
+                $client->del( $key );
+                $client->srem( $index_key, $key );
+            }
+        }
+    }
+
+    /**
+     * Clear all cached vectors and their set indexes.
      */
     public function flush_vectors(): void {
         $client = $this->get_client();
         if ( ! $client ) return;
-        $keys = $client->keys( 'sonoai:vector:*' );
-        if ( ! empty( $keys ) ) {
-            foreach ( $keys as $key ) $client->del( $key );
+
+        foreach ( [ 'guideline', 'research' ] as $mode ) {
+            $index_key = "sonoai:idx:{$mode}";
+            $keys      = $client->smembers( $index_key );
+            if ( ! empty( $keys ) ) {
+                foreach ( $keys as $key ) {
+                    $client->del( $key );
+                }
+            }
+            $client->del( $index_key );
         }
     }
 }

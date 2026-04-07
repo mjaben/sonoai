@@ -419,6 +419,7 @@ class KnowledgeBase {
                         <option value="<?php echo esc_attr( $t->id ); ?>"><?php echo esc_html( $t->name ); ?></option>
                     <?php endforeach; ?>
                 </select>
+                <input type="text" id="kb-wp-filter-country" class="kb-input-sm" style="display:none;" placeholder="<?php esc_attr_e( 'Filter by Country…', 'sonoai' ); ?>">
                 <input type="search" id="kb-wp-search" placeholder="<?php esc_attr_e( 'Search posts…', 'sonoai' ); ?>" class="kb-search-input">
             </div>
         </div>
@@ -546,10 +547,49 @@ class KnowledgeBase {
             <p id="kb-pdf-notice" class="kb-notice" style="display:none;"></p>
         </div>
 
-        <?php $this->render_items_table( $items, 'pdf', [
-            'delete' => __( 'Delete', 'sonoai' ),
-            'view'   => __( 'View PDF', 'sonoai' ),
-        ] ); ?>
+        <div id="kb-pdf-list-wrap" class="kb-item-list-wrap">
+            <div class="kb-list-bar">
+                <div class="kb-bulk">
+                    <select class="kb-select-sm" id="kb-pdf-bulk-action">
+                        <option value=""><?php esc_html_e( '— Bulk Action —', 'sonoai' ); ?></option>
+                        <option value="delete"><?php esc_html_e( 'Delete', 'sonoai' ); ?></option>
+                    </select>
+                    <button type="button" class="kb-btn-sm" id="kb-pdf-bulk-apply"><?php esc_html_e( 'Apply', 'sonoai' ); ?></button>
+                </div>
+                <div class="kb-search-wrap" style="display: flex; gap: 8px;">
+                    <select id="kb-pdf-filter-mode" class="kb-select-sm">
+                        <option value=""><?php esc_html_e( '— All Modes —', 'sonoai' ); ?></option>
+                        <option value="guideline"><?php esc_html_e( 'Guideline', 'sonoai' ); ?></option>
+                        <option value="research"><?php esc_html_e( 'Research', 'sonoai' ); ?></option>
+                    </select>
+                    <select id="kb-pdf-filter-topic" class="kb-select-sm">
+                        <option value=""><?php esc_html_e( '— All Topics —', 'sonoai' ); ?></option>
+                        <?php foreach ( self::get_topics() as $t ) : ?>
+                            <option value="<?php echo esc_attr( $t->id ); ?>"><?php echo esc_html( $t->name ); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <input type="text" id="kb-pdf-filter-country" class="kb-input-sm" style="display:none;" placeholder="<?php esc_attr_e( 'Filter by Country…', 'sonoai' ); ?>">
+                    <input type="search" id="kb-pdf-search" placeholder="<?php esc_attr_e( 'Search PDFs…', 'sonoai' ); ?>" class="kb-search-input">
+                </div>
+            </div>
+            <table class="kb-table" id="kb-pdf-table">
+                <thead>
+                    <tr>
+                        <th class="kb-col-cb"><input type="checkbox" id="kb-pdf-check-all"></th>
+                        <th><?php esc_html_e( 'File', 'sonoai' ); ?></th>
+                        <th><?php esc_html_e( 'Mode', 'sonoai' ); ?></th>
+                        <th><?php esc_html_e( 'Topic', 'sonoai' ); ?></th>
+                        <th><?php esc_html_e( 'Country', 'sonoai' ); ?></th>
+                        <th><?php esc_html_e( 'AI Model', 'sonoai' ); ?></th>
+                        <th><?php esc_html_e( 'Action', 'sonoai' ); ?></th>
+                    </tr>
+                </thead>
+                <tbody id="kb-pdf-tbody">
+                    <tr class="kb-loading-row"><td colspan="7"><span class="kb-spinner"></span> <?php esc_html_e( 'Loading items…', 'sonoai' ); ?></td></tr>
+                </tbody>
+            </table>
+            <div class="kb-pagination" id="kb-pdf-pagination"></div>
+        </div>
         <?php
     }
 
@@ -613,10 +653,49 @@ class KnowledgeBase {
             <p id="kb-url-notice" class="kb-notice" style="display:none;"></p>
         </div>
 
-        <?php $this->render_items_table( $items, 'url', [
-            'delete' => __( 'Delete', 'sonoai' ),
-            'view'   => __( 'View Source', 'sonoai' ),
-        ] ); ?>
+        <div id="kb-url-list-wrap" class="kb-item-list-wrap">
+            <div class="kb-list-bar">
+                <div class="kb-bulk">
+                    <select class="kb-select-sm" id="kb-url-bulk-action">
+                        <option value=""><?php esc_html_e( '— Bulk Action —', 'sonoai' ); ?></option>
+                        <option value="delete"><?php esc_html_e( 'Delete', 'sonoai' ); ?></option>
+                    </select>
+                    <button type="button" class="kb-btn-sm" id="kb-url-bulk-apply"><?php esc_html_e( 'Apply', 'sonoai' ); ?></button>
+                </div>
+                <div class="kb-search-wrap" style="display: flex; gap: 8px;">
+                    <select id="kb-url-filter-mode" class="kb-select-sm">
+                        <option value=""><?php esc_html_e( '— All Modes —', 'sonoai' ); ?></option>
+                        <option value="guideline"><?php esc_html_e( 'Guideline', 'sonoai' ); ?></option>
+                        <option value="research"><?php esc_html_e( 'Research', 'sonoai' ); ?></option>
+                    </select>
+                    <select id="kb-url-filter-topic" class="kb-select-sm">
+                        <option value=""><?php esc_html_e( '— All Topics —', 'sonoai' ); ?></option>
+                        <?php foreach ( self::get_topics() as $t ) : ?>
+                            <option value="<?php echo esc_attr( $t->id ); ?>"><?php echo esc_html( $t->name ); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <input type="text" id="kb-url-filter-country" class="kb-input-sm" style="display:none;" placeholder="<?php esc_attr_e( 'Filter by Country…', 'sonoai' ); ?>">
+                    <input type="search" id="kb-url-search" placeholder="<?php esc_attr_e( 'Search URLs…', 'sonoai' ); ?>" class="kb-search-input">
+                </div>
+            </div>
+            <table class="kb-table" id="kb-url-table">
+                <thead>
+                    <tr>
+                        <th class="kb-col-cb"><input type="checkbox" id="kb-url-check-all"></th>
+                        <th><?php esc_html_e( 'URL', 'sonoai' ); ?></th>
+                        <th><?php esc_html_e( 'Mode', 'sonoai' ); ?></th>
+                        <th><?php esc_html_e( 'Topic', 'sonoai' ); ?></th>
+                        <th><?php esc_html_e( 'Country', 'sonoai' ); ?></th>
+                        <th><?php esc_html_e( 'AI Model', 'sonoai' ); ?></th>
+                        <th><?php esc_html_e( 'Action', 'sonoai' ); ?></th>
+                    </tr>
+                </thead>
+                <tbody id="kb-url-tbody">
+                    <tr class="kb-loading-row"><td colspan="7"><span class="kb-spinner"></span> <?php esc_html_e( 'Loading items…', 'sonoai' ); ?></td></tr>
+                </tbody>
+            </table>
+            <div class="kb-pagination" id="kb-url-pagination"></div>
+        </div>
         <?php
     }
 
@@ -773,75 +852,50 @@ class KnowledgeBase {
         <?php
         // Render items table with 3 actions (Edit, View, Delete).
         ?>
-        <div class="kb-list-bar">
-            <div class="kb-bulk">
-                <select class="kb-select-sm">
-                    <option value=""><?php esc_html_e( '— Bulk Action —', 'sonoai' ); ?></option>
-                    <option value="delete"><?php esc_html_e( 'Delete', 'sonoai' ); ?></option>
-                </select>
-                <button type="button" class="kb-btn-sm"><?php esc_html_e( 'Apply', 'sonoai' ); ?></button>
+        <div id="kb-txt-list-wrap" class="kb-item-list-wrap">
+            <div class="kb-list-bar">
+                <div class="kb-bulk">
+                    <select class="kb-select-sm" id="kb-txt-bulk-action">
+                        <option value=""><?php esc_html_e( '— Bulk Action —', 'sonoai' ); ?></option>
+                        <option value="delete"><?php esc_html_e( 'Delete', 'sonoai' ); ?></option>
+                    </select>
+                    <button type="button" class="kb-btn-sm" id="kb-txt-bulk-apply"><?php esc_html_e( 'Apply', 'sonoai' ); ?></button>
+                </div>
+                <div class="kb-search-wrap" style="display: flex; gap: 8px;">
+                    <select id="kb-txt-filter-mode" class="kb-select-sm">
+                        <option value=""><?php esc_html_e( '— All Modes —', 'sonoai' ); ?></option>
+                        <option value="guideline"><?php esc_html_e( 'Guideline', 'sonoai' ); ?></option>
+                        <option value="research"><?php esc_html_e( 'Research', 'sonoai' ); ?></option>
+                    </select>
+                    <select id="kb-txt-filter-topic" class="kb-select-sm">
+                        <option value=""><?php esc_html_e( '— All Topics —', 'sonoai' ); ?></option>
+                        <?php foreach ( self::get_topics() as $t ) : ?>
+                            <option value="<?php echo esc_attr( $t->id ); ?>"><?php echo esc_html( $t->name ); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <input type="text" id="kb-txt-filter-country" class="kb-input-sm" style="display:none;" placeholder="<?php esc_attr_e( 'Filter by Country…', 'sonoai' ); ?>">
+                    <input type="search" id="kb-txt-search" placeholder="<?php esc_attr_e( 'Search Text…', 'sonoai' ); ?>" class="kb-search-input">
+                </div>
             </div>
-            <span class="kb-item-count"><?php printf( esc_html( _n( '%d item', '%d items', count( $items ), 'sonoai' ) ), count( $items ) ); ?></span>
+            <table class="kb-table" id="kb-txt-table">
+                <thead>
+                    <tr>
+                        <th class="kb-col-cb"><input type="checkbox" id="kb-txt-check-all"></th>
+                        <th><?php esc_html_e( 'Content', 'sonoai' ); ?></th>
+                        <th><?php esc_html_e( 'Mode', 'sonoai' ); ?></th>
+                        <th><?php esc_html_e( 'Topic', 'sonoai' ); ?></th>
+                        <th><?php esc_html_e( 'Country', 'sonoai' ); ?></th>
+                        <th><?php esc_html_e( 'AI Model', 'sonoai' ); ?></th>
+                        <th><?php esc_html_e( 'Action', 'sonoai' ); ?></th>
+                    </tr>
+                </thead>
+                <tbody id="kb-txt-tbody">
+                    <tr class="kb-loading-row"><td colspan="7"><span class="kb-spinner"></span> <?php esc_html_e( 'Loading items…', 'sonoai' ); ?></td></tr>
+                </tbody>
+            </table>
+            <div class="kb-pagination" id="kb-txt-pagination"></div>
         </div>
 
-        <table class="kb-table">
-            <thead>
-                <tr>
-                    <th class="kb-col-cb"><input type="checkbox"></th>
-                    <th><?php esc_html_e( 'Content', 'sonoai' ); ?></th>
-                    <th><?php esc_html_e( 'AI Model', 'sonoai' ); ?></th>
-                    <th><?php esc_html_e( 'Action', 'sonoai' ); ?></th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if ( empty( $items ) ) : ?>
-                    <tr><td colspan="4" class="kb-empty"><?php esc_html_e( 'No items found.', 'sonoai' ); ?></td></tr>
-                <?php else : ?>
-                    <?php
-                    $topic_map = [];
-                    foreach ( self::get_topics() as $t ) {
-                        $topic_map[ $t->id ] = $t->name;
-                    }
-                    ?>
-                    <?php foreach ( $items as $item ) :
-                        $plain   = wp_strip_all_tags( $item->raw_content ?? '' );
-                        $preview = wp_trim_words( $plain, 20, '…' );
-                        $edit_url = add_query_arg( [
-                            'page'      => 'sonoai-kb',
-                            'kb_tab'    => 'txt',
-                            'edit_item' => $item->knowledge_id,
-                        ], admin_url( 'admin.php' ) );
-                        $mode_label = ucfirst( $item->mode ?? 'guideline' );
-                        $topic_name = $item->topic_id && isset( $topic_map[ $item->topic_id ] ) ? $topic_map[ $item->topic_id ] : '—';
-                    ?>
-                    <tr data-knowledge-id="<?php echo esc_attr( $item->knowledge_id ); ?>">
-                        <td><input type="checkbox" value="<?php echo esc_attr( $item->knowledge_id ); ?>"></td>
-                        <td class="kb-col-content">
-                            <span class="kb-content-preview"><?php echo esc_html( $preview ); ?></span>
-                            <div style="font-size: 0.85em; color: #666; margin-top: 4px;">
-                                <strong><?php esc_html_e( 'Mode:', 'sonoai' ); ?></strong> <?php echo esc_html( $mode_label ); ?> |
-                                <strong><?php esc_html_e( 'Topic:', 'sonoai' ); ?></strong> <?php echo esc_html( $topic_name ); ?>
-                            </div>
-                        </td>
-                        <td class="kb-col-model">
-                            <span class="kb-badge-model"><?php echo esc_html( $item->provider . ' / ' . ( $item->embedding_model ?? '—' ) ); ?></span>
-                        </td>
-                        <td class="kb-col-actions">
-                            <a href="<?php echo esc_url( $edit_url ); ?>" class="kb-action-link">✏️ <?php esc_html_e( 'Edit', 'sonoai' ); ?></a>
-                            <button type="button" class="kb-action-link kb-view-txt-btn"
-                                    data-content="<?php echo esc_attr( $item->raw_content ?? '' ); ?>">
-                                👁 <?php esc_html_e( 'View', 'sonoai' ); ?>
-                            </button>
-                            <button type="button" class="kb-action-link kb-delete-btn"
-                                    data-knowledge-id="<?php echo esc_attr( $item->knowledge_id ); ?>">
-                                🗑 <?php esc_html_e( 'Delete', 'sonoai' ); ?>
-                            </button>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </tbody>
-        </table>
 
         <!-- View modal for full content -->
         <div id="kb-view-modal" class="kb-modal" style="display:none;">
@@ -871,82 +925,4 @@ class KnowledgeBase {
         <?php
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Shared: PDF / URL items table
-    // ─────────────────────────────────────────────────────────────────────────
-
-    private function render_items_table( array $items, string $type, array $actions ): void {
-        $has_view   = isset( $actions['view'] );
-        $has_delete = isset( $actions['delete'] );
-        ?>
-        <div class="kb-list-bar">
-            <div class="kb-bulk">
-                <select class="kb-select-sm">
-                    <option value=""><?php esc_html_e( '— Bulk Action —', 'sonoai' ); ?></option>
-                    <option value="delete"><?php esc_html_e( 'Delete', 'sonoai' ); ?></option>
-                </select>
-                <button type="button" class="kb-btn-sm"><?php esc_html_e( 'Apply', 'sonoai' ); ?></button>
-            </div>
-            <span class="kb-item-count"><?php printf( esc_html( _n( '%d item', '%d items', count( $items ), 'sonoai' ) ), count( $items ) ); ?></span>
-        </div>
-        <table class="kb-table">
-            <thead>
-                <tr>
-                    <th class="kb-col-cb"><input type="checkbox"></th>
-                    <th><?php echo $type === 'pdf' ? esc_html__( 'File', 'sonoai' ) : esc_html__( 'URL', 'sonoai' ); ?></th>
-                    <th><?php esc_html_e( 'AI Model', 'sonoai' ); ?></th>
-                    <th><?php esc_html_e( 'Action', 'sonoai' ); ?></th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if ( empty( $items ) ) : ?>
-                    <tr><td colspan="4" class="kb-empty"><?php esc_html_e( 'No items found.', 'sonoai' ); ?></td></tr>
-                <?php else : ?>
-                    <?php
-                    $topic_map = [];
-                    foreach ( self::get_topics() as $t ) {
-                        $topic_map[ $t->id ] = $t->name;
-                    }
-                    ?>
-                    <?php foreach ( $items as $item ) :
-                        $mode_label = ucfirst( $item->mode ?? 'guideline' );
-                        $topic_name = $item->topic_id && isset( $topic_map[ $item->topic_id ] ) ? $topic_map[ $item->topic_id ] : '—';
-                    ?>
-                    <tr data-knowledge-id="<?php echo esc_attr( $item->knowledge_id ); ?>">
-                        <td><input type="checkbox" value="<?php echo esc_attr( $item->knowledge_id ); ?>"></td>
-                        <td class="kb-col-source">
-                            <?php if ( $item->source_url ) : ?>
-                                <a href="<?php echo esc_url( $item->source_url ); ?>" target="_blank" rel="noopener">
-                                    <?php echo esc_html( $item->source_title ?: $item->source_url ); ?>
-                                </a>
-                            <?php else : ?>
-                                <?php echo esc_html( $item->source_title ?: '—' ); ?>
-                            <?php endif; ?>
-                            <div style="font-size: 0.85em; color: #666; margin-top: 4px;">
-                                <strong><?php esc_html_e( 'Mode:', 'sonoai' ); ?></strong> <?php echo esc_html( $mode_label ); ?> |
-                                <strong><?php esc_html_e( 'Topic:', 'sonoai' ); ?></strong> <?php echo esc_html( $topic_name ); ?>
-                            </div>
-                        </td>
-                        <td class="kb-col-model">
-                            <span class="kb-badge-model"><?php echo esc_html( $item->provider . ' / ' . ( $item->embedding_model ?? '—' ) ); ?></span>
-                        </td>
-                        <td class="kb-col-actions">
-                            <?php if ( $has_view && $item->source_url ) : ?>
-                                <a href="<?php echo esc_url( $item->source_url ); ?>" target="_blank" rel="noopener"
-                                   class="kb-action-link">👁 <?php echo esc_html( $actions['view'] ); ?></a>
-                            <?php endif; ?>
-                            <?php if ( $has_delete ) : ?>
-                                <button type="button" class="kb-action-link kb-delete-btn"
-                                        data-knowledge-id="<?php echo esc_attr( $item->knowledge_id ); ?>">
-                                    🗑 <?php echo esc_html( $actions['delete'] ); ?>
-                                </button>
-                            <?php endif; ?>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </tbody>
-        </table>
-        <?php
-    }
 }

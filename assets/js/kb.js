@@ -99,9 +99,23 @@
         var filterBtns  = document.querySelectorAll('.kb-status-btn');
         var filterMode  = document.getElementById('kb-wp-filter-mode');
         var filterTopic = document.getElementById('kb-wp-filter-topic');
+        var filterCountry = document.getElementById('kb-wp-filter-country');
         var currentPage = 1;
         var currentSearch = '';
         var currentFilter = 'all';
+
+        function checkCountryVisibility() {
+            if (!filterMode) return;
+            var mode = filterMode.value;
+            if (filterCountry) {
+                filterCountry.style.display = (mode === 'guideline') ? 'inline-block' : 'none';
+                if (mode !== 'guideline') filterCountry.value = '';
+            }
+            if (filterTopic) {
+                filterTopic.style.display = (mode === 'research') ? 'inline-block' : 'none';
+                if (mode !== 'research') filterTopic.value = '';
+            }
+        }
 
         function loadPosts(page, search) {
             currentPage   = page;
@@ -118,9 +132,14 @@
             };
             if (filterMode && filterMode.value) payload.mode = filterMode.value;
             if (filterTopic && filterTopic.value) payload.topic_id = filterTopic.value;
+            if (filterCountry && filterCountry.value && filterMode.value === 'guideline') payload.country = filterCountry.value;
             
             $.post(ajax, payload, function (res) {
-                renderPosts(res.data);
+                if (res.success) {
+                    renderPosts(res.data);
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="7" class="kb-empty">' + (res.data.message || 'Error loading posts.') + '</td></tr>';
+                }
             }).fail(function () {
                 tbody.innerHTML = '<tr><td colspan="7" class="kb-empty">Error loading posts.</td></tr>';
             });
@@ -325,12 +344,21 @@
         // Mode and Topic Filters
         if (filterMode) {
             filterMode.addEventListener('change', function () {
+                checkCountryVisibility();
                 loadPosts(1, currentSearch);
             });
+            checkCountryVisibility();
         }
         if (filterTopic) {
             filterTopic.addEventListener('change', function () {
                 loadPosts(1, currentSearch);
+            });
+        }
+        if (filterCountry) {
+            var countryTimer;
+            filterCountry.addEventListener('input', function() {
+                clearTimeout(countryTimer);
+                countryTimer = setTimeout(function() { loadPosts(1, currentSearch); }, 400);
             });
         }
 
@@ -383,10 +411,8 @@
             fileInp.addEventListener('change', function () {
                 var name = fileInp.files[0] ? fileInp.files[0].name : 'No file chosen';
                 fileHint.textContent = name;
-                if (submitBtn) submitBtn.disabled = !fileInp.files[0];
             });
         }
-
         form.addEventListener('submit', function (e) {
             e.preventDefault();
             if (!fileInp.files[0]) return;
@@ -423,13 +449,183 @@
                         fileInp.value = '';
                         fileHint.textContent = 'No file chosen';
                         submitBtn.disabled   = true;
-                        setTimeout(function () { location.reload(); }, 1200);
+                        // Instead of location.reload(), we reload the list
+                        if (typeof loadItems === 'function') loadItems(1, '');
+                        else setTimeout(function () { location.reload(); }, 1200);
                     } else {
                         setNotice(notice, res.data.message || 'Error.', 'error');
                     }
                 },
                 error: function () { setNotice(notice, 'Upload failed. Try again.', 'error'); },
                 complete: function () { submitBtn.textContent = 'Submit'; submitBtn.disabled = false; },
+            });
+        });
+
+        // ── Listing AJAX ──
+        initItemsList('pdf');
+    }
+
+    function initItemsList(type) {
+        var tbody = document.getElementById('kb-' + type + '-tbody');
+        var pagDiv = document.getElementById('kb-' + type + '-pagination');
+        if (!tbody) return;
+
+        var searchInput = document.getElementById('kb-' + type + '-search');
+        var filterMode = document.getElementById('kb-' + type + '-filter-mode');
+        var filterTopic = document.getElementById('kb-' + type + '-filter-topic');
+        var filterCountry = document.getElementById('kb-' + type + '-filter-country');
+        var checkAll = document.getElementById('kb-' + type + '-check-all');
+        var bulkSel = document.getElementById('kb-' + type + '-bulk-action');
+        var bulkApply = document.getElementById('kb-' + type + '-bulk-apply');
+
+        var currentPage = 1;
+        var currentSearch = '';
+
+        function checkCountryVisibility() {
+            if (!filterMode) return;
+            var mode = filterMode.value;
+            if (filterCountry) {
+                filterCountry.style.display = (mode === 'guideline') ? 'inline-block' : 'none';
+                if (mode !== 'guideline') filterCountry.value = '';
+            }
+            if (filterTopic) {
+                filterTopic.style.display = (mode === 'research') ? 'inline-block' : 'none';
+                if (mode !== 'research') filterTopic.value = '';
+            }
+        }
+
+        function loadItems(page, search) {
+            currentPage = page;
+            currentSearch = search;
+            tbody.innerHTML = '<tr class="kb-loading-row"><td colspan="7"><span class="kb-spinner"></span> Loading…</td></tr>';
+
+            var payload = {
+                action: 'sonoai_kb_get_items',
+                nonce: nonces.getPosts, // Re-use
+                type: type,
+                page: page,
+                search: search
+            };
+            if (filterMode && filterMode.value) payload.mode = filterMode.value;
+            if (filterTopic && filterTopic.value) payload.topic_id = filterTopic.value;
+            if (filterCountry && filterCountry.value && filterMode.value === 'guideline') payload.country = filterCountry.value;
+
+            $.post(ajax, payload, function (res) {
+                if (res.success) {
+                    renderItems(res.data);
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="7" class="kb-empty">' + (res.data.message || 'Error loading items.') + '</td></tr>';
+                }
+            }).fail(function () {
+                tbody.innerHTML = '<tr><td colspan="7" class="kb-empty">Error loading items.</td></tr>';
+            });
+        }
+
+        function renderItems(data) {
+            if (!data || !data.items || data.items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="kb-empty">No items found.</td></tr>';
+                pagDiv.innerHTML = '';
+                return;
+            }
+            var html = '';
+            data.items.forEach(function (it) {
+                var sourceHtml = '';
+                var actionsHtml = '';
+
+                if (type === 'txt') {
+                    sourceHtml = '<span class="kb-content-preview">' + escHtml(it.source_title) + '</span>';
+                    actionsHtml = '<button type="button" class="kb-action-link kb-view-txt-btn" data-content="' + escHtml(it.raw_content) + '">👁 View</button>';
+                } else if (type === 'pdf') {
+                    sourceHtml = '<a href="' + it.source_url + '" target="_blank">' + escHtml(it.source_title) + '</a>';
+                    actionsHtml = '<a href="' + it.source_url + '" target="_blank" class="kb-action-link">👁 View PDF</a>';
+                } else {
+                    sourceHtml = '<a href="' + it.source_url + '" target="_blank">' + escHtml(it.source_url) + '</a>';
+                    actionsHtml = '<a href="' + it.source_url + '" target="_blank" class="kb-action-link">👁 View Source</a>';
+                }
+
+                actionsHtml += '<button type="button" class="kb-action-link kb-delete-btn" data-knowledge-id="' + it.knowledge_id + '">🗑 Delete</button>';
+
+                html += '<tr data-knowledge-id="' + it.knowledge_id + '">'
+                    + '<td><input type="checkbox" class="kb-row-cb" value="' + it.knowledge_id + '"></td>'
+                    + '<td class="kb-col-content">' + sourceHtml + '</td>'
+                    + '<td>' + escHtml(it.mode) + '</td>'
+                    + '<td>' + escHtml(it.topic_name) + '</td>'
+                    + '<td>' + escHtml(it.country) + '</td>'
+                    + '<td><span class="kb-badge-model">' + escHtml(it.ai_model) + '</span></td>'
+                    + '<td class="kb-col-actions">' + actionsHtml + '</td>'
+                    + '</tr>';
+            });
+            tbody.innerHTML = html;
+            renderPagination(data, pagDiv, loadItems);
+        }
+
+        // Search (debounced).
+        var searchTimer;
+        if (searchInput) {
+            searchInput.addEventListener('input', function () {
+                clearTimeout(searchTimer);
+                var q = this.value;
+                searchTimer = setTimeout(function () { loadItems(1, q); }, 400);
+            });
+        }
+
+        if (filterMode) {
+            filterMode.addEventListener('change', function () {
+                checkCountryVisibility();
+                loadItems(1, currentSearch);
+            });
+            checkCountryVisibility();
+        }
+        if (filterTopic) {
+            filterTopic.addEventListener('change', function () {
+                loadItems(1, currentSearch);
+            });
+        }
+        if (filterCountry) {
+            var countryTimer;
+            filterCountry.addEventListener('input', function() {
+                clearTimeout(countryTimer);
+                countryTimer = setTimeout(function() { loadItems(1, currentSearch); }, 400);
+            });
+        }
+
+        if (checkAll) {
+            checkAll.addEventListener('change', function () {
+                tbody.querySelectorAll('.kb-row-cb').forEach(function (cb) { cb.checked = checkAll.checked; });
+            });
+        }
+
+        if (bulkApply) {
+            bulkApply.addEventListener('click', function () {
+                var action = bulkSel ? bulkSel.value : '';
+                if (action !== 'delete') return;
+                var checked = Array.from(tbody.querySelectorAll('.kb-row-cb:checked')).map(function (cb) { return cb.value; });
+                if (!checked.length) return;
+                if (!confirm('Delete ' + checked.length + ' items?')) return;
+                
+                var pending = checked.length;
+                checked.forEach(function (kid) {
+                    $.post(ajax, { action: 'sonoai_kb_delete_item', nonce: nonces.deleteItem, knowledge_id: kid }, function () {
+                        pending--;
+                        if (pending === 0) loadItems(currentPage, currentSearch);
+                    });
+                });
+            });
+        }
+
+        loadItems(1, '');
+    }
+
+    function renderPagination(data, container, callback) {
+        if (!data || data.total_pages <= 1) { container.innerHTML = ''; return; }
+        var html = '';
+        for (var i = 1; i <= data.total_pages; i++) {
+            html += '<button type="button" class="kb-page-btn' + (i === data.page ? ' active' : '') + '" data-page="' + i + '">' + i + '</button>';
+        }
+        container.innerHTML = html;
+        container.querySelectorAll('.kb-page-btn').forEach(function (pb) {
+            pb.addEventListener('click', function () {
+                callback(parseInt(this.dataset.page), '');
             });
         });
     }
@@ -481,7 +677,9 @@
                 if (res.success) {
                     setNotice(notice, '✓ URL added to knowledge base (' + res.data.chunk_count + ' chunks).', 'success');
                     if (input) input.value = '';
-                    setTimeout(function () { location.reload(); }, 1200);
+                        // Instead of location.reload(), we reload the list
+                        if (typeof loadItems === 'function') loadItems(1, '');
+                        else setTimeout(function () { location.reload(); }, 1200);
                 } else {
                     setNotice(notice, res.data.message || 'Error.', 'error');
                 }
@@ -493,6 +691,8 @@
                 submit.disabled = false;
             });
         });
+
+        initItemsList('url');
     }
 
     // ── Custom Text Tab ───────────────────────────────────────────────────────
@@ -681,6 +881,8 @@
                 if (btnText) btnText.style.opacity  = '1';
             });
         });
+
+        initItemsList('txt');
     }
 
     // ── Delete buttons ────────────────────────────────────────────────────────
