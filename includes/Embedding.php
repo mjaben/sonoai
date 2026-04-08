@@ -137,6 +137,7 @@ class Embedding {
             // Cache in Redis for high-performance retrieval
             if ( false !== $result ) {
                 RedisManager::instance()->cache_embedding( $knowledge_id . ':' . $idx, $embedding, [
+                    'knowledge_id' => $knowledge_id,
                     'post_id'    => $post_id,
                     'post_type'  => $post_type,
                     'chunk_text' => $chunk_text,

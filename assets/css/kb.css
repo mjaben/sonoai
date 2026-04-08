@@ -787,6 +787,12 @@
     margin-bottom: 20px;
 }
 
+.kb-tab-action-bar {
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: flex-end;
+}
+
 .kb-field-row {
     display: flex;
     gap: 16px;
@@ -798,6 +804,11 @@
 }
 
 .kb-field-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -946,6 +957,11 @@
     border-top-color: #2563eb;
 }
 
+.kb-wrap.kb-dark .kb-table .kb-spinner {
+    border-color: rgba(255, 255, 255, 0.1);
+    border-top-color: #3b82f6;
+}
+
 @keyframes kb-spin {
     to {
         transform: rotate(360deg);
@@ -983,127 +999,21 @@
 
 /* ── View modal & Dialogs ───────────────────────────────────── */
 .kb-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100% !important;
-    height: 100% !important;
-    background: rgba(10, 15, 25, 0.65) !important;
-    backdrop-filter: blur(4px);
-    z-index: 99999 !important;
-    display: none; /* Controlled by JS: display: flex */
-    align-items: center;
-    justify-content: center;
-}
-
-.kb-modal-content {
+    border: none;
+    border-radius: 12px;
+    padding: 0;
+    max-width: 480px;
+    width: 100%;
     background: #fff;
-    border-radius: 14px;
-    width: 90%;
-    max-width: 420px;
-    padding: 28px;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
-    position: relative;
-    animation: kb-modal-pop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+    color: #1a1d23;
+    display: none; /* Hidden by default */
 }
 
-@keyframes kb-modal-pop {
-    from { opacity: 0; transform: scale(0.92) translateY(10px); }
-    to { opacity: 1; transform: scale(1) translateY(0); }
-}
-
-.kb-modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 22px;
-    padding-bottom: 14px;
-    border-bottom: 1px solid #f1f5f9;
-}
-
-.kb-modal-header h3 {
-    margin: 0 !important;
-    font-size: 17px !important;
-    font-weight: 700 !important;
-    color: #1a1d23 !important;
-}
-
-.kb-modal-close {
-    font-size: 26px;
-    line-height: 1;
-    cursor: pointer;
-    color: #94a3b8;
-    transition: color 0.2s;
-}
-
-.kb-modal-close:hover {
-    color: #ef4444;
-}
-
-.kb-modal-body .kb-form-row {
-    margin-bottom: 18px;
-}
-
-.kb-modal-body label {
-    display: block;
-    font-size: 12px;
-    font-weight: 600;
-    margin-bottom: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: #64748b;
-}
-
-.kb-modal-body select,
-.kb-modal-body input {
-    width: 100% !important;
-    padding: 9px 12px !important;
-    border-radius: 8px !important;
-    border: 1px solid #e2e8f0 !important;
-    font-size: 14px !important;
-    background: #f8fafc !important;
-    box-shadow: none !important;
-}
-
-.kb-modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 28px;
-}
-
-/* Dark mode modal */
-.kb-dark .kb-modal {
-    background: rgba(0, 0, 0, 0.8) !important;
-}
-
-.kb-dark .kb-modal-content {
-    background: #161a22;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
-}
-
-.kb-dark .kb-modal-header {
-    border-bottom-color: rgba(255, 255, 255, 0.06);
-}
-
-.kb-dark .kb-modal-header h3 {
-    color: #fff !important;
-}
-
-.kb-dark .kb-modal-body label {
-    color: #94a3b8;
-}
-
-.kb-dark .kb-modal-body select,
-.kb-dark .kb-modal-body input {
-    background: #0d1117 !important;
-    border-color: rgba(255, 255, 255, 0.1) !important;
-    color: #fff !important;
-}
-
+/* Show when open attribute or class is present */
 .kb-modal[open],
 .kb-modal.is-open {
-    display: flex !important;
+    display: block !important;
 }
 
 dialog.kb-modal::backdrop {
@@ -1301,6 +1211,17 @@ dialog.kb-modal::backdrop {
     background: rgba(255, 255, 255, 0.03);
 }
 
+.kb-wrap.kb-dark .kb-empty,
+.kb-wrap.kb-dark .kb-loading-row td {
+    background: #16181f !important;
+    color: #8b8fa8 !important;
+}
+
+.kb-wrap.kb-dark .kb-loading-row .kb-spinner {
+    border-color: rgba(255, 255, 255, 0.1);
+    border-top-color: #60a5fa;
+}
+
 .kb-wrap.kb-dark .kb-pt-pill {
     background: #16181f;
     border-color: rgba(255, 255, 255, 0.1);
@@ -1437,4 +1358,120 @@ dialog.kb-modal::backdrop {
 [data-theme="dark"] .kb-badge-down {
     background: rgba(239, 68, 68, 0.15);
     border-color: rgba(239, 68, 68, 0.4);
+}
+
+/* ============================================================
+   SonoAI — Clinical Filters
+   ============================================================ */
+.kb-clinical-filters {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.kb-filter-mode-pills {
+    display: flex;
+    background: #f1f5f9;
+    padding: 3px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.kb-dark .kb-filter-mode-pills {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.kb-filter-mode-btn {
+    padding: 5px 12px;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.kb-filter-mode-btn:hover {
+    color: #1e3a8a;
+}
+
+.kb-filter-mode-btn.active {
+    background: #fff;
+    color: #2563eb;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.kb-dark .kb-filter-mode-btn {
+    color: rgba(255,255,255,0.5);
+}
+
+.kb-dark .kb-filter-mode-btn.active {
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    box-shadow: none;
+}
+
+.kb-filter-metadata {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.kb-filter-input,
+.kb-filter-select {
+    background: #fff !important;
+    border: 1px solid #d1d5db !important;
+    border-radius: 6px !important;
+    padding: 5px 10px !important;
+    font-size: 12px !important;
+    height: 32px !important;
+    color: #1e293b !important;
+    box-shadow: none !important;
+    min-width: 140px;
+}
+
+.kb-dark .kb-filter-input,
+.kb-dark .kb-filter-select {
+    background: rgba(255,255,255,0.05) !important;
+    border-color: rgba(255,255,255,0.1) !important;
+    color: #fff !important;
+}
+
+.kb-filter-input:focus,
+.kb-filter-select:focus {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1) !important;
+}
+
+@media (max-width: 930px) {
+    .kb-clinical-filters {
+        flex-direction: column;
+        align-items: flex-start;
+        width: 100%;
+        gap: 8px;
+    }
+    .kb-filter-mode-pills {
+        width: 100%;
+        justify-content: stretch;
+    }
+    .kb-filter-mode-btn {
+        flex: 1;
+        text-align: center;
+    }
+    .kb-filter-metadata {
+        width: 100%;
+    }
+    .kb-filter-country-wrap, 
+    .kb-filter-topic-wrap {
+        flex: 1;
+        width: 100%;
+    }
+    .kb-filter-input,
+    .kb-filter-select {
+        width: 100%;
+    }
 }

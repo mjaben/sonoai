@@ -1126,7 +1126,7 @@
      *
      * Standard ## headings become labelled .sonoai-section cards.
      */
-    function markdownToHtml(text) {
+    function markdownToHtml(text, currentImages) {
         var blocks = [];
         function protect(html) {
             var id = '\x01B' + blocks.length + '\x01';
@@ -1192,8 +1192,14 @@
             return protect(h);
         });
 
-        // 3b. Parse :::image|URL|Label::: fences for clinical citations.
-        text = text.replace(/:::image\|(.*?)\|(.*?):::/g, function(_, url, label) {
+        // 3b. Parse :::image|ID|Label::: fences for clinical citations.
+        text = text.replace(/:::image\|(.*?)\|(.*?):::/g, function(_, id, label) {
+            var url = id;
+            // Resolve ID to URL if possible.
+            if (currentImages && currentImages[id]) {
+                url = currentImages[id].url;
+            }
+
             var h = '<div class="sonoai-image-card">';
             h += '<img src="' + url + '" alt="' + escapeHtml(label) + '" class="sonoai-zoomable-img">';
             h += '<div class="sonoai-image-label">' + escapeHtml(label) + '</div>';

@@ -36,8 +36,9 @@ class KnowledgeBaseAjax {
             'sonoai_kb_edit_topic',
             'sonoai_kb_delete_topic',
             'sonoai_kb_update_meta',
-            'sonoai_kb_get_items',
+            'sonoai_kb_sync_topics',
             'sonoai_kb_upload_img',
+            'sonoai_kb_delete_img_file',
         ];
         foreach ( $actions as $action ) {
             add_action( "wp_ajax_{$action}", [ $this, str_replace( 'sonoai_kb_', 'handle_', $action ) ] );
@@ -141,24 +142,18 @@ class KnowledgeBaseAjax {
     public function handle_update_meta() {
         $this->check( 'sonoai_kb_update_meta' );
 
-        $knowledge_id = isset( $_POST['knowledge_id'] ) ? sanitize_key( $_POST['knowledge_id'] ) : '';
-        $post_id      = isset( $_POST['post_id'] ) ? intval( $_POST['post_id'] ) : 0;
-        $type         = isset( $_POST['type'] ) ? sanitize_text_field( wp_unslash( $_POST['type'] ) ) : 'wp';
-        $mode         = isset( $_POST['mode'] ) ? sanitize_text_field( wp_unslash( $_POST['mode'] ) ) : 'guideline';
-        $country      = isset( $_POST['country'] ) ? sanitize_text_field( wp_unslash( $_POST['country'] ) ) : '';
+        $post_id  = isset( $_POST['post_id'] ) ? intval( $_POST['post_id'] ) : 0;
+        $type     = isset( $_POST['type'] ) ? sanitize_text_field( wp_unslash( $_POST['type'] ) ) : 'wp';
+        $mode     = isset( $_POST['mode'] ) ? sanitize_text_field( wp_unslash( $_POST['mode'] ) ) : 'guideline';
+        $topic_id = isset( $_POST['topic_id'] ) ? intval( $_POST['topic_id'] ) : 0;
 
-        if ( ! $knowledge_id && ! $post_id ) {
-            wp_send_json_error( [ 'message' => __( 'Missing item identifier.', 'sonoai' ) ] );
+        if ( ! $post_id ) {
+            wp_send_json_error( [ 'message' => __( 'Invalid post ID.', 'sonoai' ) ] );
         }
 
         global $wpdb;
         $table_name = $this->kb_table();
         $emb_table  = $this->emb_table();
-
-        // Topic should only be set in research mode
-        if ( $mode === 'guideline' ) {
-            $topic_id = 0;
-        }
 
         // Get topic slug for embedding update
         $topic_slug = null;
@@ -169,38 +164,28 @@ class KnowledgeBaseAjax {
             }
         }
 
-        $where = [];
-        $where_format = [];
-        if ( $knowledge_id ) {
-            $where['knowledge_id'] = $knowledge_id;
-            $where_format[] = '%s';
-        } else {
-            $where['post_id'] = $post_id;
-            $where_format[]  = '%d';
-            $where['type']    = $type;
-            $where_format[]  = '%s';
-        }
-
         // Update KB items table
         $updated = $wpdb->update(
             $table_name,
             [
                 'mode'     => $mode,
-                'topic_id' => $topic_id ?: null,
-                'country'  => $country
+                'topic_id' => $topic_id ?: null
             ],
-            $where,
-            [ '%s', '%d', '%s' ],
-            $where_format
+            [
+                'post_id' => $post_id,
+                'type'    => $type
+            ],
+            [ '%s', '%d' ],
+            [ '%d', '%s' ]
         );
 
         // Also update embeddings table for correct RAG filtering
         $wpdb->update(
             $emb_table,
             [ 'mode' => $mode, 'topic_slug' => $topic_slug ],
-            $where,
+            [ 'post_id' => $post_id, 'type' => $type ],
             [ '%s', '%s' ],
-            $where_format
+            [ '%d', '%s' ]
         );
 
         if ( $updated === false ) {
@@ -291,30 +276,35 @@ class KnowledgeBaseAjax {
         $page      = max( 1, intval( $_POST['page'] ?? 1 ) );
         $filter    = sanitize_key( $_POST['kb_status'] ?? 'all' ); // all, added, not_added, update
         $per_page  = 20;
-        $search    = sanitize_text_field( $_POST['search'] ?? '' );
-        $mode      = sanitize_key( $_POST['mode'] ?? '' );
-        $topic_id  = intval( $_POST['topic_id'] ?? 0 );
-        $country   = sanitize_text_field( $_POST['country'] ?? '' );
-        $offset    = ( $page - 1 ) * $per_page;
+        $search   = sanitize_text_field( $_POST['search'] ?? '' );
+        $mode     = sanitize_key( $_POST['mode'] ?? '' );
+        $topic_id = intval( $_POST['topic_id'] ?? 0 );
+        $country  = sanitize_text_field( $_POST['country'] ?? '' );
+        $offset   = ( $page - 1 ) * $per_page;
 
         $posts_tbl = $wpdb->posts;
         $kb_tbl    = $this->kb_table();
 
-        $where    = $wpdb->prepare( "p.post_type = %s AND p.post_status = 'publish'", $post_type );
+        $where = $wpdb->prepare( "p.post_type = %s AND p.post_status = 'publish'", $post_type );
         if ( $search ) {
             $like  = '%' . $wpdb->esc_like( $search ) . '%';
             $where .= $wpdb->prepare( ' AND p.post_title LIKE %s', $like );
         }
         
         $topics_tbl = $wpdb->prefix . 'sonoai_kb_topics';
-        
+
+        // We join to filter by mode, topic, or country if requested
+        $join = "LEFT JOIN $kb_tbl kb ON kb.post_id = p.ID AND kb.type = 'wp'";
+        $join .= " LEFT JOIN $topics_tbl t ON t.id = kb.topic_id";
+
         if ( $mode ) {
             $where .= $wpdb->prepare( " AND kb.mode = %s", $mode );
-            if ( $mode === 'research' && $topic_id ) {
-                $where .= $wpdb->prepare( " AND kb.topic_id = %d", $topic_id );
-            } elseif ( $mode === 'guideline' && $country ) {
-                $where .= $wpdb->prepare( " AND kb.country LIKE %s", '%' . $wpdb->esc_like( $country ) . '%' );
-            }
+        }
+        if ( $topic_id ) {
+            $where .= $wpdb->prepare( " AND kb.topic_id = %d", $topic_id );
+        }
+        if ( $country ) {
+            $where .= $wpdb->prepare( " AND kb.country LIKE %s", '%' . $wpdb->esc_like( $country ) . '%' );
         }
 
         $query = "
@@ -327,11 +317,9 @@ class KnowledgeBaseAjax {
                 kb.embedding_model as model,
                 kb.mode as mode,
                 kb.topic_id as topic_id,
-                kb.country as country,
                 t.name as topic_name
             FROM $posts_tbl p
-            LEFT JOIN $kb_tbl kb ON kb.post_id = p.ID AND kb.type = 'wp'
-            LEFT JOIN $topics_tbl t ON t.id = kb.topic_id
+            $join
             WHERE $where
             ORDER BY p.post_date DESC
         ";
@@ -374,80 +362,6 @@ class KnowledgeBaseAjax {
             'posts'       => $paged_posts,
             'counts'      => $counts,
             'total'       => $total,
-            'page'        => $page,
-            'total_pages' => (int) ceil( $total / $per_page ),
-        ] );
-    }
-
-    // ── Handler: Get Custom Items ─────────────────────────────────────────────
-
-    public function handle_get_items(): void {
-        $this->check( 'sonoai_kb_get_posts' ); // Re-use the same nonce/capability
-        global $wpdb;
-
-        $type      = sanitize_key( $_POST['type'] ?? 'pdf' ); // pdf, url, txt
-        $page      = max( 1, intval( $_POST['page'] ?? 1 ) );
-        $per_page  = 10;
-        $search    = sanitize_text_field( $_POST['search'] ?? '' );
-        $mode      = sanitize_key( $_POST['mode'] ?? '' );
-        $topic_id  = intval( $_POST['topic_id'] ?? 0 );
-        $country   = sanitize_text_field( $_POST['country'] ?? '' );
-        $offset    = ( $page - 1 ) * $per_page;
-
-        $kb_tbl     = $this->kb_table();
-        $topics_tbl = $wpdb->prefix . 'sonoai_kb_topics';
-
-        $where = $wpdb->prepare( "kb.type = %s", $type );
-
-        if ( $search ) {
-            $like = '%' . $wpdb->esc_like( $search ) . '%';
-            if ( $type === 'txt' ) {
-                $where .= $wpdb->prepare( " AND kb.raw_content LIKE %s", $like );
-            } else {
-                $where .= $wpdb->prepare( " AND (kb.source_title LIKE %s OR kb.source_url LIKE %s)", $like, $like );
-            }
-        }
-        if ( $mode ) {
-            $where .= $wpdb->prepare( " AND kb.mode = %s", $mode );
-            if ( $mode === 'research' && $topic_id ) {
-                $where .= $wpdb->prepare( " AND kb.topic_id = %d", $topic_id );
-            } elseif ( $mode === 'guideline' && $country ) {
-                $where .= $wpdb->prepare( " AND kb.country LIKE %s", '%' . $wpdb->esc_like( $country ) . '%' );
-            }
-        }
-
-        $total = $wpdb->get_var( "SELECT COUNT(*) FROM $kb_tbl kb WHERE $where" );
-
-        $query = "
-            SELECT kb.*, t.name as topic_name 
-            FROM $kb_tbl kb
-            LEFT JOIN $topics_tbl t ON t.id = kb.topic_id
-            WHERE $where
-            ORDER BY kb.created_at DESC
-            LIMIT " . (int) $per_page . " OFFSET " . (int) $offset;
-
-        $items = $wpdb->get_results( $query );
-
-        $formatted = [];
-        foreach ( $items as $item ) {
-            $formatted[] = [
-                'knowledge_id' => $item->knowledge_id,
-                'source_title' => $item->source_title ?: ( $item->type === 'txt' ? wp_trim_words( strip_tags( $item->raw_content ), 10 ) : '—' ),
-                'source_url'   => $item->source_url,
-                'mode'         => ucfirst( $item->mode ),
-                'raw_mode'     => $item->mode,
-                'topic_name'   => $item->topic_name ?: '—',
-                'topic_id'     => $item->topic_id,
-                'country'      => $item->country ?: '—',
-                'ai_model'     => ucfirst( $item->provider ) . ' / ' . ( $item->embedding_model ?: '—' ),
-                'created_at'   => date_i18n( get_option( 'date_format' ), strtotime( $item->created_at ) ),
-                'raw_content'  => $item->raw_content,
-            ];
-        }
-
-        wp_send_json_success( [
-            'items'       => $formatted,
-            'total'       => (int) $total,
             'page'        => $page,
             'total_pages' => (int) ceil( $total / $per_page ),
         ] );
@@ -506,11 +420,6 @@ class KnowledgeBaseAjax {
         ) );
 
         if ( $kb_item ) {
-            // Evict from Redis before MySQL deletion to keep the index consistent.
-            $mode = $kb_item->mode ?? 'guideline';
-            RedisManager::instance()->evict_vector( $kb_item->knowledge_id, $mode );
-            RedisManager::instance()->evict_vector( $kb_item->knowledge_id, $mode === 'guideline' ? 'research' : 'guideline' );
-
             $wpdb->delete( $this->kb_table(), [ 'knowledge_id' => $kb_item->knowledge_id ], [ '%s' ] );
         }
         $wpdb->query( $wpdb->prepare(
@@ -673,17 +582,6 @@ class KnowledgeBaseAjax {
             wp_send_json_error( [ 'message' => __( 'Invalid request.', 'sonoai' ) ] );
         }
 
-        // Retrieve mode before deleting.
-        $item = $wpdb->get_row( $wpdb->prepare(
-            "SELECT mode FROM `{$this->kb_table()}` WHERE knowledge_id = %s",
-            $knowledge_id
-        ) );
-        $old_mode = $item->mode ?? 'guideline';
-
-        // Evict stale Redis vectors for the old knowledge_id before re-embedding.
-        RedisManager::instance()->evict_vector( $knowledge_id, $old_mode );
-        RedisManager::instance()->evict_vector( $knowledge_id, $old_mode === 'guideline' ? 'research' : 'guideline' );
-
         // Delete old embeddings for this knowledge_id.
         $wpdb->delete( $this->emb_table(), [ 'knowledge_id' => $knowledge_id ], [ '%s' ] );
         $wpdb->delete( $this->kb_table(),  [ 'knowledge_id' => $knowledge_id ], [ '%s' ] );
@@ -726,18 +624,6 @@ class KnowledgeBaseAjax {
         if ( empty( $knowledge_id ) ) {
             wp_send_json_error( [ 'message' => __( 'Missing knowledge ID.', 'sonoai' ) ] );
         }
-
-        // Retrieve mode before deleting so we can target the correct Redis index.
-        $item = $wpdb->get_row( $wpdb->prepare(
-            "SELECT mode FROM `{$this->kb_table()}` WHERE knowledge_id = %s",
-            $knowledge_id
-        ) );
-        $mode = $item->mode ?? 'guideline';
-
-        // Evict from Redis Set index before MySQL deletion.
-        RedisManager::instance()->evict_vector( $knowledge_id, $mode );
-        // Also evict the opposite mode in case it was re-indexed differently.
-        RedisManager::instance()->evict_vector( $knowledge_id, $mode === 'guideline' ? 'research' : 'guideline' );
 
         $wpdb->delete( $this->kb_table(),  [ 'knowledge_id' => $knowledge_id ], [ '%s' ] );
         $wpdb->delete( $this->emb_table(), [ 'knowledge_id' => $knowledge_id ], [ '%s' ] );
@@ -939,5 +825,28 @@ class KnowledgeBaseAjax {
             'url'  => $upload['url'],
             'file' => $upload['file']
         ] );
+    }
+
+    /**
+     * Delete a clinical image file from the server
+     */
+    public function handle_delete_img_file(): void {
+        $this->check( 'sonoai_kb_delete_item' );
+
+        $file_path = isset( $_POST['file_path'] ) ? wp_unslash( $_POST['file_path'] ) : '';
+        if ( empty( $file_path ) || ! file_exists( $file_path ) ) {
+            wp_send_json_error( [ 'message' => __( 'File not found.', 'sonoai' ) ] );
+        }
+
+        // Security: Ensure the file is within our custom clinical library
+        if ( strpos( $file_path, 'sonoai-Clinical-img-lib' ) === false ) {
+            wp_send_json_error( [ 'message' => __( 'Unauthorized file deletion.', 'sonoai' ) ] );
+        }
+
+        if ( wp_delete_file( $file_path ) ) {
+            wp_send_json_success( [ 'message' => __( 'File deleted.', 'sonoai' ) ] );
+        } else {
+            wp_send_json_error( [ 'message' => __( 'Could not delete file.', 'sonoai' ) ] );
+        }
     }
 }

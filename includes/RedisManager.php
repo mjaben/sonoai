@@ -28,7 +28,39 @@ class RedisManager {
         return self::$instance;
     }
 
-    private function __construct() {}
+    private function __construct() {
+        $this->ensure_index();
+    }
+
+    /**
+     * Ensure the RediSearch VSS index exists.
+     */
+    private function ensure_index(): void {
+        $client = $this->get_client();
+        if ( ! $client ) return;
+
+        try {
+            // Check if index exists
+            $client->executeRaw(['FT.INFO', 'idx:sonoai_vss']);
+        } catch ( \Exception $e ) {
+            // Index doesn't exist, create it
+            // Dimensions: OpenAI 1536, Gemini 768. We'll use 1536 as the default if not detectable.
+            // Using HNSW for high-performance ANN search.
+            try {
+                $client->executeRaw([
+                    'FT.CREATE', 'idx:sonoai_vss',
+                    'ON', 'HASH',
+                    'PREFIX', '1', 'sonoai:vss:',
+                    'SCHEMA',
+                    'v', 'VECTOR', 'HNSW', '6', 'TYPE', 'FLOAT32', 'DIM', '1536', 'DISTANCE_METRIC', 'COSINE',
+                    'mode', 'TAG',
+                    'post_id', 'NUMERIC'
+                ]);
+            } catch ( \Exception $inner ) {
+                error_log( '[SonoAI] RediSearch Index Creation Failed: ' . $inner->getMessage() );
+            }
+        }
+    }
 
     /**
      * Get the Predis client instance.
@@ -114,97 +146,83 @@ class RedisManager {
         $client = $this->get_client();
         if ( ! $client ) return;
 
-        $mode = $meta['mode'] ?? 'guideline';
-        $key  = "sonoai:vector:{$mode}:{$knowledge_id}";
-
-        $client->hset( $key, 'v', wp_json_encode( $vector ) );
+        // VSS Format: Binary vector blob
+        $binary_vector = pack( 'f*', ...$vector );
+        
+        $key = "sonoai:vss:{$knowledge_id}";
+        $client->hset( $key, 'v', $binary_vector );
+        $client->hset( $key, 'mode', $meta['mode'] );
+        $client->hset( $key, 'post_id', $meta['post_id'] );
         $client->hset( $key, 'm', wp_json_encode( $meta ) );
         $client->expire( $key, 86400 * 7 ); // Cache for 7 days
-
-        // Register in mode-specific set index to avoid expensive KEYS scans.
-        $index_key = "sonoai:idx:{$mode}";
-        $client->sadd( $index_key, [ $key ] );
-        $client->expire( $index_key, 86400 * 7 );
     }
 
     /**
      * Perform a fast similarity search across cached vectors in Redis.
-     *
-     * Uses a Set index (sonoai:idx:{mode}) instead of a KEYS scan, which
-     * avoids O(N) keyspace scans and scales to any KB size with standard Redis.
+     * Note: This uses a simple brute-force loop for small-to-medium sets.
+     * For large scale, we would use RediSearch FT.SEARCH.
      */
     public function search_vectors( array $query_vector, string $mode, float $min_sim = 0.70, int $limit = 5 ): array {
         $client = $this->get_client();
         if ( ! $client ) return [];
 
-        // Use the mode-specific set index instead of a full KEYS scan.
-        $index_key = "sonoai:idx:{$mode}";
-        $keys      = $client->smembers( $index_key );
-        if ( empty( $keys ) ) return [];
+        $binary_query = pack( 'f*', ...$query_vector );
+        
+        // RediSearch KNN Query: Filter by mode TAG, then perform Vector Search
+        // Query format: "@mode:{guideline} => [KNN $limit @v $binary_query AS score]"
+        $query = sprintf( '@mode:{%s} => [KNN %d @v $v_blob AS score]', $mode, $limit );
+        
+        try {
+            $response = $client->executeRaw([
+                'FT.SEARCH', 'idx:sonoai_vss',
+                $query,
+                'PARAMS', '2', 'v_blob', $binary_query,
+                'DIALECT', '2',
+                'LIMIT', '0', $limit
+            ]);
 
-        $results = [];
-        foreach ( $keys as $key ) {
-            // Verify the vector key still exists (may have expired).
-            if ( ! $client->exists( $key ) ) {
-                $client->srem( $index_key, $key ); // Clean up stale index entry.
-                continue;
+            if ( empty( $response ) || ! is_array( $response ) || $response[0] === 0 ) {
+                return [];
             }
 
-            $data = $client->hgetall( $key );
-            if ( empty( $data['v'] ) ) continue;
+            $results = [];
+            $count = $response[0];
+            
+            // FT.SEARCH returns [count, key1, [fields...], key2, [fields...]]
+            for ( $i = 1; $i < count( $response ); $i += 2 ) {
+                $fields = $response[ $i + 1 ];
+                $item = [];
+                for ( $j = 0; $j < count( $fields ); $j += 2 ) {
+                    $item[ $fields[$j] ] = $fields[ $j + 1 ];
+                }
 
-            $vector = json_decode( $data['v'], true );
-            $sim    = sonoai_cosine_similarity( $query_vector, $vector );
-
-            if ( $sim >= $min_sim ) {
-                $meta = json_decode( $data['m'], true );
-                $results[] = array_merge( $meta, [ 'similarity' => $sim ] );
+                if ( ! empty( $item['m'] ) ) {
+                    $meta = json_decode( $item['m'], true );
+                    $score = 1 - (float) $item['score']; // Convert distance to similarity
+                    
+                    if ( $score >= $min_sim ) {
+                        $results[] = array_merge( $meta, [ 'similarity' => $score ] );
+                    }
+                }
             }
-        }
+            
+            return $results;
 
-        usort( $results, fn( $a, $b ) => $b['similarity'] <=> $a['similarity'] );
-        return array_slice( $results, 0, $limit );
-    }
-
-    /**
-     * Remove a specific vector from the Redis cache and its set index.
-     * Call this before re-embedding or deleting a KB item.
-     *
-     * @param string $knowledge_id The knowledge_id:chunk_index key fragment.
-     * @param string $mode         The mode the vector was indexed under.
-     */
-    public function evict_vector( string $knowledge_id, string $mode ): void {
-        $client = $this->get_client();
-        if ( ! $client ) return;
-
-        // knowledge_id may be a prefix — evict all matching chunks from the index.
-        $index_key = "sonoai:idx:{$mode}";
-        $all_keys  = $client->smembers( $index_key );
-
-        foreach ( $all_keys as $key ) {
-            if ( str_contains( $key, $knowledge_id ) ) {
-                $client->del( $key );
-                $client->srem( $index_key, $key );
-            }
+        } catch ( \Exception $e ) {
+            error_log( '[SonoAI] RediSearch Search Failed: ' . $e->getMessage() );
+            return []; // Fallback to empty if VSS fails
         }
     }
 
     /**
-     * Clear all cached vectors and their set indexes.
+     * Clear all cached vectors.
      */
     public function flush_vectors(): void {
         $client = $this->get_client();
         if ( ! $client ) return;
-
-        foreach ( [ 'guideline', 'research' ] as $mode ) {
-            $index_key = "sonoai:idx:{$mode}";
-            $keys      = $client->smembers( $index_key );
-            if ( ! empty( $keys ) ) {
-                foreach ( $keys as $key ) {
-                    $client->del( $key );
-                }
-            }
-            $client->del( $index_key );
+        $keys = $client->keys( 'sonoai:vector:*' );
+        if ( ! empty( $keys ) ) {
+            foreach ( $keys as $key ) $client->del( $key );
         }
     }
 }

@@ -83,19 +83,12 @@ class Chat {
 
         $messages   = json_decode( $session->messages, true );
         $messages   = is_array( $messages ) ? $messages : [];
-
-        $msg = [
-            'role'       => $role,
-            'content'    => $content,
+        $messages[] = array_filter( [
+            'role'      => $role,
+            'content'   => $content,
+            'image_url' => $image_url,
             'created_at' => time(),
-        ];
-        if ( ! empty( $image_url ) ) {
-            $msg['image_url'] = $image_url;
-        }
-        if ( ! empty( $images ) ) {
-            $msg['context_images'] = $images;
-        }
-        $messages[] = $msg;
+        ] );
 
         return (bool) $wpdb->update(
             $table,
