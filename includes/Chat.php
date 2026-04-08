@@ -84,9 +84,10 @@ class Chat {
         $messages   = json_decode( $session->messages, true );
         $messages   = is_array( $messages ) ? $messages : [];
         $messages[] = array_filter( [
-            'role'      => $role,
-            'content'   => $content,
-            'image_url' => $image_url,
+            'role'       => $role,
+            'content'    => $content,
+            'image_url'  => $image_url,
+            'images'     => $images, // FIX: Store clinical metadata map
             'created_at' => time(),
         ] );
 

@@ -23,6 +23,7 @@
         mode        : localStorage.getItem('sonoai_mode') || 'guideline',
         lightboxImages: [],
         lightboxIndex : 0,
+        imageLibrary  : {}, // NEW: Persistent session-wide image map [ID -> {url, label}]
     };
 
     // ── DOM refs ───────────────────────────────────────────────────────────
@@ -363,7 +364,11 @@
                 clearMessages();
                 const msgs = session.messages || [];
                 msgs.forEach(function (m) {
-                    appendMessage(m.role, m.content, m.image_url || '', m.images || m.context_images || [], m.saved_id, true);
+                    // Merge historical image metadata into global library
+                    const msgImgs = m.images || m.context_images || {};
+                    Object.assign(state.imageLibrary, msgImgs);
+                    
+                    appendMessage(m.role, m.content, m.image_url || '', msgImgs, m.saved_id, true);
                 });
                 updateHistoryActiveState();
                 scrollToBottom();
@@ -451,6 +456,7 @@
         // Show typing indicator.
         const typingEl = appendTyping();
         state.sending  = true;
+        state.isStreaming = true; // NEW: track streaming state
         sendBtn.disabled = true;
 
         const formData = new FormData();
@@ -478,7 +484,6 @@
             let assistantWrapper = null;
             let bubble = null;
             let fullReply = '';
-            let currentImages = {};
             let firstChunkReceived = false;
 
             try {
@@ -510,41 +515,30 @@
                             const parsed = JSON.parse(eventData);
                             
                             if (eventType === 'meta') {
-                                // We no longer remove typingEl here. We wait for the first chunk.
                                 state.sessionUuid = parsed.session_uuid;
-                                
                                 if (parsed.mode) {
                                     state.mode = parsed.mode;
                                     localStorage.setItem('sonoai_mode', state.mode);
                                     updateModeUI();
                                 }
-
-                                if (parsed.context_images) {
-                                    currentImages = parsed.context_images;
-                                }
-
                                 if (parsed.is_new_session) {
                                     state.sessions.unshift({
                                         session_uuid: parsed.session_uuid,
                                         title       : text.substring(0, 80),
                                         mode        : state.mode,
                                     });
-
                                     let savedModes = {};
                                     try { savedModes = JSON.parse(localStorage.getItem('sonoai_session_modes') || '{}'); } catch(e){}
                                     savedModes[parsed.session_uuid] = state.mode;
                                     localStorage.setItem('sonoai_session_modes', JSON.stringify(savedModes));
-
                                     renderHistoryList();
                                     updateUrl(parsed.session_uuid);
                                 }
-                                
-                                assistantWrapper = appendMessage('assistant', '', '', currentImages, null, false);
+                                assistantWrapper = appendMessage('assistant', '', '', {}, null, false);
                                 bubble = assistantWrapper.querySelector('.sonoai-bubble');
                                 updateHistoryActiveState();
                             }
                             else if (eventType === 'chunk') {
-                                // Smooth transition: hide 'Thinking' only when real text arrives.
                                 if (!firstChunkReceived && parsed.chunk && parsed.chunk.trim().length > 0) {
                                     firstChunkReceived = true;
                                     if (typingEl) {
@@ -555,11 +549,17 @@
                                         }, 300);
                                     }
                                 }
-
                                 fullReply += parsed.chunk;
                                 if (bubble) {
-                                    bubble.innerHTML = markdownToHtml(fullReply, currentImages);
+                                    bubble.innerHTML = markdownToHtml(fullReply, state.imageLibrary);
                                     scrollToBottom();
+                                }
+                            }
+                            else if (eventType === 'meta_end') {
+                                // Decoupled Payload: Images arrive at the end
+                                if (parsed.context_images) {
+                                    // Merge into global library for persistence
+                                    Object.assign(state.imageLibrary, parsed.context_images);
                                 }
                             }
                             else if (eventType === 'error') {
@@ -571,8 +571,8 @@
             } finally {
                 reader.releaseLock();
                 state.sending = false;
+                state.isStreaming = false; // Streaming finished
                 
-                // Final safety: remove typing indicator if it wasn't already removed by the first chunk.
                 if (typingEl && typingEl.parentNode) {
                     const finalPill = typingEl.querySelector('.sonoai-typing');
                     if (finalPill) finalPill.classList.add('sonoai-typing-fade-out');
@@ -581,24 +581,69 @@
                     }, 300);
                 }
 
-                // Show action buttons for the current assistant message
+                // Final render to reveal images (now that isStreaming is false and global library is populated)
+                if (bubble) {
+                    bubble.innerHTML = markdownToHtml(fullReply, state.imageLibrary);
+                }
+
+                // Check for "Show Images" opt-in text
+                const offerPhrase = "Would you like to view the clinical presentation/sonogram images for this case?";
+                if (fullReply.includes(offerPhrase)) {
+                    showImageOptInChips(assistantWrapper);
+                }
+
                 if (assistantWrapper) {
                     const row = assistantWrapper.querySelector('.sonoai-action-row');
-                    if (row) {
-                        row.style.display = 'flex';
-                    }
+                    if (row) row.style.display = 'flex';
                     scrollToBottom();
                 }
             }
-            
             sendBtn.disabled = textarea.value.trim().length === 0;
 
         }).catch(function (err) {
             if (typingEl && typingEl.parentNode) typingEl.remove();
             state.sending    = false;
+            state.isStreaming = false;
             sendBtn.disabled = textarea.value.trim().length === 0;
             showError(err.message || sonoai_vars.i18n.error);
         });
+    }
+
+    /**
+     * Appends interactive "Show Images" suggestion chips inside the message body.
+     */
+    function showImageOptInChips(wrapper) {
+        const body = wrapper.querySelector('.sonoai-message-body');
+        if (!body) return;
+
+        // Prevent duplicate chips
+        if (body.querySelector('.sonoai-optin-chips')) return;
+
+        const container = document.createElement('div');
+        container.className = 'sonoai-optin-chips';
+        container.style.cssText = 'display:flex;gap:8px;margin-top:10px;';
+
+        const yesBtn = document.createElement('button');
+        yesBtn.className = 'sonoai-suggestion';
+        yesBtn.textContent = 'Yes, show images';
+        yesBtn.dataset.query = 'Yes, show the clinical images.';
+        yesBtn.addEventListener('click', function() {
+            textarea.value = yesBtn.dataset.query;
+            handleSend();
+            container.remove();
+        });
+
+        const noBtn = document.createElement('button');
+        noBtn.className = 'sonoai-suggestion';
+        noBtn.textContent = 'No, thank you';
+        noBtn.addEventListener('click', function() {
+            container.remove();
+        });
+
+        container.appendChild(yesBtn);
+        container.appendChild(noBtn);
+        body.appendChild(container);
+        scrollToBottom();
     }
 
     // ── Message rendering ──────────────────────────────────────────────────
@@ -1192,12 +1237,24 @@
             return protect(h);
         });
 
-        // 3b. Parse :::image|ID|Label::: fences for clinical citations.
-        text = text.replace(/:::image\|(.*?)\|(.*?):::/g, function(_, id, label) {
+        // 3b. Parse :::image | ID | Label ::: fences for clinical citations (Hardened Regex).
+        text = text.replace(/:::image\s*\|\s*(.*?)\s*\|\s*(.*?)\s*:::/gi, function(_, id, label) {
+            id = id.trim();
+            label = label.trim();
+
+            // Decouple Payload: Suppress rendering if still streaming
+            if (state.isStreaming) {
+                return protect('<div class="sonoai-image-placeholder"><span>Loading clinical visualization...</span></div>');
+            }
+
             var url = id;
+            var images = currentImages || state.imageLibrary; // Use local turn map OR global library
+
             // Resolve ID to URL if possible.
-            if (currentImages && currentImages[id]) {
-                url = currentImages[id].url;
+            if (images && images[id]) {
+                url = images[id].url;
+            } else if (id.startsWith('http')) {
+                url = id; // Fallback for direct URLs
             }
 
             var h = '<div class="sonoai-image-card">';

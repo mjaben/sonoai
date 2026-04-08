@@ -2017,3 +2017,80 @@ body.sonoai-fullscreen #sonoai-app {
 }
 #sonoai-app.sonoai-light .sonoai-lightbox-caption { color: #111; }
 #sonoai-app.sonoai-light .sonoai-lightbox-counter { color: #888; }
+ 
+/* ── Interaction Logic UI ── */
+
+/* Image Placeholder (during stream) */
+.sonoai-image-placeholder {
+    width: 100%;
+    max-width: 420px;
+    height: 120px;
+    background: var(--sono-surface-2);
+    border: 1px dashed var(--sono-border);
+    border-radius: 12px;
+    margin: 16px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--sono-text-muted);
+    font-size: 12px;
+    font-weight: 500;
+    position: relative;
+    overflow: hidden;
+}
+
+.sonoai-image-placeholder::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
+    transform: translateX(-100%);
+    animation: sonoai-shimmer 2s infinite;
+}
+
+@keyframes sonoai-shimmer {
+    100% { transform: translateX(100%); }
+}
+
+.sonoai-image-placeholder span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sonoai-image-placeholder span::before {
+    content: "📷";
+    font-size: 16px;
+    opacity: 0.5;
+}
+
+/* Interactive Opt-in Chips */
+.sonoai-optin-chips {
+    animation: sonoai-slide-up 0.3s ease-out;
+}
+
+.sonoai-optin-chips .sonoai-suggestion {
+    padding: 8px 16px;
+    font-size: 13px;
+    background: var(--sono-surface-2);
+    border: 1px solid var(--sono-border);
+    color: var(--sono-text-dim);
+    transition: all 0.2s ease;
+}
+
+.sonoai-optin-chips .sonoai-suggestion:first-child {
+    border-color: var(--sono-accent);
+    color: var(--sono-accent);
+    background: var(--sono-accent-dim);
+}
+
+.sonoai-optin-chips .sonoai-suggestion:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+#sonoai-app.sonoai-light .sonoai-optin-chips .sonoai-suggestion:first-child {
+    background: #eef6ff;
+    color: #2563eb;
+    border-color: #4a90e2;
+}

@@ -147,10 +147,12 @@ class RestAPI {
         RedisManager::instance()->store_memory( $session_uuid, [ 'role' => 'user', 'content' => $message ] );
 
         // ── Build prompt + history ───────────────────────────────────────────
-        $context_data  = RAG::get_context_data( $message, $mode, $session_uuid );
+        $history        = Chat::get_messages_for_ai( $session_uuid );
+        $history_length = count( $history ); // Turn count before current message
+        
+        $context_data  = RAG::get_context_data( $message, $mode, $session_uuid, $history_length );
         $system_prompt = $context_data['prompt'];
         $context_imgs  = $context_data['images'];
-        $history       = Chat::get_messages_for_ai( $session_uuid );
 
         // Build messages array for the AI provider.
         $ai_messages   = array_merge(
@@ -173,7 +175,6 @@ class RestAPI {
             echo "event: meta\ndata: " . wp_json_encode( [
                 'session_uuid'   => $session_uuid,
                 'is_new_session' => $is_new_session,
-                'context_images' => $context_imgs,
                 'mode'           => $mode,
             ] ) . "\n\n";
             @ob_flush(); flush();
