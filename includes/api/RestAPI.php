@@ -176,6 +176,7 @@ class RestAPI {
                 'session_uuid'   => $session_uuid,
                 'is_new_session' => $is_new_session,
                 'mode'           => $mode,
+                'context_images' => $context_imgs,
             ] ) . "\n\n";
             @ob_flush(); flush();
 
@@ -194,7 +195,7 @@ class RestAPI {
                     Chat::log_unanswered_query( $user_id, $message, $reply );
                 }
 
-                echo "event: done\ndata: {}\n\n";
+                echo "event: meta_end\ndata: " . wp_json_encode( [ 'context_images' => $context_imgs ] ) . "\n\n";
             }
             exit;
         }

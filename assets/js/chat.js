@@ -141,15 +141,17 @@
         messages.addEventListener('click', function(e) {
             if (e.target.classList.contains('sonoai-zoomable-img')) {
                 const clickedImg = e.target;
+                // Query all zoomable images currently in the messages container
                 const allImgs = Array.from(messages.querySelectorAll('.sonoai-zoomable-img'));
                 
+                // Map to our lightbox state logic
                 state.lightboxImages = allImgs.map(img => ({
-                    url: img.src,
-                    label: img.alt || 'Clinical Visualization'
+                    url: img.src, // Fully resolved absolute URL
+                    label: img.getAttribute('alt') || 'Clinical Visualization'
                 }));
                 
                 state.lightboxIndex = allImgs.indexOf(clickedImg);
-                if (state.lightboxIndex === -1) state.lightboxIndex = 0;
+                if (state.lightboxIndex === -1) state.lightboxIndex = 0; // Fallback
                 
                 openLightbox();
             }
@@ -516,6 +518,9 @@
                             
                             if (eventType === 'meta') {
                                 state.sessionUuid = parsed.session_uuid;
+                                if (parsed.context_images) {
+                                    Object.assign(state.imageLibrary, parsed.context_images);
+                                }
                                 if (parsed.mode) {
                                     state.mode = parsed.mode;
                                     localStorage.setItem('sonoai_mode', state.mode);
@@ -695,23 +700,7 @@
             body.appendChild(bubble);
         }
 
-        // Optional: Context Images Gallery (Legacy/Fallback)
-        // If we want a separate gallery, we can keep it, but redirected images are better.
-        // For now, let's keep it as a 'Reference Gallery' if many images exist.
-        if (images && !Array.isArray(images) && Object.keys(images).length > 0) {
-            const gallery = document.createElement('div');
-            gallery.className = 'sonoai-context-gallery';
-            gallery.style.cssText = 'display:flex;gap:8px;margin-top:10px;overflow-x:auto;padding-bottom:4px;';
-            Object.values(images).forEach(function (img) {
-                const imgEl = document.createElement('img');
-                imgEl.src = img.url;
-                imgEl.alt = img.label || 'Reference image';
-                imgEl.className = 'sonoai-context-image sonoai-zoomable-img';
-                imgEl.style.cssText = 'max-height:80px;border-radius:4px;border:1px solid rgba(255,255,255,0.1); cursor:zoom-in;';
-                gallery.appendChild(imgEl);
-            });
-            body.appendChild(gallery);
-        }
+        // Assistant actions for non-streamed historical messages
 
         // Action row for assistant messages.
         if (!isUser) {
@@ -1129,7 +1118,19 @@
         const data = state.lightboxImages[state.lightboxIndex];
         if (!data) return;
         
-        img.src = data.url;
+        // Nuclear Stabilization: Clear src first to force a reload event
+        img.style.opacity = '0';
+        img.src = '';
+        
+        // Wait for next frame before setting new src to ensure event triggers
+        requestAnimationFrame(() => {
+            img.src = data.url;
+            img.onload = () => {
+                img.style.opacity = '1';
+                img.style.visibility = 'visible';
+            };
+        });
+
         caption.textContent = data.label;
         counter.textContent = (state.lightboxIndex + 1) + ' / ' + state.lightboxImages.length;
         
@@ -1171,7 +1172,7 @@
      *
      * Standard ## headings become labelled .sonoai-section cards.
      */
-    function markdownToHtml(text, currentImages) {
+    function markdownToHtml(text, imagesArg) {
         var blocks = [];
         function protect(html) {
             var id = '\x01B' + blocks.length + '\x01';
@@ -1227,10 +1228,12 @@
                 var name  = escapeHtml(parts[0]);
                 var url   = parts[1] || '';
                 
+                var labelHtml = '<strong>Source:</strong> <span>' + name + '</span>';
+                
                 if (url && (url.startsWith('http') || url.startsWith('www'))) {
-                    h += '<a href="' + url + '" target="_blank" class="sonoai-source-pill">' + linkSvg + '<span>' + name + '</span></a>';
+                    h += '<a href="' + url + '" target="_blank" class="sonoai-source-pill">' + linkSvg + labelHtml + '</a>';
                 } else {
-                    h += '<span class="sonoai-source-pill"><span>' + name + '</span></span>';
+                    h += '<span class="sonoai-source-pill">' + labelHtml + '</span>';
                 }
             });
             h += '</div>';
@@ -1248,7 +1251,8 @@
             }
 
             var url = id;
-            var images = currentImages || state.imageLibrary; // Use local turn map OR global library
+            // Guarded lookup to prevent ReferenceError and ensure persistence
+            var images = (typeof imagesArg !== 'undefined' && imagesArg) ? imagesArg : state.imageLibrary;
 
             // Resolve ID to URL if possible.
             if (images && images[id]) {
