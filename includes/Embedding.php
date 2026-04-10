@@ -228,21 +228,21 @@ class Embedding {
         $table = self::table();
 
         // Fetch embeddings (only provider match to keep vectors comparable).
-        $where_sql    = $wpdb->prepare( 'provider = %s', $provider );
-        $type_placeholders = [];
+        $where_sql = $wpdb->prepare( 'provider = %s', $provider );
+        
         if ( ! empty( $post_types ) ) {
-            foreach ( $post_types as $pt ) {
-                $type_placeholders[] = $wpdb->prepare( '%s', $pt );
-            }
-            $where_sql .= ' AND post_type IN (' . implode( ',', $type_placeholders ) . ')';
+            // Sanitize literals for IN clause
+            $placeholders = implode( ',', array_fill( 0, count( $post_types ), '%s' ) );
+            $where_sql .= $wpdb->prepare( " AND post_type IN ($placeholders)", $post_types );
         }
+
         // Filter by mode if provided.
         if ( ! empty( $mode ) && in_array( $mode, [ 'guideline', 'research' ], true ) ) {
             $where_sql .= $wpdb->prepare( ' AND mode = %s', $mode );
         }
 
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-        $rows = $wpdb->get_results( "SELECT id, post_id, post_type, chunk_text, embedding, image_urls, country, topic_slug, source_title, source_url FROM `$table` WHERE $where_sql", ARRAY_A );
+        // Note: Table name is derived from trusted prefix.
+        $rows = $wpdb->get_results( "SELECT id, post_id, post_type, chunk_text, embedding, image_urls, country, topic_slug, source_title, source_url FROM `{$wpdb->prefix}sonoai_embeddings` WHERE $where_sql", ARRAY_A );
 
         if ( empty( $rows ) ) {
             return [];
@@ -251,27 +251,27 @@ class Embedding {
         // Cosine similarity, keep top-N.
         $top = [];
         foreach ( $rows as $row ) {
-            $vec        = json_decode( $row['embedding'], true );
+            $vec = json_decode( $row['embedding'], true );
             if ( ! is_array( $vec ) ) {
                 continue;
             }
-            $sim        = sonoai_cosine_similarity( $query_vector, $vec );
+            $sim = sonoai_cosine_similarity( $query_vector, $vec );
             
             // Filter by minimum similarity.
             if ( $sim < $min_similarity ) {
                 continue;
             }
 
-            $candidate  = [
-                'chunk_text' => $row['chunk_text'],
-                'post_id'    => (int) $row['post_id'],
-                'post_type'  => $row['post_type'],
-                'image_urls' => $row['image_urls'] ? json_decode( $row['image_urls'], true ) : [],
-                'country'    => $row['country'],
-                'topic_slug' => $row['topic_slug'],
+            $candidate = [
+                'chunk_text'  => $row['chunk_text'],
+                'post_id'     => (int) $row['post_id'],
+                'post_type'   => $row['post_type'],
+                'image_urls'  => $row['image_urls'] ? json_decode( $row['image_urls'], true ) : [],
+                'country'     => $row['country'],
+                'topic_slug'  => $row['topic_slug'],
                 'source_name' => $row['source_title'],
                 'source_url'  => $row['source_url'],
-                'similarity' => $sim,
+                'similarity'  => $sim,
             ];
 
             if ( count( $top ) < $limit ) {

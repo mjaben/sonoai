@@ -2,13 +2,9 @@
 /**
  * Plugin Name: Sono AI
  * Description: Educational AI-powered chat assistant for the ultrasound and sonography niche. Performs RAG over WordPress Knowledge Base.
- * Plugin URI:  #
- * Author:      Sonohive
- * Version:     1.3.0
- * Requires at least: 5.8
- * Requires PHP: 7.4
+ * Author:      Sonohive Ltd
+ * Version:     1.0.3 Beta
  * Text Domain: sonoai
- * Domain Path: /languages
  * License:     GPL2 or later
  */
 
@@ -16,15 +12,67 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+// ─── Diagnostics & Logging ──────────────────────────────────────────────────
+/**
+ * Custom logger for SonoAI.
+ */
+function sonoai_log_error( $message ) {
+    error_log( "SonoAI Error: {$message}" );
+}
+
 // ─── Constants ───────────────────────────────────────────────────────────────
-define( 'SONOAI_VERSION',  '1.3.5' );
+define( 'SONOAI_VERSION',  '1.0.3' );
 define( 'SONOAI_DIR',      plugin_dir_path( __FILE__ ) );
 define( 'SONOAI_URL',      plugin_dir_url( __FILE__ ) );
 define( 'SONOAI_BASENAME', plugin_basename( __FILE__ ) );
 
+// ─── Compatibility Polyfills ────────────────────────────────────────────────
+if ( file_exists( SONOAI_DIR . 'includes/compat.php' ) ) {
+    require_once SONOAI_DIR . 'includes/compat.php';
+}
+
+// ─── Requirement Checks ─────────────────────────────────────────────────────
+function sonoai_meets_requirements() {
+    $missing = [];
+    $extensions = [ 'curl', 'mbstring', 'json', 'dom', 'xml', 'iconv' ];
+    
+    foreach ( $extensions as $ext ) {
+        if ( ! extension_loaded( $ext ) ) {
+            $missing[] = $ext;
+        }
+    }
+    
+    // Check PHP version
+    if ( version_compare( PHP_VERSION, '7.4', '<' ) ) {
+        sonoai_log_error( 'PHP version too old: ' . PHP_VERSION );
+        return false;
+    }
+
+    if ( ! empty( $missing ) ) {
+        sonoai_log_error( 'Missing PHP extensions: ' . implode( ', ', $missing ) );
+        return false;
+    }
+
+    return true;
+}
+
+if ( ! sonoai_meets_requirements() ) {
+    add_action( 'admin_notices', function() {
+        echo '<div class="error"><p>' . esc_html__( 'SonoAI is disabled because your server is missing required PHP extensions (Check sonoai-errors.log).', 'sonoai' ) . '</p></div>';
+    } );
+    return;
+}
+
 // ─── Vendor Autoload ─────────────────────────────────────────────────────────
 if ( file_exists( SONOAI_DIR . 'vendor/autoload.php' ) ) {
-    require_once SONOAI_DIR . 'vendor/autoload.php';
+    try {
+        require_once SONOAI_DIR . 'vendor/autoload.php';
+    } catch ( \Throwable $t ) {
+        sonoai_log_error( 'Vendor Autoload Failure: ' . $t->getMessage() );
+    }
+} else {
+    // Note: Don't hard-crash here, just log. The autoload check below will handle missing classes.
+    sonoai_log_error( 'vendor/autoload.php not found. Please ensure the vendor folder was uploaded correctly.' );
 }
 
 // ─── Autoload ────────────────────────────────────────────────────────────────
@@ -44,68 +92,101 @@ final class SonoAI {
 
     private static ?SonoAI $instance = null;
 
-    public static function instance(): SonoAI {
+    public static function instance(): ?SonoAI {
         if ( null === self::$instance ) {
-            self::$instance = new self();
+            try {
+                self::$instance = new self();
+            } catch ( \Throwable $t ) {
+                sonoai_log_error( 'Fatal Instance Error: ' . $t->getMessage() . ' in ' . $t->getFile() . ':' . $t->getLine() );
+                return null;
+            }
         }
         return self::$instance;
     }
 
     private function __construct() {
-        $this->load_includes();
-        $this->boot();
+        if ( ! sonoai_meets_requirements() ) return;
 
-        register_activation_hook( __FILE__, [ 'SonoAI\\Activator', 'run' ] );
-        register_deactivation_hook( __FILE__, [ 'SonoAI\\Activator', 'deactivate' ] );
+        try {
+            $this->load_includes();
+            $this->boot();
+
+            register_activation_hook( __FILE__, [ 'SonoAI\\Activator', 'run' ] );
+            register_deactivation_hook( __FILE__, [ 'SonoAI\\Activator', 'deactivate' ] );
+        } catch ( \Throwable $t ) {
+            sonoai_log_error( 'Bootstrap Error: ' . $t->getMessage() );
+        }
     }
 
     private function load_includes(): void {
-        require_once SONOAI_DIR . 'includes/helpers.php';
-        require_once SONOAI_DIR . 'includes/Activator.php';
-        require_once SONOAI_DIR . 'includes/AIProvider.php';
-        require_once SONOAI_DIR . 'includes/Embedding.php';
-        require_once SONOAI_DIR . 'includes/RAG.php';
-        require_once SONOAI_DIR . 'includes/Chat.php';
-        require_once SONOAI_DIR . 'includes/Topics.php';
-        require_once SONOAI_DIR . 'includes/RedisManager.php';
-        require_once SONOAI_DIR . 'includes/SavedResponses.php';
-        require_once SONOAI_DIR . 'includes/api/RestAPI.php';
-        require_once SONOAI_DIR . 'includes/hooks/ContentHooks.php';
-        require_once SONOAI_DIR . 'includes/admin/Admin.php';
-        require_once SONOAI_DIR . 'includes/admin/ApiConfig.php';
-        require_once SONOAI_DIR . 'includes/admin/KnowledgeBase.php';
-        require_once SONOAI_DIR . 'includes/admin/TopicsAdmin.php';
-        require_once SONOAI_DIR . 'includes/admin/KnowledgeBaseAjax.php';
-        require_once SONOAI_DIR . 'includes/admin/FeedbackAnalytics.php';
-        require_once SONOAI_DIR . 'includes/admin/QueryLogs.php';
-        require_once SONOAI_DIR . 'includes/Shortcode.php';
+        $files = [
+            'includes/helpers.php',
+            'includes/Activator.php',
+            'includes/AIProvider.php',
+            'includes/Embedding.php',
+            'includes/RAG.php',
+            'includes/Chat.php',
+            'includes/Topics.php',
+            'includes/RedisManager.php',
+            'includes/SavedResponses.php',
+            'includes/api/RestAPI.php',
+            'includes/hooks/ContentHooks.php',
+            'includes/admin/Admin.php',
+            'includes/admin/ApiConfig.php',
+            'includes/admin/KnowledgeBase.php',
+            'includes/admin/TopicsAdmin.php',
+            'includes/admin/KnowledgeBaseAjax.php',
+            'includes/admin/FeedbackAnalytics.php',
+            'includes/admin/QueryLogs.php',
+            'includes/Shortcode.php',
+        ];
+
+        foreach ( $files as $file ) {
+            $path = SONOAI_DIR . $file;
+            if ( file_exists( $path ) ) {
+                require_once $path;
+            } else {
+                sonoai_log_error( "Required file missing: {$file}" );
+            }
+        }
     }
 
     private function boot(): void {
-        // Maybe run DB migrations on plugin update.
         add_action( 'admin_init', [ $this, 'maybe_run_migrations' ] );
 
         add_action( 'plugins_loaded', function () {
-            SonoAI\RestAPI::instance();
-            SonoAI\ContentHooks::instance();
-            SonoAI\Admin::instance();
-            SonoAI\ApiConfig::instance();
-            SonoAI\KnowledgeBase::instance();
-            SonoAI\TopicsAdmin::instance();
-            SonoAI\KnowledgeBaseAjax::instance();
-            SonoAI\FeedbackAnalytics::instance();
-            SonoAI\QueryLogs::instance();
-            SonoAI\Shortcode::instance();
+            try {
+                // Initialize controllers
+                if ( class_exists( 'SonoAI\RestAPI' ) ) SonoAI\RestAPI::instance();
+                if ( class_exists( 'SonoAI\ContentHooks' ) ) SonoAI\ContentHooks::instance();
+                if ( class_exists( 'SonoAI\Admin' ) ) SonoAI\Admin::instance();
+                if ( class_exists( 'SonoAI\ApiConfig' ) ) SonoAI\ApiConfig::instance();
+                if ( class_exists( 'SonoAI\KnowledgeBase' ) ) SonoAI\KnowledgeBase::instance();
+                if ( class_exists( 'SonoAI\TopicsAdmin' ) ) SonoAI\TopicsAdmin::instance();
+                if ( class_exists( 'SonoAI\KnowledgeBaseAjax' ) ) SonoAI\KnowledgeBaseAjax::instance();
+                if ( class_exists( 'SonoAI\FeedbackAnalytics' ) ) SonoAI\FeedbackAnalytics::instance();
+                if ( class_exists( 'SonoAI\QueryLogs' ) ) SonoAI\QueryLogs::instance();
+                if ( class_exists( 'SonoAI\Shortcode' ) ) SonoAI\Shortcode::instance();
+            } catch ( \Throwable $t ) {
+                sonoai_log_error( 'Runtime Class Load Error: ' . $t->getMessage() );
+            }
         } );
     }
 
     public function maybe_run_migrations(): void {
         $stored = get_option( 'sonoai_db_version', '0' );
         if ( version_compare( $stored, SONOAI_VERSION, '<' ) ) {
-            SonoAI\Activator::create_tables();
-            update_option( 'sonoai_db_version', SONOAI_VERSION );
+            try {
+                if ( class_exists( 'SonoAI\Activator' ) ) {
+                    SonoAI\Activator::create_tables();
+                    update_option( 'sonoai_db_version', SONOAI_VERSION );
+                }
+            } catch ( \Throwable $t ) {
+                sonoai_log_error( 'Migration Error: ' . $t->getMessage() );
+            }
         }
     }
 }
 
+// Start the plugin.
 SonoAI::instance();

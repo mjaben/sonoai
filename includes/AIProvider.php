@@ -2,8 +2,7 @@
 /**
  * SonoAI — AI Provider factory.
  *
- * Abstracts OpenAI vs Gemini so the rest of the plugin doesn't care which
- * provider is active. Adapted directly from the Antimanual AIProvider pattern.
+ * Abstracts OpenAI vs Gemini vs Anthropic vs Mistral.
  *
  * @package SonoAI
  */
@@ -41,34 +40,43 @@ class AIProvider {
         return self::instance()->name;
     }
 
-    public static function is_openai(): bool {
-        return 'openai' === self::get_name();
-    }
-
-    public static function is_gemini(): bool {
-        return 'gemini' === self::get_name();
-    }
+    public static function is_openai(): bool { return 'openai' === self::get_name(); }
+    public static function is_gemini(): bool { return 'gemini' === self::get_name(); }
+    public static function is_anthropic(): bool { return 'anthropic' === self::get_name(); }
+    public static function is_mistral(): bool { return 'mistral' === self::get_name(); }
 
     public static function has_api_key(): bool {
         return ! empty( self::get_api_key() );
     }
 
     public static function get_api_key(): string {
-        return self::is_gemini()
-            ? (string) sonoai_option( 'gemini_api_key', '' )
-            : (string) sonoai_option( 'openai_api_key', '' );
+        $name = self::get_name();
+        return (string) sonoai_option( $name . '_api_key', '' );
     }
 
     public static function get_chat_model(): string {
-        return self::is_gemini()
-            ? (string) sonoai_option( 'gemini_chat_model', 'gemini-1.5-pro' )
-            : (string) sonoai_option( 'openai_chat_model', 'gpt-4o' );
+        $name = self::get_name();
+        $defaults = [
+            'openai'    => 'gpt-4o',
+            'gemini'    => 'gemini-2.0-flash',
+            'anthropic' => 'claude-3-5-sonnet-20241022',
+            'mistral'   => 'mistral-large-latest',
+        ];
+        return (string) sonoai_option( $name . '_chat_model', $defaults[$name] ?? 'gpt-4o' );
     }
 
     public static function get_embedding_model(): string {
-        return self::is_gemini()
-            ? (string) sonoai_option( 'gemini_embedding_model', 'text-embedding-004' )
-            : (string) sonoai_option( 'openai_embedding_model', 'text-embedding-3-small' );
+        $name = self::get_name();
+        if ( $name === 'anthropic' ) {
+            // Anthropic has no embedding API, default to OpenAI logic
+            return (string) sonoai_option( 'openai_embedding_model', 'text-embedding-3-small' );
+        }
+        $defaults = [
+            'openai'  => 'text-embedding-3-small',
+            'gemini'  => 'text-embedding-004',
+            'mistral' => 'mistral-embed',
+        ];
+        return (string) sonoai_option( $name . '_embedding_model', $defaults[$name] ?? 'text-embedding-3-small' );
     }
 
     // ── Embedding ─────────────────────────────────────────────────────────────
@@ -80,24 +88,29 @@ class AIProvider {
      * @return float[]|\WP_Error
      */
     public static function generate_embedding( string $text ) {
-        if ( ! self::has_api_key() ) {
-            return new \WP_Error( 'no_api_key', __( 'AI API key is not configured.', 'sonoai' ) );
+        $name = self::get_name();
+        
+        // Anthropic has no embedding API, default to OpenAI logic
+        if ( $name === 'anthropic' ) {
+            $name = 'openai'; 
         }
 
-        return self::is_gemini()
-            ? self::gemini_embedding( $text )
-            : self::openai_embedding( $text );
+        $key = (string) sonoai_option( $name . '_api_key', '' );
+        if ( empty( $key ) ) {
+            return new \WP_Error( 'no_api_key', __( 'Embedding API key is not configured.', 'sonoai' ) );
+        }
+
+        if ( $name === 'gemini' ) {
+            return self::gemini_embedding( $text );
+        } elseif ( $name === 'mistral' ) {
+            return self::mistral_embedding( $text );
+        } else {
+            return self::openai_embedding( $text, $key );
+        }
     }
 
     // ── Chat / Vision ─────────────────────────────────────────────────────────
 
-    /**
-     * Get a chat reply from the AI, optionally with an image.
-     *
-     * @param array  $messages Array of {role, content} objects.
-     * @param string $image_b64 Base64-encoded image (optional).
-     * @return string|\WP_Error
-     */
     /**
      * Stream a chat reply from the AI.
      */
@@ -106,9 +119,11 @@ class AIProvider {
             return new \WP_Error( 'no_api_key', __( 'AI API key is not configured.', 'sonoai' ) );
         }
 
-        return self::is_gemini()
-            ? self::gemini_chat_stream( $messages, $chunk_callback )
-            : self::openai_chat_stream( $messages, $chunk_callback );
+        $name = self::get_name();
+        if ( $name === 'gemini' ) return self::gemini_chat_stream( $messages, $chunk_callback );
+        if ( $name === 'anthropic' ) return self::anthropic_chat_stream( $messages, $chunk_callback );
+        if ( $name === 'mistral' ) return self::mistral_chat_stream( $messages, $chunk_callback );
+        return self::openai_chat_stream( $messages, $chunk_callback );
     }
 
     /**
@@ -122,20 +137,24 @@ class AIProvider {
             return new \WP_Error( 'no_api_key', __( 'AI API key is not configured.', 'sonoai' ) );
         }
 
-        return self::is_gemini()
-            ? self::gemini_chat( $messages )
-            : self::openai_chat( $messages );
+        $name = self::get_name();
+        if ( $name === 'gemini' ) return self::gemini_chat( $messages );
+        if ( $name === 'anthropic' ) return self::anthropic_chat( $messages );
+        if ( $name === 'mistral' ) return self::mistral_chat( $messages );
+        return self::openai_chat( $messages );
     }
 
     // ── OpenAI internals ──────────────────────────────────────────────────────
 
-    private static function openai_embedding( string $text ) {
+    private static function openai_embedding( string $text, string $api_key = '' ) {
+        if ( empty( $api_key ) ) $api_key = self::get_api_key();
+        
         $response = wp_remote_post(
             'https://api.openai.com/v1/embeddings',
             [
                 'timeout' => 30,
                 'headers' => [
-                    'Authorization' => 'Bearer ' . self::get_api_key(),
+                    'Authorization' => 'Bearer ' . $api_key,
                     'Content-Type'  => 'application/json',
                 ],
                 'body' => wp_json_encode( [
@@ -273,7 +292,166 @@ class AIProvider {
         return $data['candidates'][0]['content']['parts'][0]['text'];
     }
 
-    // ── Streaming internals ───────────────────────────────────────────────────
+    // ── Mistral internals ─────────────────────────────────────────────────────
+
+    private static function mistral_embedding( string $text ) {
+        $response = wp_remote_post(
+            'https://api.mistral.ai/v1/embeddings',
+            [
+                'timeout' => 30,
+                'headers' => [
+                    'Authorization' => 'Bearer ' . self::get_api_key(),
+                    'Content-Type'  => 'application/json',
+                ],
+                'body' => wp_json_encode( [
+                    'model' => self::get_embedding_model(),
+                    'input' => [ $text ],
+                ] ),
+            ]
+        );
+
+        if ( is_wp_error( $response ) ) return $response;
+
+        $body = json_decode( wp_remote_retrieve_body( $response ), true );
+        if ( ! isset( $body['data'][0]['embedding'] ) ) {
+            $err = $body['message'] ?? 'Unknown Mistral error';
+            return new \WP_Error( 'mistral_embed_error', $err );
+        }
+
+        return $body['data'][0]['embedding'];
+    }
+
+    private static function mistral_chat( array $messages ) {
+        $response = wp_remote_post(
+            'https://api.mistral.ai/v1/chat/completions',
+            [
+                'timeout' => 60,
+                'headers' => [
+                    'Authorization' => 'Bearer ' . self::get_api_key(),
+                    'Content-Type'  => 'application/json',
+                ],
+                'body' => wp_json_encode( [
+                    'model'    => self::get_chat_model(),
+                    'messages' => $messages,
+                ] ),
+            ]
+        );
+
+        if ( is_wp_error( $response ) ) return $response;
+
+        $body = json_decode( wp_remote_retrieve_body( $response ), true );
+        if ( ! isset( $body['choices'][0]['message']['content'] ) ) {
+            $err = $body['message'] ?? 'Unknown Mistral error';
+            return new \WP_Error( 'mistral_chat_error', $err );
+        }
+
+        return $body['choices'][0]['message']['content'];
+    }
+
+    private static function mistral_chat_stream( array $messages, callable $callback ) {
+        $url = 'https://api.mistral.ai/v1/chat/completions';
+        $payload = wp_json_encode( [
+            'model'    => self::get_chat_model(),
+            'messages' => $messages,
+            'stream'   => true,
+        ] );
+
+        $headers = [
+            'Authorization: Bearer ' . self::get_api_key(),
+            'Content-Type: application/json',
+        ];
+
+        return self::execute_curl_stream( $url, $headers, $payload, function($line) use ($callback) {
+            if ( str_starts_with( $line, 'data: ' ) ) {
+                $data_str = substr( $line, 6 );
+                if ( $data_str === '[DONE]' ) return '';
+                $decoded = json_decode( $data_str, true );
+                if ( isset( $decoded['choices'][0]['delta']['content'] ) ) {
+                    $text = $decoded['choices'][0]['delta']['content'];
+                    $callback( $text );
+                    return $text;
+                }
+            }
+            return '';
+        } );
+    }
+
+    // ── Anthropic internals ───────────────────────────────────────────────────
+
+    private static function format_anthropic_payload( array $messages ) {
+        $system = '';
+        $anthropic_msgs = [];
+        foreach ( $messages as $msg ) {
+            if ( $msg['role'] === 'system' ) {
+                $system .= $msg['content'] . "\n";
+            } else {
+                $anthropic_msgs[] = [ 'role' => $msg['role'] === 'user' ? 'user' : 'assistant', 'content' => $msg['content'] ];
+            }
+        }
+        $payload = [
+            'model'      => self::get_chat_model(),
+            'max_tokens' => 4096,
+            'messages'   => $anthropic_msgs
+        ];
+        if ( ! empty( trim( $system ) ) ) {
+            $payload['system'] = trim( $system );
+        }
+        return wp_json_encode( $payload );
+    }
+
+    private static function anthropic_chat( array $messages ) {
+        $response = wp_remote_post(
+            'https://api.anthropic.com/v1/messages',
+            [
+                'timeout' => 60,
+                'headers' => [
+                    'x-api-key'         => self::get_api_key(),
+                    'anthropic-version' => '2023-06-01',
+                    'Content-Type'      => 'application/json',
+                ],
+                'body' => self::format_anthropic_payload( $messages ),
+            ]
+        );
+
+        if ( is_wp_error( $response ) ) return $response;
+
+        $body = json_decode( wp_remote_retrieve_body( $response ), true );
+        if ( ! isset( $body['content'][0]['text'] ) ) {
+            $err = $body['error']['message'] ?? 'Unknown Anthropic error';
+            return new \WP_Error( 'anthropic_chat_error', $err );
+        }
+
+        return $body['content'][0]['text'];
+    }
+
+    private static function anthropic_chat_stream( array $messages, callable $callback ) {
+        $url = 'https://api.anthropic.com/v1/messages';
+        $payload_arr = json_decode( self::format_anthropic_payload( $messages ), true );
+        $payload_arr['stream'] = true;
+        
+        $headers = [
+            'x-api-key: ' . self::get_api_key(),
+            'anthropic-version: 2023-06-01',
+            'Content-Type: application/json',
+        ];
+
+        return self::execute_curl_stream( $url, $headers, wp_json_encode( $payload_arr ), function($line) use ($callback) {
+            if ( str_starts_with( $line, 'data: ' ) ) {
+                $data_str = substr( $line, 6 );
+                $decoded = json_decode( $data_str, true );
+                if ( isset( $decoded['type'] ) && $decoded['type'] === 'content_block_delta' ) {
+                    if ( isset( $decoded['delta']['text'] ) ) {
+                        $text = $decoded['delta']['text'];
+                        $callback( $text );
+                        return $text;
+                    }
+                }
+            }
+            return '';
+        } );
+    }
+
+    // ── Streaming internals (Original unmodified logic) ───────────────────────
 
     private static function execute_curl_stream( string $url, array $headers, string $payload, callable $line_parser ) {
         $ch = curl_init( $url );
@@ -313,80 +491,5 @@ class AIProvider {
         }
 
         return $full_text;
-    }
-
-    private static function openai_chat_stream( array $messages, callable $callback ) {
-
-        $url = 'https://api.openai.com/v1/chat/completions';
-        $payload = wp_json_encode( [
-            'model'    => self::get_chat_model(),
-            'messages' => $messages,
-            'stream'   => true,
-        ] );
-
-        $headers = [
-            'Authorization: Bearer ' . self::get_api_key(),
-            'Content-Type: application/json',
-        ];
-
-        return self::execute_curl_stream( $url, $headers, $payload, function($line) use ($callback) {
-            if ( str_starts_with( $line, 'data: ' ) ) {
-                $data_str = substr( $line, 6 );
-                if ( $data_str === '[DONE]' ) return '';
-                $decoded = json_decode( $data_str, true );
-                if ( isset( $decoded['choices'][0]['delta']['content'] ) ) {
-                    $text = $decoded['choices'][0]['delta']['content'];
-                    $callback( $text );
-                    return $text;
-                }
-            }
-            return '';
-        } );
-    }
-
-    private static function gemini_chat_stream( array $messages, callable $callback ) {
-        $api_key  = self::get_api_key();
-        $model    = self::get_chat_model();
-        $endpoint = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:streamGenerateContent?alt=sse&key={$api_key}";
-
-        $system_parts  = [];
-        $gemini_contents = [];
-
-        foreach ( $messages as $msg ) {
-            $role    = $msg['role'] ?? 'user';
-            $content = $msg['content'] ?? '';
-
-            if ( 'system' === $role ) {
-                $system_parts[] = [ 'text' => $content ];
-                continue;
-            }
-
-            $parts = [ [ 'text' => $content ] ];
-
-            $gemini_contents[] = [
-                'role'  => 'user' === $role ? 'user' : 'model',
-                'parts' => $parts,
-            ];
-        }
-
-        $body = [ 'contents' => $gemini_contents ];
-        if ( ! empty( $system_parts ) ) {
-            $body['system_instruction'] = [ 'parts' => $system_parts ];
-        }
-
-        $headers = [ 'Content-Type: application/json' ];
-
-        return self::execute_curl_stream( $endpoint, $headers, wp_json_encode( $body ), function($line) use ($callback) {
-            if ( str_starts_with( $line, 'data: ' ) ) {
-                $data_str = substr( $line, 6 );
-                $decoded = json_decode( $data_str, true );
-                if ( isset( $decoded['candidates'][0]['content']['parts'][0]['text'] ) ) {
-                    $text = $decoded['candidates'][0]['content']['parts'][0]['text'];
-                    $callback( $text );
-                    return $text;
-                }
-            }
-            return '';
-        } );
     }
 }

@@ -199,16 +199,25 @@ class Activator {
         $feedback_table = $wpdb->prefix . 'sonoai_feedback';
         $sql_feedback   = "CREATE TABLE IF NOT EXISTS `$feedback_table` (
             `id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `user_id`      BIGINT UNSIGNED NOT NULL DEFAULT 0,
             `session_uuid` VARCHAR(36)     NOT NULL,
             `message_index`INT             NOT NULL DEFAULT 0,
             `vote`         VARCHAR(10)     NOT NULL, -- 'up' or 'down'
             `comment`      TEXT                     DEFAULT NULL,
             `created_at`   DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (`id`),
+            KEY `idx_user_id`      (`user_id`),
             KEY `idx_session_uuid` (`session_uuid`),
-            KEY `idx_vote` (`vote`)
+            KEY `idx_vote`         (`vote`)
         ) $charset_collate;";
         dbDelta( $sql_feedback );
+
+        // Migration: add user_id to feedback table for installs upgrading from v1.0.1.
+        $fb_cols = $wpdb->get_col( "DESCRIBE `$feedback_table`", 0 );
+        if ( ! empty( $fb_cols ) && ! in_array( 'user_id', $fb_cols, true ) ) {
+            $wpdb->query( "ALTER TABLE `$feedback_table` ADD COLUMN `user_id` BIGINT UNSIGNED NOT NULL DEFAULT 0 AFTER `id`" );
+            $wpdb->query( "ALTER TABLE `$feedback_table` ADD KEY `idx_user_id` (`user_id`)" );
+        }
     }
 
     /**

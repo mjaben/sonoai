@@ -283,7 +283,7 @@ class ApiConfig {
                                 <?php endif; ?>
                             </label>
                             <div class="sac-control">
-                                <div class="sac-input-wrap" data-key="<?php echo esc_attr( $pkey ); ?>">
+                                <div class="sac-input-wrap">
                                     <input
                                         type="password"
                                         id="sac-key-<?php echo esc_attr( $slug ); ?>"
@@ -430,7 +430,7 @@ class ApiConfig {
                     <div>
                         <strong><?php esc_html_e( 'Quick Tips', 'sonoai' ); ?></strong>
                         <ul class="sac-tips-list">
-                            <li><?php esc_html_e( 'Your API key is stored encrypted in the database and never exposed in the browser source.', 'sonoai' ); ?></li>
+                            <li><?php esc_html_e( 'Your API key is stored securely in the WordPress database and is only accessible to users with administrator privileges.', 'sonoai' ); ?></li>
                             <li><?php esc_html_e( 'Pick a chat model that fits your quality, speed, and cost needs.', 'sonoai' ); ?></li>
                             <li><?php esc_html_e( 'Changes take effect immediately after saving.', 'sonoai' ); ?></li>
                         </ul>

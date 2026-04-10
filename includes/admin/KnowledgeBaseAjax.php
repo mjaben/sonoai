@@ -48,10 +48,10 @@ class KnowledgeBaseAjax {
     // ── Shared helpers ────────────────────────────────────────────────────────
 
     private function check( string $nonce_action ): void {
-        if ( ! current_user_can( 'manage_options' ) ) {
+        if ( ! SecurityHelper::check_admin_caps() ) {
             wp_send_json_error( [ 'message' => __( 'Unauthorized.', 'sonoai' ) ], 403 );
         }
-        check_ajax_referer( $nonce_action, 'nonce' );
+        check_ajax_referer( $nonce_action, 'security' ); // Correcting the nonce key to match JS (security)
     }
 
     private function kb_table(): string {
@@ -142,10 +142,10 @@ class KnowledgeBaseAjax {
     public function handle_update_meta() {
         $this->check( 'sonoai_kb_update_meta' );
 
-        $post_id  = isset( $_POST['post_id'] ) ? intval( $_POST['post_id'] ) : 0;
-        $type     = isset( $_POST['type'] ) ? sanitize_text_field( wp_unslash( $_POST['type'] ) ) : 'wp';
-        $mode     = isset( $_POST['mode'] ) ? sanitize_text_field( wp_unslash( $_POST['mode'] ) ) : 'guideline';
-        $topic_id = isset( $_POST['topic_id'] ) ? intval( $_POST['topic_id'] ) : 0;
+        $post_id  = SecurityHelper::get_param( 'post_id', 0, 'int' );
+        $type     = SecurityHelper::get_param( 'type', 'wp' );
+        $mode     = SecurityHelper::get_param( 'mode', 'guideline' );
+        $topic_id = SecurityHelper::get_param( 'topic_id', 0, 'int' );
 
         if ( ! $post_id ) {
             wp_send_json_error( [ 'message' => __( 'Invalid post ID.', 'sonoai' ) ] );
@@ -272,18 +272,19 @@ class KnowledgeBaseAjax {
         $this->check( 'sonoai_kb_get_posts' );
         global $wpdb;
 
-        $post_type = sanitize_key( $_POST['post_type'] ?? 'post' );
-        $page      = max( 1, intval( $_POST['page'] ?? 1 ) );
-        $filter    = sanitize_key( $_POST['kb_status'] ?? 'all' ); // all, added, not_added, update
+        $post_type = SecurityHelper::get_param( 'post_type', 'post' );
+        $page      = max( 1, SecurityHelper::get_param( 'page', 1, 'int' ) );
+        $filter    = SecurityHelper::get_param( 'kb_status', 'all' ); // all, added, not_added, update
         $per_page  = 20;
-        $search   = sanitize_text_field( $_POST['search'] ?? '' );
-        $mode     = sanitize_key( $_POST['mode'] ?? '' );
-        $topic_id = intval( $_POST['topic_id'] ?? 0 );
-        $country  = sanitize_text_field( $_POST['country'] ?? '' );
-        $offset   = ( $page - 1 ) * $per_page;
+        $search    = SecurityHelper::get_param( 'search' );
+        $mode      = SecurityHelper::get_param( 'mode' );
+        $topic_id  = SecurityHelper::get_param( 'topic_id', 0, 'int' );
+        $country   = SecurityHelper::get_param( 'country' );
+        $offset    = ( $page - 1 ) * $per_page;
 
-        $posts_tbl = $wpdb->posts;
-        $kb_tbl    = $this->kb_table();
+        $posts_tbl  = $wpdb->posts;
+        $kb_tbl     = $this->kb_table();
+        $topics_tbl = $wpdb->prefix . 'sonoai_kb_topics';
 
         $where = $wpdb->prepare( "p.post_type = %s AND p.post_status = 'publish'", $post_type );
         if ( $search ) {
@@ -291,8 +292,6 @@ class KnowledgeBaseAjax {
             $where .= $wpdb->prepare( ' AND p.post_title LIKE %s', $like );
         }
         
-        $topics_tbl = $wpdb->prefix . 'sonoai_kb_topics';
-
         // We join to filter by mode, topic, or country if requested
         $join = "LEFT JOIN $kb_tbl kb ON kb.post_id = p.ID AND kb.type = 'wp'";
         $join .= " LEFT JOIN $topics_tbl t ON t.id = kb.topic_id";
@@ -307,6 +306,7 @@ class KnowledgeBaseAjax {
             $where .= $wpdb->prepare( " AND kb.country LIKE %s", '%' . $wpdb->esc_like( $country ) . '%' );
         }
 
+        // Note: Table names are trusted (derived from $wpdb prefix)
         $query = "
             SELECT 
                 p.ID as id, 
@@ -329,29 +329,31 @@ class KnowledgeBaseAjax {
         $counts = [ 'all' => 0, 'added' => 0, 'not_added' => 0, 'update' => 0 ];
         $filtered  = [];
 
-        foreach ( $all_posts as $p ) {
-            $p_status = 'not_added';
-            if ( $p->kb_added ) {
-                $p_status = ( $p->last_modified > $p->kb_added ) ? 'update' : 'added';
-            }
+        if ( ! empty( $all_posts ) ) {
+            foreach ( $all_posts as $p ) {
+                $p_status = 'not_added';
+                if ( $p->kb_added ) {
+                    $p_status = ( $p->last_modified > $p->kb_added ) ? 'update' : 'added';
+                }
 
-            $counts['all']++;
-            $counts[ $p_status ]++;
+                $counts['all']++;
+                $counts[ $p_status ]++;
 
-            if ( $filter === 'all' || $filter === $p_status ) {
-                $filtered[] = [
-                    'id'            => $p->id,
-                    'title'         => $p->title,
-                    'last_modified' => date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $p->last_modified . ' UTC' ) ),
-                    'kb_added'      => $p->kb_added ? date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $p->kb_added . ' UTC' ) ) : '—',
-                    'kb_status'     => $p_status,
-                    'mode'          => $p->mode ? ucfirst($p->mode) : '—',
-                    'topic_name'    => $p->topic_name ? $p->topic_name : '—',
-                    'topic_id'      => $p->topic_id ? $p->topic_id : 0,
-                    'raw_mode'      => $p->mode ? $p->mode : '',
-                    'ai_model'      => $p->model ? ( ucfirst( $p->provider ) . ' / ' . $p->model ) : '—',
-                    'edit_url'      => get_edit_post_link( $p->id, 'raw' ),
-                ];
+                if ( $filter === 'all' || $filter === $p_status ) {
+                    $filtered[] = [
+                        'id'            => (int) $p->id,
+                        'title'         => $p->title,
+                        'last_modified' => date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $p->last_modified . ' UTC' ) ),
+                        'kb_added'      => $p->kb_added ? date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $p->kb_added . ' UTC' ) ) : '—',
+                        'kb_status'     => $p_status,
+                        'mode'          => $p->mode ? ucfirst( $p->mode ) : '—',
+                        'topic_name'    => $p->topic_name ? $p->topic_name : '—',
+                        'topic_id'      => $p->topic_id ? (int) $p->topic_id : 0,
+                        'raw_mode'      => $p->mode ? $p->mode : '',
+                        'ai_model'      => $p->model ? ( ucfirst( $p->provider ) . ' / ' . $p->model ) : '—',
+                        'edit_url'      => get_edit_post_link( $p->id, 'raw' ),
+                    ];
+                }
             }
         }
 
@@ -371,7 +373,7 @@ class KnowledgeBaseAjax {
 
     public function handle_add_post(): void {
         $this->check( 'sonoai_kb_add_post' );
-        $post_id = intval( $_POST['post_id'] ?? 0 );
+        $post_id = SecurityHelper::get_param( 'post_id', 0, 'int' );
         $post    = get_post( $post_id );
 
         if ( ! $post ) {
@@ -380,9 +382,12 @@ class KnowledgeBaseAjax {
 
         // Clear old indexing (upsert)
         global $wpdb;
-        $wpdb->delete( $this->kb_table(), [ 'type' => 'wp', 'post_id' => $post_id ], [ '%s', '%d' ] );
+        $table_kb  = $this->kb_table();
+        $table_emb = $this->emb_table();
+
+        $wpdb->delete( $table_kb, [ 'type' => 'wp', 'post_id' => $post_id ], [ '%s', '%d' ] );
         $wpdb->query( $wpdb->prepare(
-            "DELETE FROM `{$this->emb_table()}` WHERE type = 'wp' AND post_id = %d",
+            "DELETE FROM `$table_emb` WHERE type = 'wp' AND post_id = %d",
             $post_id
         ) );
 
@@ -392,8 +397,8 @@ class KnowledgeBaseAjax {
             'source_url'   => get_permalink( $post->ID ),
             'source_title' => $post->post_title,
             'post_id'      => $post->ID,
-            'mode'         => sanitize_text_field( $_POST['mode'] ?? 'guideline' ),
-            'topic_id'     => intval( $_POST['topic_id'] ?? 0 ),
+            'mode'         => SecurityHelper::get_param( 'mode', 'guideline' ),
+            'topic_id'     => SecurityHelper::get_param( 'topic_id', 0, 'int' ),
         ] );
 
         if ( is_wp_error( $result ) ) {
@@ -412,7 +417,7 @@ class KnowledgeBaseAjax {
     public function handle_remove_post(): void {
         $this->check( 'sonoai_kb_remove_post' );
         global $wpdb;
-        $post_id = intval( $_POST['post_id'] ?? 0 );
+        $post_id = SecurityHelper::get_param( 'post_id', 0, 'int' );
 
         $kb_item = $wpdb->get_row( $wpdb->prepare(
             "SELECT * FROM `{$this->kb_table()}` WHERE type = 'wp' AND post_id = %d",
@@ -458,21 +463,23 @@ class KnowledgeBaseAjax {
             $pdf     = $parser->parseFile( $moved['file'] );
             $content = $pdf->getText();
         } catch ( \Exception $e ) {
+            @unlink( $moved['file'] );
             wp_send_json_error( [ 'message' => __( 'Could not parse PDF: ', 'sonoai' ) . $e->getMessage() ] );
         }
 
         if ( empty( trim( $content ) ) ) {
+            @unlink( $moved['file'] );
             wp_send_json_error( [ 'message' => __( 'PDF appears to be empty or contains only images. Please use a text-based PDF.', 'sonoai' ) ] );
         }
 
         $result = $this->embed_and_store( [
             'type'         => 'pdf',
             'text'         => $content,
-            'source_url'   => sanitize_text_field( $_POST['source_url'] ?? $moved['url'] ),
-            'source_title' => sanitize_text_field( $_POST['source_name'] ?? $file['name'] ),
-            'country'      => sanitize_text_field( $_POST['country'] ?? '' ),
-            'mode'         => sanitize_text_field( $_POST['mode'] ?? 'guideline' ),
-            'topic_id'     => intval( $_POST['topic_id'] ?? 0 ),
+            'source_url'   => SecurityHelper::get_param( 'source_url', $moved['url'], 'url' ),
+            'source_title' => SecurityHelper::get_param( 'source_name', $file['name'] ),
+            'country'      => SecurityHelper::get_param( 'country' ),
+            'mode'         => SecurityHelper::get_param( 'mode', 'guideline' ),
+            'topic_id'     => SecurityHelper::get_param( 'topic_id', 0, 'int' ),
         ] );
 
         if ( is_wp_error( $result ) ) {
@@ -492,8 +499,8 @@ class KnowledgeBaseAjax {
 
     public function handle_add_url(): void {
         $this->check( 'sonoai_kb_add_url' );
-        $url = esc_url_raw( $_POST['url'] ?? '' );
-        if ( ! filter_var( $url, FILTER_VALIDATE_URL ) ) {
+        $url = SecurityHelper::get_param( 'url', '', 'url' );
+        if ( empty( $url ) || ! filter_var( $url, FILTER_VALIDATE_URL ) ) {
             wp_send_json_error( [ 'message' => __( 'Please provide a valid URL.', 'sonoai' ) ] );
         }
 
@@ -511,11 +518,11 @@ class KnowledgeBaseAjax {
         $result = $this->embed_and_store( [
             'type'         => 'url',
             'text'         => $content,
-            'source_url'   => sanitize_text_field( $_POST['source_url'] ?? $url ),
-            'source_title' => sanitize_text_field( $_POST['source_name'] ?? $url ),
-            'country'      => sanitize_text_field( $_POST['country'] ?? '' ),
-            'mode'         => sanitize_text_field( $_POST['mode'] ?? 'guideline' ),
-            'topic_id'     => intval( $_POST['topic_id'] ?? 0 ),
+            'source_url'   => SecurityHelper::get_param( 'source_url', $url, 'url' ),
+            'source_title' => SecurityHelper::get_param( 'source_name', $url ),
+            'country'      => SecurityHelper::get_param( 'country' ),
+            'mode'         => SecurityHelper::get_param( 'mode', 'guideline' ),
+            'topic_id'     => SecurityHelper::get_param( 'topic_id', 0, 'int' ),
         ] );
 
         if ( is_wp_error( $result ) ) {
@@ -534,12 +541,13 @@ class KnowledgeBaseAjax {
 
     public function handle_add_txt(): void {
         $this->check( 'sonoai_kb_add_txt' );
-        $raw_html  = wp_kses_post( $_POST['content'] ?? '' );
-        if ( empty( trim( strip_tags( $raw_html ) ) ) ) {
+        $raw_html  = wp_kses_post( SecurityHelper::get_param( 'content' ) );
+        if ( empty( trim( wp_strip_all_tags( $raw_html ) ) ) ) {
             wp_send_json_error( [ 'message' => __( 'Content cannot be empty.', 'sonoai' ) ] );
         }
 
-        $manual_images = isset( $_POST['images'] ) ? json_decode( wp_unslash( $_POST['images'] ), true ) : [];
+        $images_param = SecurityHelper::get_param( 'images' );
+        $manual_images = ! empty( $images_param ) ? json_decode( $images_param, true ) : [];
         if ( ! is_array( $manual_images ) ) $manual_images = [];
 
         $image_urls = $this->extract_image_urls( $raw_html, $manual_images );
@@ -550,12 +558,12 @@ class KnowledgeBaseAjax {
             'type'         => 'txt',
             'text'         => $plain,
             'raw_content'  => $raw_html,
-            'source_title' => sanitize_text_field( $_POST['source_name'] ?? $title ),
-            'source_url'   => sanitize_text_field( $_POST['source_url'] ?? '' ),
-            'country'      => sanitize_text_field( $_POST['country'] ?? '' ),
+            'source_title' => SecurityHelper::get_param( 'source_name', $title ),
+            'source_url'   => SecurityHelper::get_param( 'source_url', '', 'url' ),
+            'country'      => SecurityHelper::get_param( 'country' ),
             'image_urls'   => $image_urls,
-            'mode'         => sanitize_text_field( $_POST['mode'] ?? 'guideline' ),
-            'topic_id'     => intval( $_POST['topic_id'] ?? 0 ),
+            'mode'         => SecurityHelper::get_param( 'mode', 'guideline' ),
+            'topic_id'     => SecurityHelper::get_param( 'topic_id', 0, 'int' ),
         ] );
 
         if ( is_wp_error( $result ) ) {
@@ -575,18 +583,22 @@ class KnowledgeBaseAjax {
     public function handle_edit_txt(): void {
         $this->check( 'sonoai_kb_edit_txt' );
         global $wpdb;
-        $knowledge_id = sanitize_text_field( $_POST['knowledge_id'] ?? '' );
-        $raw_html     = wp_kses_post( $_POST['content'] ?? '' );
+        $knowledge_id = SecurityHelper::get_param( 'knowledge_id' );
+        $raw_html     = wp_kses_post( SecurityHelper::get_param( 'content' ) );
 
-        if ( empty( $knowledge_id ) || empty( trim( strip_tags( $raw_html ) ) ) ) {
+        if ( empty( $knowledge_id ) || empty( trim( wp_strip_all_tags( $raw_html ) ) ) ) {
             wp_send_json_error( [ 'message' => __( 'Invalid request.', 'sonoai' ) ] );
         }
 
-        // Delete old embeddings for this knowledge_id.
-        $wpdb->delete( $this->emb_table(), [ 'knowledge_id' => $knowledge_id ], [ '%s' ] );
-        $wpdb->delete( $this->kb_table(),  [ 'knowledge_id' => $knowledge_id ], [ '%s' ] );
+        $table_emb = $this->emb_table();
+        $table_kb  = $this->kb_table();
 
-        $manual_images = isset( $_POST['images'] ) ? json_decode( wp_unslash( $_POST['images'] ), true ) : [];
+        // Delete old embeddings for this knowledge_id.
+        $wpdb->delete( $table_emb, [ 'knowledge_id' => $knowledge_id ], [ '%s' ] );
+        $wpdb->delete( $table_kb,  [ 'knowledge_id' => $knowledge_id ], [ '%s' ] );
+
+        $images_param = SecurityHelper::get_param( 'images' );
+        $manual_images = ! empty( $images_param ) ? json_decode( $images_param, true ) : [];
         if ( ! is_array( $manual_images ) ) $manual_images = [];
 
         $image_urls = $this->extract_image_urls( $raw_html, $manual_images );
@@ -597,12 +609,12 @@ class KnowledgeBaseAjax {
             'type'         => 'txt',
             'text'         => $plain,
             'raw_content'  => $raw_html,
-            'source_title' => sanitize_text_field( $_POST['source_name'] ?? $title ),
-            'source_url'   => sanitize_text_field( $_POST['source_url'] ?? '' ),
-            'country'      => sanitize_text_field( $_POST['country'] ?? '' ),
+            'source_title' => SecurityHelper::get_param( 'source_name', $title ),
+            'source_url'   => SecurityHelper::get_param( 'source_url', '', 'url' ),
+            'country'      => SecurityHelper::get_param( 'country' ),
             'image_urls'   => $image_urls,
-            'mode'         => sanitize_text_field( $_POST['mode'] ?? 'guideline' ),
-            'topic_id'     => intval( $_POST['topic_id'] ?? 0 ),
+            'mode'         => SecurityHelper::get_param( 'mode', 'guideline' ),
+            'topic_id'     => SecurityHelper::get_param( 'topic_id', 0, 'int' ),
         ] );
 
         if ( is_wp_error( $result ) ) {
@@ -620,13 +632,16 @@ class KnowledgeBaseAjax {
     public function handle_delete_item(): void {
         $this->check( 'sonoai_kb_delete_item' );
         global $wpdb;
-        $knowledge_id = sanitize_text_field( $_POST['knowledge_id'] ?? '' );
+        $knowledge_id = SecurityHelper::get_param( 'knowledge_id' );
         if ( empty( $knowledge_id ) ) {
             wp_send_json_error( [ 'message' => __( 'Missing knowledge ID.', 'sonoai' ) ] );
         }
 
-        $wpdb->delete( $this->kb_table(),  [ 'knowledge_id' => $knowledge_id ], [ '%s' ] );
-        $wpdb->delete( $this->emb_table(), [ 'knowledge_id' => $knowledge_id ], [ '%s' ] );
+        $table_kb  = $this->kb_table();
+        $table_emb = $this->emb_table();
+
+        $wpdb->delete( $table_kb,  [ 'knowledge_id' => $knowledge_id ], [ '%s' ] );
+        $wpdb->delete( $table_emb, [ 'knowledge_id' => $knowledge_id ], [ '%s' ] );
 
         wp_send_json_success( [ 'message' => __( 'Item deleted from knowledge base.', 'sonoai' ) ] );
     }
@@ -637,7 +652,7 @@ class KnowledgeBaseAjax {
         $this->check( 'sonoai_kb_manage_topics' );
         global $wpdb;
 
-        $name = sanitize_text_field( $_POST['name'] ?? '' );
+        $name = SecurityHelper::get_param( 'name' );
         if ( empty( $name ) ) {
             wp_send_json_error( [ 'message' => __( 'Topic name is required.', 'sonoai' ) ] );
         }
@@ -677,8 +692,8 @@ class KnowledgeBaseAjax {
         $this->check( 'sonoai_kb_manage_topics' );
         global $wpdb;
 
-        $id   = intval( $_POST['topic_id'] ?? 0 );
-        $name = sanitize_text_field( $_POST['name'] ?? '' );
+        $id   = SecurityHelper::get_param( 'topic_id', 0, 'int' );
+        $name = SecurityHelper::get_param( 'name' );
         if ( empty( $name ) || empty( $id ) ) {
             wp_send_json_error( [ 'message' => __( 'Topic ID and name are required.', 'sonoai' ) ] );
         }
@@ -691,10 +706,11 @@ class KnowledgeBaseAjax {
             wp_send_json_error( [ 'message' => __( 'A topic with this name already exists.', 'sonoai' ) ] );
         }
 
-        // We also need to cascade update topic_slug in sonoai_embeddings if we change slug, but for simplicity, let's just update the topic table. Actually, we should update both to prevent orphan topic_slugs in embeddings or saved responses.
+        // We also need to cascade update topic_slug in sonoai_embeddings if we change slug
         $old_topic = $wpdb->get_row( $wpdb->prepare( "SELECT slug FROM `$topics_table` WHERE id = %d", $id ) );
         if ( $old_topic && $old_topic->slug !== $slug ) {
-            $wpdb->update( $this->emb_table(), [ 'topic_slug' => $slug ], [ 'topic_slug' => $old_topic->slug ], [ '%s' ], [ '%s' ] );
+            $table_emb = $this->emb_table();
+            $wpdb->update( $table_emb, [ 'topic_slug' => $slug ], [ 'topic_slug' => $old_topic->slug ], [ '%s' ], [ '%s' ] );
             $wpdb->update( $wpdb->prefix . 'sonoai_saved_responses', [ 'topic_slug' => $slug ], [ 'topic_slug' => $old_topic->slug ], [ '%s' ], [ '%s' ] );
         }
 
@@ -716,7 +732,7 @@ class KnowledgeBaseAjax {
         $this->check( 'sonoai_kb_manage_topics' );
         global $wpdb;
 
-        $id = intval( $_POST['topic_id'] ?? 0 );
+        $id = SecurityHelper::get_param( 'topic_id', 0, 'int' );
         if ( empty( $id ) ) {
             wp_send_json_error( [ 'message' => __( 'Topic ID is required.', 'sonoai' ) ] );
         }
@@ -727,11 +743,13 @@ class KnowledgeBaseAjax {
         $wpdb->delete( $topics_table, [ 'id' => $id ], [ '%d' ] );
 
         // Nullify the topic_id in kb_items
-        $wpdb->update( $this->kb_table(), [ 'topic_id' => null ], [ 'topic_id' => $id ] );
+        $table_kb = $this->kb_table();
+        $wpdb->update( $table_kb, [ 'topic_id' => null ], [ 'topic_id' => $id ] );
         
         // Nullify topic_slug in embeddings and saved responses
         if ( $old_topic ) {
-            $wpdb->update( $this->emb_table(), [ 'topic_slug' => null ], [ 'topic_slug' => $old_topic->slug ] );
+            $table_emb = $this->emb_table();
+            $wpdb->update( $table_emb, [ 'topic_slug' => null ], [ 'topic_slug' => $old_topic->slug ] );
             $wpdb->update( $wpdb->prefix . 'sonoai_saved_responses', [ 'topic_slug' => null ], [ 'topic_slug' => $old_topic->slug ] );
         }
 
@@ -782,7 +800,7 @@ class KnowledgeBaseAjax {
             wp_send_json_error( [ 'message' => __( 'No file uploaded.', 'sonoai' ) ] );
         }
 
-        $label = sanitize_title( $_POST['label'] ?? 'clinical-image' );
+        $label = sanitize_title( SecurityHelper::get_param( 'label', 'clinical-image' ) );
         
         // Filter to change the upload directory
         $upload_dir_filter = function( $dirs ) {
@@ -833,17 +851,21 @@ class KnowledgeBaseAjax {
     public function handle_delete_img_file(): void {
         $this->check( 'sonoai_kb_delete_item' );
 
-        $file_path = isset( $_POST['file_path'] ) ? wp_unslash( $_POST['file_path'] ) : '';
+        $file_path = SecurityHelper::get_param( 'file_path' );
         if ( empty( $file_path ) || ! file_exists( $file_path ) ) {
             wp_send_json_error( [ 'message' => __( 'File not found.', 'sonoai' ) ] );
         }
 
-        // Security: Ensure the file is within our custom clinical library
-        if ( strpos( $file_path, 'sonoai-Clinical-img-lib' ) === false ) {
+        // Security: Ensure the file is within our custom clinical library and inside the uploads directory
+        $upload_dir = wp_get_upload_dir();
+        $real_path   = realpath( $file_path );
+        $base_dir    = realpath( $upload_dir['basedir'] );
+
+        if ( false === $real_path || strpos( $real_path, $base_dir ) !== 0 || strpos( $real_path, 'sonoai-Clinical-img-lib' ) === false ) {
             wp_send_json_error( [ 'message' => __( 'Unauthorized file deletion.', 'sonoai' ) ] );
         }
 
-        if ( wp_delete_file( $file_path ) ) {
+        if ( wp_delete_file( $real_path ) ) {
             wp_send_json_success( [ 'message' => __( 'File deleted.', 'sonoai' ) ] );
         } else {
             wp_send_json_error( [ 'message' => __( 'Could not delete file.', 'sonoai' ) ] );

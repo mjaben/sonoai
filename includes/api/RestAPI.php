@@ -43,6 +43,12 @@ class RestAPI {
             'methods'             => 'POST',
             'callback'            => [ $this, 'handle_chat' ],
             'permission_callback' => [ $this, 'require_logged_in' ],
+            'args'                => [
+                'message'      => [ 'required' => true, 'sanitize_callback' => 'sanitize_textarea_field' ],
+                'session_uuid' => [ 'sanitize_callback' => 'sanitize_text_field' ],
+                'mode'         => [ 'sanitize_callback' => 'sanitize_key', 'default' => 'guideline' ],
+                'stream'       => [ 'sanitize_callback' => 'rest_sanitize_boolean' ],
+            ]
         ] );
 
         register_rest_route( $ns, '/history', [
@@ -68,6 +74,9 @@ class RestAPI {
             'methods'             => 'POST',
             'callback'            => [ $this, 'handle_embed_post' ],
             'permission_callback' => [ $this, 'require_admin' ],
+            'args'                => [
+                'post_id' => [ 'required' => true, 'validate_callback' => 'is_numeric', 'sanitize_callback' => 'absint' ],
+            ]
         ] );
 
         // ── Saved responses ───────────────────────────────────────────────────
@@ -76,6 +85,13 @@ class RestAPI {
                 'methods'             => 'POST',
                 'callback'            => [ $this, 'handle_save_response' ],
                 'permission_callback' => [ $this, 'require_logged_in' ],
+                'args'                => [
+                    'session_uuid'  => [ 'required' => true, 'sanitize_callback' => 'sanitize_text_field' ],
+                    'content'       => [ 'required' => true, 'sanitize_callback' => 'wp_kses_post' ],
+                    'message_index' => [ 'sanitize_callback' => 'absint' ],
+                    'mode'          => [ 'sanitize_callback' => 'sanitize_key' ],
+                    'topic_slug'    => [ 'sanitize_callback' => 'sanitize_key' ],
+                ]
             ],
             [
                 'methods'             => 'GET',
@@ -95,6 +111,12 @@ class RestAPI {
             'methods'             => 'POST',
             'callback'            => [ $this, 'handle_feedback' ],
             'permission_callback' => [ $this, 'require_logged_in' ],
+            'args'                => [
+                'session_uuid'  => [ 'required' => true, 'sanitize_callback' => 'sanitize_text_field' ],
+                'vote'          => [ 'required' => true, 'sanitize_callback' => 'sanitize_key' ],
+                'message_index' => [ 'sanitize_callback' => 'absint' ],
+                'comment'       => [ 'sanitize_callback' => 'sanitize_textarea_field' ],
+            ]
         ] );
     }
 
@@ -161,7 +183,7 @@ class RestAPI {
         );
 
         // ── AI call ──────────────────────────────────────────────────────────
-        $stream = isset( $_POST['stream'] ) && $_POST['stream'] === '1';
+        $stream = (bool) $request->get_param( 'stream' );
 
         if ( $stream ) {
             if ( ob_get_level() ) {
@@ -380,13 +402,14 @@ class RestAPI {
         $wpdb->insert(
             $table_name,
             [
+                'user_id'       => $user_id,
                 'session_uuid'  => $session_uuid,
                 'message_index' => $message_index,
                 'vote'          => $vote,
                 'comment'       => $comment,
                 'created_at'    => current_time( 'mysql' ),
             ],
-            [ '%s', '%d', '%s', '%s', '%s' ]
+            [ '%d', '%s', '%d', '%s', '%s', '%s' ]
         );
 
         return new \WP_REST_Response( [ 'success' => true ], 201 );

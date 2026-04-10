@@ -92,22 +92,26 @@ class FeedbackTable extends \WP_List_Table {
 
     public function process_bulk_action() {
         if ( 'delete' === $this->current_action() ) {
-            if ( ! isset( $_REQUEST['feedback_id'] ) || ! is_array( $_REQUEST['feedback_id'] ) ) {
+            $feedback_ids = SecurityHelper::get_param( 'feedback_id', [], 'text' );
+            if ( empty( $feedback_ids ) || ! is_array( $feedback_ids ) ) {
                 return;
             }
+            
             if ( ! check_admin_referer( 'bulk-' . $this->_args['plural'] ) ) {
                 return;
             }
 
-            global $wpdb;
-            $table = $wpdb->prefix . 'sonoai_feedback';
-            $ids   = array_map( 'intval', $_REQUEST['feedback_id'] );
-            $ids_str = implode( ',', $ids );
-
-            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-            $wpdb->query( "DELETE FROM `$table` WHERE id IN ($ids_str)" );
-
-            echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Feedback deleted.', 'sonoai' ) . '</p></div>';
+            if ( ! empty( $feedback_ids ) ) {
+                $ids = array_map( 'intval', $feedback_ids );
+                $placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
+                $wpdb->query(
+                    $wpdb->prepare(
+                        "DELETE FROM `{$wpdb->prefix}sonoai_feedback` WHERE id IN ($placeholders)",
+                        $ids
+                    )
+                );
+                echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Feedback deleted.', 'sonoai' ) . '</p></div>';
+            }
         }
     }
 
@@ -124,10 +128,11 @@ class FeedbackTable extends \WP_List_Table {
 
         $this->process_bulk_action();
 
-        $orderby = isset( $_REQUEST['orderby'] ) ? sanitize_text_field( $_REQUEST['orderby'] ) : 'created_at';
-        $order   = isset( $_REQUEST['order'] ) && 'asc' === strtolower( $_REQUEST['order'] ) ? 'ASC' : 'DESC';
+        $orderby = SecurityHelper::get_param( 'orderby', 'created_at' );
+        $order   = strtoupper( SecurityHelper::get_param( 'order', 'DESC' ) );
+        $order   = ( 'ASC' === $order ) ? 'ASC' : 'DESC';
 
-        // Check columns to sort by
+        // Whitelist columns to prevent SQL injection through ORDER BY
         if ( ! in_array( $orderby, [ 'id', 'created_at', 'vote' ], true ) ) {
             $orderby = 'created_at';
         }
@@ -135,12 +140,16 @@ class FeedbackTable extends \WP_List_Table {
         $current_page = $this->get_pagenum();
         $offset       = ( $current_page - 1 ) * $per_page;
 
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-        $total_items = $wpdb->get_var( "SELECT COUNT(*) FROM `$table`" );
+        // Count total items
+        $total_items = (int) $wpdb->get_var( "SELECT COUNT(*) FROM `{$wpdb->prefix}sonoai_feedback`" );
 
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+        // Fetch items safely
         $this->items = $wpdb->get_results( 
-            "SELECT * FROM `$table` ORDER BY $orderby $order LIMIT $per_page OFFSET $offset", 
+            $wpdb->prepare(
+                "SELECT * FROM `{$wpdb->prefix}sonoai_feedback` ORDER BY $orderby $order LIMIT %d OFFSET %d",
+                (int) $per_page,
+                (int) $offset
+            ), 
             ARRAY_A 
         );
 
@@ -178,10 +187,9 @@ class FeedbackAnalytics {
 
     public static function get_stats(): array {
         global $wpdb;
-        $table = $wpdb->prefix . 'sonoai_feedback';
-        $total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM `$table`" );
-        $up    = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM `$table` WHERE vote = %s", 'up' ) );
-        $down  = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM `$table` WHERE vote = %s", 'down' ) );
+        $total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM `{$wpdb->prefix}sonoai_feedback`" );
+        $up    = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM `{$wpdb->prefix}sonoai_feedback` WHERE vote = %s", 'up' ) );
+        $down  = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM `{$wpdb->prefix}sonoai_feedback` WHERE vote = %s", 'down' ) );
         
         $ratio = $total > 0 ? round( ( $up / $total ) * 100 ) : 0;
 
@@ -194,7 +202,7 @@ class FeedbackAnalytics {
     }
 
     public function render_page(): void {
-        if ( ! current_user_can( 'manage_options' ) ) {
+        if ( ! SecurityHelper::check_admin_caps() ) {
             return;
         }
 
@@ -216,7 +224,10 @@ class FeedbackAnalytics {
                 <div class="kb-header-right">
                     <div class="kb-stat-badge">
                         <span class="kb-stat-icon">📈</span>
-                        <span><?php printf( esc_html__( '%d%% Positive', 'sonoai' ), $stats['ratio'] ); ?></span>
+                        <span><?php 
+                            // translators: %d is the positive feedback percentage.
+                            printf( esc_html__( '%d%% Positive', 'sonoai' ), (int) $stats['ratio'] ); 
+                        ?></span>
                     </div>
                     <button type="button" id="kb-theme-toggle" class="kb-theme-btn" title="Toggle dark / light mode">
                         <span class="kb-icon-dark">🌙</span>

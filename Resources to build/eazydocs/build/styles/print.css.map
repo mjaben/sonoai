@@ -1,1 +1,0 @@
-{"version":3,"file":"styles/print.css","mappings":"AAAA,kBACI,sBAGJ,GACI,cAGJ,qBACI,uB","sources":["webpack:///./assets/scss/print.scss"],"sourcesContent":[".doc-post-content {\n    padding: 60px 0 0 40px;\n}\n\nh1 {\n    color: #1d2746;\n}\n\n.eazydocs-hide-print {\n    display: none !important;\n}"],"names":[],"sourceRoot":""}

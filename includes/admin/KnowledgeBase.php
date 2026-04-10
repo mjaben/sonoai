@@ -103,32 +103,33 @@ class KnowledgeBase {
 
     public static function get_kb_stats(): array {
         global $wpdb;
-        $tbl = $wpdb->prefix . 'sonoai_kb_items';
-        $rows = $wpdb->get_results( "SELECT `type`, COUNT(*) as cnt FROM `$tbl` GROUP BY `type`", ARRAY_A );
+        $rows = $wpdb->get_results( "SELECT `type`, COUNT(*) as cnt FROM `{$wpdb->prefix}sonoai_kb_items` GROUP BY `type`", ARRAY_A );
         $stats = [ 'total' => 0, 'wp' => 0, 'pdf' => 0, 'url' => 0, 'txt' => 0 ];
-        foreach ( $rows as $r ) {
-            $stats[ $r['type'] ] = (int) $r['cnt'];
-            $stats['total']     += (int) $r['cnt'];
+        
+        if ( ! empty( $rows ) ) {
+            foreach ( $rows as $r ) {
+                $stats[ $r['type'] ] = (int) $r['cnt'];
+                $stats['total']     += (int) $r['cnt'];
+            }
         }
         return $stats;
     }
 
     public static function get_topics(): array {
         global $wpdb;
-        $tbl = $wpdb->prefix . 'sonoai_kb_topics';
-        return $wpdb->get_results( "SELECT * FROM `$tbl` ORDER BY `name` ASC" ) ?: [];
+        return $wpdb->get_results( "SELECT * FROM `{$wpdb->prefix}sonoai_kb_topics` ORDER BY `name` ASC" ) ?: [];
     }
 
     // ── Render ────────────────────────────────────────────────────────────────
 
     public function render(): void {
-        if ( ! current_user_can( 'manage_options' ) ) {
+        if ( ! SecurityHelper::check_admin_caps() ) {
             return;
         }
 
         $stats     = self::get_kb_stats();
-        $tab       = sanitize_key( $_GET['kb_tab'] ?? 'overview' );
-        $post_type = sanitize_key( $_GET['pt'] ?? 'post' );
+        $tab       = SecurityHelper::get_param( 'kb_tab', 'overview', 'text' );
+        $post_type = SecurityHelper::get_param( 'pt', 'post', 'text' );
         $valid_tabs = [ 'overview', 'wp', 'pdf', 'url', 'txt', 'media' ];
         if ( ! in_array( $tab, $valid_tabs, true ) ) {
             $tab = 'overview';
@@ -142,7 +143,8 @@ class KnowledgeBase {
                     <div class="kb-header-icon">📚</div>
                     <div>
                         <h1 class="kb-title"><?php esc_html_e( 'Knowledge Base', 'sonoai' ); ?></h1>
-                        <p class="kb-subtitle"><?php
+                <p class="kb-subtitle"><?php
+                            // translators: %s is the strong-wrapped provider name.
                             printf(
                                 esc_html__( 'Add content from multiple sources to train your AI assistant. Currently using %s embeddings.', 'sonoai' ),
                                 '<strong>' . esc_html( ucfirst( sonoai_option( 'active_provider', 'OpenAI' ) ) ) . '</strong>'
@@ -192,7 +194,7 @@ class KnowledgeBase {
                    class="kb-tab <?php echo $tab === $slug ? 'kb-tab-active' : ''; ?>"
                    role="tab"
                    data-tab="<?php echo esc_attr( $slug ); ?>">
-                    <?php echo $meta['icon']; ?> <?php echo esc_html( $meta['label'] ); ?>
+                    <?php echo esc_html( $meta['icon'] ); ?> <?php echo esc_html( $meta['label'] ); ?>
                     <?php if ( $slug === 'media' ) : ?><span class="kb-coming-soon-badge"><?php esc_html_e( 'Coming Soon', 'sonoai' ); ?></span><?php endif; ?>
                 </a>
                 <?php endforeach; ?>
@@ -319,7 +321,7 @@ class KnowledgeBase {
             <div class="kb-source-card <?php echo ! empty( $src['coming_soon'] ) ? 'kb-source-card--coming-soon' : ''; ?>">
                 <div class="kb-source-card-header">
                     <div class="kb-source-icon" style="background:<?php echo esc_attr( $src['color'] . '18' ); ?>; border-color:<?php echo esc_attr( $src['color'] . '44' ); ?>">
-                        <?php echo $src['icon']; ?>
+                        <?php echo esc_html( $src['icon'] ); ?>
                     </div>
                     <div class="kb-source-meta">
                         <strong class="kb-source-name"><?php echo esc_html( $src['title'] ); ?></strong>
@@ -400,9 +402,9 @@ class KnowledgeBase {
             
             <?php 
             $this->render_filters(
-                $_GET['mode'] ?? '',
-                $_GET['topic_id'] ?? '',
-                $_GET['country'] ?? ''
+                SecurityHelper::get_param( 'mode' ),
+                SecurityHelper::get_param( 'topic_id' ),
+                SecurityHelper::get_param( 'country' )
             ); 
             ?>
 
@@ -480,16 +482,32 @@ class KnowledgeBase {
         global $wpdb;
         $tbl   = $wpdb->prefix . 'sonoai_kb_items';
         
-        $mode     = sanitize_key( $_GET['mode'] ?? '' );
-        $topic_id = intval( $_GET['topic_id'] ?? 0 );
-        $country  = sanitize_text_field( $_GET['country'] ?? '' );
+        $mode     = SecurityHelper::get_param( 'mode' );
+        $topic_id = SecurityHelper::get_param( 'topic_id', 0, 'int' );
+        $country  = SecurityHelper::get_param( 'country' );
         
-        $where = $wpdb->prepare( "WHERE `type` = %s", 'pdf' );
-        if ( $mode ) $where .= $wpdb->prepare( " AND `mode` = %s", $mode );
-        if ( $topic_id ) $where .= $wpdb->prepare( " AND `topic_id` = %d", $topic_id );
-        if ( $country ) $where .= $wpdb->prepare( " AND `country` LIKE %s", '%' . $wpdb->esc_like( $country ) . '%' );
+        $where = "WHERE `type` = 'pdf'";
+        $params = [];
+        
+        if ( $mode ) {
+            $where .= " AND `mode` = %s";
+            $params[] = $mode;
+        }
+        if ( $topic_id ) {
+            $where .= " AND `topic_id` = %d";
+            $params[] = $topic_id;
+        }
+        if ( $country ) {
+            $where .= " AND `country` LIKE %s";
+            $params[] = '%' . $wpdb->esc_like( $country ) . '%';
+        }
 
-        $items = $wpdb->get_results( "SELECT * FROM `$tbl` $where ORDER BY `created_at` DESC" );
+        $query = "SELECT * FROM `{$wpdb->prefix}sonoai_kb_items` $where ORDER BY `created_at` DESC";
+        if ( ! empty( $params ) ) {
+            $query = $wpdb->prepare( $query, $params );
+        }
+
+        $items = $wpdb->get_results( $query );
         ?>
         <div class="kb-card">
             <h3 class="kb-card-title">📄 <?php esc_html_e( 'Upload PDF', 'sonoai' ); ?></h3>
@@ -557,16 +575,32 @@ class KnowledgeBase {
         global $wpdb;
         $tbl   = $wpdb->prefix . 'sonoai_kb_items';
         
-        $mode     = sanitize_key( $_GET['mode'] ?? '' );
-        $topic_id = intval( $_GET['topic_id'] ?? 0 );
-        $country  = sanitize_text_field( $_GET['country'] ?? '' );
+        $mode     = SecurityHelper::get_param( 'mode' );
+        $topic_id = SecurityHelper::get_param( 'topic_id', 0, 'int' );
+        $country  = SecurityHelper::get_param( 'country' );
         
-        $where = $wpdb->prepare( "WHERE `type` = %s", 'url' );
-        if ( $mode ) $where .= $wpdb->prepare( " AND `mode` = %s", $mode );
-        if ( $topic_id ) $where .= $wpdb->prepare( " AND `topic_id` = %d", $topic_id );
-        if ( $country ) $where .= $wpdb->prepare( " AND `country` LIKE %s", '%' . $wpdb->esc_like( $country ) . '%' );
+        $where = "WHERE `type` = 'url'";
+        $params = [];
+        
+        if ( $mode ) {
+            $where .= " AND `mode` = %s";
+            $params[] = $mode;
+        }
+        if ( $topic_id ) {
+            $where .= " AND `topic_id` = %d";
+            $params[] = $topic_id;
+        }
+        if ( $country ) {
+            $where .= " AND `country` LIKE %s";
+            $params[] = '%' . $wpdb->esc_like( $country ) . '%';
+        }
 
-        $items = $wpdb->get_results( "SELECT * FROM `$tbl` $where ORDER BY `created_at` DESC" );
+        $query = "SELECT * FROM `{$wpdb->prefix}sonoai_kb_items` $where ORDER BY `created_at` DESC";
+        if ( ! empty( $params ) ) {
+            $query = $wpdb->prepare( $query, $params );
+        }
+
+        $items = $wpdb->get_results( $query );
         ?>
         <div class="kb-card">
             <h3 class="kb-card-title">🌐 <?php esc_html_e( 'Enter Website URL', 'sonoai' ); ?></h3>
@@ -632,23 +666,39 @@ class KnowledgeBase {
         global $wpdb;
         $tbl   = $wpdb->prefix . 'sonoai_kb_items';
         
-        $mode     = sanitize_key( $_GET['mode'] ?? '' );
-        $topic_id = intval( $_GET['topic_id'] ?? 0 );
-        $country  = sanitize_text_field( $_GET['country'] ?? '' );
+        $mode     = SecurityHelper::get_param( 'mode' );
+        $topic_id = SecurityHelper::get_param( 'topic_id', 0, 'int' );
+        $country  = SecurityHelper::get_param( 'country' );
         
-        $where = $wpdb->prepare( "WHERE `type` = %s", 'txt' );
-        if ( $mode ) $where .= $wpdb->prepare( " AND `mode` = %s", $mode );
-        if ( $topic_id ) $where .= $wpdb->prepare( " AND `topic_id` = %d", $topic_id );
-        if ( $country ) $where .= $wpdb->prepare( " AND `country` LIKE %s", '%' . $wpdb->esc_like( $country ) . '%' );
+        $where = "WHERE `type` = 'txt'";
+        $params = [];
+        
+        if ( $mode ) {
+            $where .= " AND `mode` = %s";
+            $params[] = $mode;
+        }
+        if ( $topic_id ) {
+            $where .= " AND `topic_id` = %d";
+            $params[] = $topic_id;
+        }
+        if ( $country ) {
+            $where .= " AND `country` LIKE %s";
+            $params[] = '%' . $wpdb->esc_like( $country ) . '%';
+        }
 
-        $items = $wpdb->get_results( "SELECT * FROM `$tbl` $where ORDER BY `created_at` DESC" );
+        $query = "SELECT * FROM `{$wpdb->prefix}sonoai_kb_items` $where ORDER BY `created_at` DESC";
+        if ( ! empty( $params ) ) {
+            $query = $wpdb->prepare( $query, $params );
+        }
+
+        $items = $wpdb->get_results( $query );
 
         // Check if we're editing an existing item.
-        $edit_id      = sanitize_key( $_GET['edit_item'] ?? '' );
+        $edit_id      = SecurityHelper::get_param( 'edit_item' );
         $editing_item = null;
         if ( $edit_id ) {
             $editing_item = $wpdb->get_row( $wpdb->prepare(
-                "SELECT * FROM `$tbl` WHERE `knowledge_id` = %s AND `type` = 'txt'",
+                "SELECT * FROM `{$wpdb->prefix}sonoai_kb_items` WHERE `knowledge_id` = %s AND `type` = 'txt'",
                 $edit_id
             ) );
         }
@@ -803,13 +853,16 @@ class KnowledgeBase {
 
             <?php 
             $this->render_filters(
-                $_GET['mode'] ?? '',
-                $_GET['topic_id'] ?? '',
-                $_GET['country'] ?? ''
+                SecurityHelper::get_param( 'mode' ),
+                SecurityHelper::get_param( 'topic_id' ),
+                SecurityHelper::get_param( 'country' )
             ); 
             ?>
 
-            <span class="kb-item-count"><?php printf( esc_html( _n( '%d item', '%d items', count( $items ), 'sonoai' ) ), count( $items ) ); ?></span>
+            <span class="kb-item-count"><?php 
+                // translators: %d is the item count.
+                printf( esc_html( _n( '%d item', '%d items', count( $items ), 'sonoai' ) ), count( $items ) ); 
+            ?></span>
         </div>
 
         <table class="kb-table">
@@ -906,6 +959,10 @@ class KnowledgeBase {
     private function render_items_table( array $items, string $type, array $actions ): void {
         $has_view   = isset( $actions['view'] );
         $has_delete = isset( $actions['delete'] );
+        
+        $mode     = SecurityHelper::get_param( 'mode' );
+        $topic_id = SecurityHelper::get_param( 'topic_id' );
+        $country  = SecurityHelper::get_param( 'country' );
         ?>
         <div class="kb-list-bar">
             <div class="kb-bulk">
@@ -917,14 +974,13 @@ class KnowledgeBase {
             </div>
 
             <?php 
-            $this->render_filters(
-                $_GET['mode'] ?? '',
-                $_GET['topic_id'] ?? '',
-                $_GET['country'] ?? ''
-            ); 
+            $this->render_filters( $mode, $topic_id, $country ); 
             ?>
 
-            <span class="kb-item-count"><?php printf( esc_html( _n( '%d item', '%d items', count( $items ), 'sonoai' ) ), count( $items ) ); ?></span>
+            <span class="kb-item-count"><?php 
+                // translators: %d is the item count.
+                printf( esc_html( _n( '%d item', '%d items', count( $items ), 'sonoai' ) ), count( $items ) ); 
+            ?></span>
         </div>
         <table class="kb-table">
             <thead>
