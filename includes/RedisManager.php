@@ -73,7 +73,13 @@ class RedisManager {
         // Configuration from sonoai_settings
         $enabled = sonoai_option( 'redis_enabled', false );
         if ( ! $enabled && ! defined( 'SONOAI_REDIS_FORCE' ) ) {
-            return null; // Silent return if disabled
+            // Only log this once to avoid spamming, but we need to know if it's the reason
+            static $logged_disabled = false;
+            if ( ! $logged_disabled ) {
+                error_log( '[SonoAI] Redis: Connection skipped (disabled in settings and SONOAI_REDIS_FORCE not defined).' );
+                $logged_disabled = true;
+            }
+            return null;
         }
 
         $host = sonoai_option( 'redis_host', '127.0.0.1' );
