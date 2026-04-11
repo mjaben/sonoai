@@ -104,6 +104,98 @@
     flex-shrink: 0;
 }
 
+/* ── Notifications / Toasts ──────────────────────────────────── */
+#sonoai-kb-notify {
+    position: fixed;
+    top: 30px;
+    right: 30px;
+    z-index: 99999;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.kb-toast {
+    background: #fff;
+    border-radius: 8px;
+    padding: 12px 20px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    min-width: 280px;
+    max-width: 400px;
+    border-left: 4px solid #1e40af;
+    pointer-events: auto;
+    animation: kb-toast-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.kb-toast-success {
+    border-left-color: #10b981;
+}
+
+.kb-toast-error {
+    border-left-color: #ef4444;
+}
+
+.kb-toast-icon {
+    font-size: 18px;
+}
+
+@keyframes kb-toast-in {
+    from { transform: translateX(50px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes kb-toast-out {
+    to { transform: translateX(50px); opacity: 0; }
+}
+
+.kb-wrap .kb-stat-btn-circle {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 50% !important;
+    font-size: 15px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    transition: all 0.2s ease !important;
+    color: #fff !important;
+    box-shadow: none !important;
+    flex-shrink: 0;
+}
+
+.kb-wrap .kb-stat-btn-circle:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.2) !important;
+    transform: scale(1.05);
+}
+
+.kb-wrap .kb-stat-btn-circle.syncing {
+    background: rgba(255, 255, 255, 0.15) !important;
+    opacity: 0.8;
+}
+
+.kb-wrap .kb-stat-btn-circle.syncing .kb-sync-icon {
+    display: inline-block;
+    animation: kb-rotate 1.2s linear infinite;
+}
+
+.kb-sync-icon {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+    filter: brightness(0) invert(1); /* Make it white to match hero text */
+}
+
+@keyframes kb-rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
 .kb-wrap .kb-icon-light {
     display: none;
 }

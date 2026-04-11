@@ -78,9 +78,11 @@ class KnowledgeBase {
                 'topics'     => wp_create_nonce( 'sonoai_kb_manage_topics' ),
                 'syncTopics' => wp_create_nonce( 'sonoai_kb_sync_topics' ),
                 'uploadImg'  => wp_create_nonce( 'sonoai_kb_upload_img' ),
+                'syncRedis'  => wp_create_nonce( 'sonoai_kb_sync_redis' ),
             ],
             'postTypes'  => self::get_eligible_post_types(),
             'providerLabel' => sonoai_option( 'active_provider', 'openai' ),
+            'syncIcon'   => SONOAI_URL . 'assets/images/sync-icon.png',
         ] );
     }
 
@@ -136,6 +138,7 @@ class KnowledgeBase {
         }
         ?>
         <div class="kb-wrap" id="sonoai-kb-page">
+            <div id="sonoai-kb-notify"></div>
 
             <!-- ── Hero Header ──────────────────────────────────────────── -->
             <div class="kb-header">
@@ -169,6 +172,9 @@ class KnowledgeBase {
                         <span><?php echo esc_html( number_format_i18n( $stats['pdf'] ) ); ?> <?php esc_html_e( 'PDFs', 'sonoai' ); ?></span>
                     </div>
                     <?php endif; ?>
+                    <button type="button" id="kb-redis-sync" class="kb-stat-btn-circle" title="<?php esc_attr_e( 'Manual Redis Sync / Re-index', 'sonoai' ); ?>">
+                        <img src="<?php echo esc_url( SONOAI_URL . 'assets/images/sync-icon.png' ); ?>" class="kb-sync-icon" alt="Sync">
+                    </button>
                     <button type="button" id="kb-theme-toggle" class="kb-theme-btn" title="Toggle dark / light mode">
                         <span class="kb-icon-dark">🌙</span>
                         <span class="kb-icon-light">☀️</span>

@@ -39,7 +39,82 @@
         initDeleteButtons();
         initViewModal();
         initTopicsTab();
+        initRedisSync();
     });
+
+    /**
+     * Manual Redis Sync Button
+     */
+    function initRedisSync() {
+        var btn = document.getElementById('kb-redis-sync');
+        if (!btn) return;
+
+        btn.addEventListener('click', function() {
+            if (!confirm('Are you sure you want to manually re-index all Knowledge Base items to Redis? This will clear and rebuild the vector cache.')) {
+                return;
+            }
+
+            btn.classList.add('syncing');
+            btn.disabled = true;
+
+            showToast('Starting Redis reconstruction...', 'info');
+
+            var payload = {
+                action: 'sonoai_kb_sync_redis',
+                security: nonces.syncRedis
+            };
+
+            $.post(ajax, payload, function(res) {
+                if (res.success) {
+                    showToast(res.data.message || 'Sync successful!', 'success');
+                } else {
+                    showToast(res.data.message || 'Sync failed.', 'error');
+                }
+            }).fail(function() {
+                showToast('Fatal error during synchronization.', 'error');
+            }).always(function() {
+                btn.classList.remove('syncing');
+                btn.disabled = false;
+            });
+        });
+    }
+
+    /**
+     * Toast Notification Helper
+     */
+    function showToast(msg, type) {
+        var container = document.getElementById('sonoai-kb-notify');
+        if (!container) {
+            // Fallback for missing container
+            var pc = document.getElementById('sonoai-kb-page');
+            if(pc) {
+                container = document.createElement('div');
+                container.id = 'sonoai-kb-notify';
+                pc.prepend(container);
+            } else {
+                alert(msg); return; 
+            }
+        }
+        
+        var toast = document.createElement('div');
+        toast.className = 'kb-toast kb-toast-' + (type || 'success');
+        
+        var iconMap = { 
+            'success': '✅', 
+            'error': '❌', 
+            'info': '<img src="' + (KB.syncIcon || '') + '" class="kb-toast-sync-icon" onerror="this.outerHTML=\'🔄\'" style="width:18px;height:18px;filter:brightness(0.5);">' 
+        };
+        
+        var icon = iconMap[type] || '🔔';
+        
+        toast.innerHTML = '<span class="kb-toast-icon">' + icon + '</span><span class="kb-toast-msg">' + msg + '</span>';
+        container.appendChild(toast);
+        
+        setTimeout(function() {
+            toast.style.animation = 'kb-toast-out 0.3s forwards';
+            setTimeout(function() { toast.remove(); }, 300);
+        }, 5000);
+    }
 
     /**
      * Tab: WordPress Posts

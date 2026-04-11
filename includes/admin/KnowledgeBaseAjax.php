@@ -39,7 +39,7 @@ class KnowledgeBaseAjax {
             'sonoai_kb_sync_topics',
             'sonoai_kb_upload_img',
             'sonoai_kb_delete_img_file',
-            'sonoai_kb_rebuild_redis',
+            'sonoai_kb_sync_redis',
         ];
         foreach ( $actions as $action ) {
             add_action( "wp_ajax_{$action}", [ $this, str_replace( 'sonoai_kb_', 'handle_', $action ) ] );
@@ -874,10 +874,10 @@ class KnowledgeBaseAjax {
     }
 
     /**
-     * Rebuild the Redis VSS index from MySQL.
+     * Rebuild the Redis VSS index from MySQL (Manual Sync).
      */
-    public function handle_rebuild_redis(): void {
-        $this->check( 'sonoai_admin_nonce' );
+    public function handle_sync_redis(): void {
+        $this->check( 'sonoai_kb_sync_redis' );
 
         if ( ! class_exists( 'SonoAI\RedisMigration' ) ) {
             require_once SONOAI_DIR . 'includes/RedisMigration.php';
@@ -894,7 +894,9 @@ class KnowledgeBaseAjax {
                 )
             ] );
         } else {
-            wp_send_json_error( [ 'message' => $result['message'] ?? __( 'Unknown error during Redis migration.', 'sonoai' ) ] );
+            $msg = $result['message'] ?? __( 'Unknown error during Redis migration.', 'sonoai' );
+            sonoai_log_error( 'Manual Redis Sync Failed: ' . $msg );
+            wp_send_json_error( [ 'message' => $msg ] );
         }
     }
 }

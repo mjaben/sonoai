@@ -244,14 +244,69 @@ class RedisManager {
     }
 
     /**
+     * Synchronize all embeddings from MySQL to Redis.
+     */
+    public function sync_vectors(): int {
+        $client = $this->get_client();
+        if ( ! $client ) return 0;
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'sonoai_embeddings';
+        $rows  = $wpdb->get_results( "SELECT * FROM `{$table}`", ARRAY_A );
+
+        if ( empty( $rows ) ) return 0;
+
+        $this->flush_vectors();
+        $count = 0;
+
+        foreach ( $rows as $row ) {
+            $vector = json_decode( $row['embedding'], true );
+            if ( ! is_array( $vector ) ) continue;
+
+            $meta = [
+                'knowledge_id' => $row['knowledge_id'],
+                'post_id'      => (int) $row['post_id'],
+                'post_type'    => $row['post_type'],
+                'chunk_text'   => $row['chunk_text'],
+                'mode'         => $row['mode'],
+                'topic_slug'   => $row['topic_slug'],
+                'country'      => $row['country'],
+                'source_title' => $row['source_title'],
+                'source_url'   => $row['source_url'],
+                'image_urls'   => ! empty( $row['image_urls'] ) ? json_decode( $row['image_urls'], true ) : [],
+            ];
+
+            $this->cache_embedding( 
+                $row['knowledge_id'] . ':' . $row['chunk_index'], 
+                $vector, 
+                $meta 
+            );
+            $count++;
+        }
+
+        return $count;
+    }
+
+    /**
      * Clear all cached vectors.
      */
     public function flush_vectors(): void {
         $client = $this->get_client();
         if ( ! $client ) return;
-        $keys = $client->keys( 'sonoai:vector:*' );
-        if ( ! empty( $keys ) ) {
-            foreach ( $keys as $key ) $client->del( $key );
+        
+        $iterator = null;
+        while ( true ) {
+            $result = $client->scan( $iterator, [ 'MATCH' => 'sonoai:vss:*', 'COUNT' => 100 ] );
+            if ( empty( $result ) ) break;
+            
+            $iterator = $result[0];
+            $keys     = $result[1];
+            
+            if ( ! empty( $keys ) ) {
+                $client->del( $keys );
+            }
+            
+            if ( $iterator == 0 ) break;
         }
     }
 }
