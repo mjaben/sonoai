@@ -106,30 +106,30 @@ $is_logged_in = is_user_logged_in();
         <main id="sonoai-main" class="sonoai-main" role="main">
 
             <!-- Top navigation -->
-            <div class="sonoai-topnav" style="justify-content: space-between; position: relative;">
-                <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="sonoai-topnav">
+                <div class="sonoai-topnav-left">
                     <?php if ( $is_logged_in ) : ?>
                     <button id="sonoai-sidebar-toggle" class="sonoai-hamburger" aria-label="<?php esc_attr_e( 'Toggle sidebar', 'sonoai' ); ?>" aria-expanded="false" aria-controls="sonoai-sidebar">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
                     </button>
                     <?php endif; ?>
-                    <span class="sonoai-topnav-title" style="font-size: 16px; font-weight: 800; letter-spacing: -0.02em;">Sonohive Intelligence <span style="font-weight: 600; font-size: 15px; color: #ccc; margin-left: 4px;">Beta</span></span>
+                    <span class="sonoai-topnav-title">Sonohive Intelligence <span class="sonoai-beta-badge">Beta</span></span>
                 </div>
                 
-                <div class="sonoai-topnav-center" style="position: absolute; left: 50%; transform: translateX(-50%); display: flex; align-items: center;">
-                    <div class="sonoai-nav-pill-group" style="border: 1px solid rgba(255,255,255,0.08); background: #161618; border-radius: 9999px; padding: 4px 6px; display: flex; gap: 4px;">
-                        <a href="#" style="border: none; padding: 6px 16px 7px; color: #888; font-size: 13px; font-weight: 500; border-radius: 9999px; transition: color 0.2s;"><?php esc_html_e( 'Homepage', 'sonoai' ); ?></a>
-                        <a href="#" style="border: none; padding: 6px 16px 7px; color: #cecece; font-size: 13px; font-weight: 500; border-radius: 9999px; transition: color 0.2s;"><?php esc_html_e( 'Events', 'sonoai' ); ?></a>
-                        <a href="#" style="border: none; padding: 6px 16px 7px; color: #888; font-size: 13px; font-weight: 500; border-radius: 9999px; transition: color 0.2s;"><?php esc_html_e( 'Cases', 'sonoai' ); ?></a>
-                        <a href="#" style="border: none; padding: 6px 16px 7px; color: #888; font-size: 13px; font-weight: 500; border-radius: 9999px; transition: color 0.2s;"><?php esc_html_e( 'Forum', 'sonoai' ); ?></a>
+                <div class="sonoai-topnav-center">
+                    <div class="sonoai-nav-pill-group">
+                        <a href="#"><?php esc_html_e( 'Homepage', 'sonoai' ); ?></a>
+                        <a href="#" class="active"><?php esc_html_e( 'Events', 'sonoai' ); ?></a>
+                        <a href="#"><?php esc_html_e( 'Cases', 'sonoai' ); ?></a>
+                        <a href="#"><?php esc_html_e( 'Forum', 'sonoai' ); ?></a>
                     </div>
                 </div>
 
-                <div class="sonoai-topnav-right" style="display: flex; align-items: center;">
+                <div class="sonoai-topnav-right">
                     <?php if ( ! $is_logged_in ) : ?>
-                        <div class="sonoai-auth-btns" style="display: flex; gap: 8px; margin-right: 12px;">
-                            <button class="uwp-login-link" style="background: transparent; color: #ccc; border: 1px solid rgba(255,255,255,0.1); padding: 5px 12px; border-radius: 99px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;"><?php esc_html_e( 'Log in', 'sonoai' ); ?></button>
-                            <button class="uwp-register-link" style="background: #fff; color: #000; border: none; padding: 6px 14px; border-radius: 99px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;"><?php esc_html_e( 'Sign up', 'sonoai' ); ?></button>
+                        <div class="sonoai-auth-btns">
+                            <button class="uwp-login-link"><?php esc_html_e( 'Log in', 'sonoai' ); ?></button>
+                            <button class="uwp-register-link"><?php esc_html_e( 'Sign up', 'sonoai' ); ?></button>
                         </div>
                     <?php endif; ?>
                     <button id="sonoai-theme-toggle" class="sonoai-theme-toggle" aria-label="<?php esc_attr_e( 'Toggle theme', 'sonoai' ); ?>">
@@ -142,48 +142,42 @@ $is_logged_in = is_user_logged_in();
             <!-- Message thread -->
             <div id="sonoai-messages" class="sonoai-messages" role="log" aria-live="polite" aria-label="<?php esc_attr_e( 'Conversation', 'sonoai' ); ?>">
                 <!-- Welcome screen (shown when no session is active) -->
-                <?php $session_uuid = get_query_var( 'sonoai_uuid' ) ?: ( isset( $_GET['uuid'] ) ? sanitize_text_field( $_GET['uuid'] ) : '' ); ?>
-                <div id="sonoai-welcome" class="sonoai-welcome" style="margin-top: -8vh; <?php echo $session_uuid ? 'display:none;' : ''; ?>">
-                    <h2 class="sonoai-welcome-title" style="font-size: 30px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; max-width: 640px; margin-bottom: 32px;">
-                        <?php
-                        $fn = $current_user->first_name;
-                        if ( $fn ) {
-                            /* translators: %s: user's first name */
-                            printf( esc_html__( 'Welcome, %s.', 'sonoai' ), esc_html( $fn ) );
-                        } else {
-                            esc_html_e( 'Welcome.', 'sonoai' );
-                        }
-                        ?>
-                        <br>
-                        <span style="color: #999;">How can I assist with your research today?</span>
-                    </h2>
+                <?php 
+                $session_uuid = get_query_var( 'sonoai_uuid' ) ?: ( isset( $_GET['uuid'] ) ? sanitize_text_field( $_GET['uuid'] ) : '' ); 
+                
+                // Ensure session for tracking last greeting to avoid repeats
+                if ( ! session_id() && ! headers_sent() ) {
+                    session_start();
+                }
 
-                    <div class="sonoai-suggestion-grid" style="grid-template-columns: 1fr 1fr; gap: 16px; max-width: 720px; width: 100%;">
-                        <button class="sonoai-suggestion" data-query="<?php esc_attr_e( 'Summarize NIH guidelines for acute myocardial infarction protocols', 'sonoai' ); ?>" style="padding: 22px 24px; border-radius: 16px; background: #16161a; border: 1px solid rgba(255,255,255,0.06); display: flex; flex-direction: column; align-items: flex-start; gap: 0;">
-                            <div style="margin-bottom: 12px; color: #4a90e2; display: flex; align-items: center; justify-content: center;">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
-                            </div>
-                            <div class="sonoai-suggestion-body" style="text-align: left;">
-                                <span class="sonoai-suggestion-title" style="font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 4px;">Summarize NIH guidelines</span>
-                                <span class="sonoai-suggestion-desc" style="font-size: 12.5px; color: #888;">For acute myocardial infarction protocols</span>
-                            </div>
-                        </button>
-                        <button class="sonoai-suggestion" data-query="<?php esc_attr_e( 'Review recent case studies regarding rare neurological findings in pediatric patients', 'sonoai' ); ?>" style="padding: 22px 24px; border-radius: 16px; background: #16161a; border: 1px solid rgba(255,255,255,0.06); display: flex; flex-direction: column; align-items: flex-start; gap: 0;">
-                            <div style="margin-bottom: 12px; color: #4a90e2; display: flex; align-items: center; justify-content: center;">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                            </div>
-                            <div class="sonoai-suggestion-body" style="text-align: left;">
-                                <span class="sonoai-suggestion-title" style="font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 4px;">Review recent case studies</span>
-                                <span class="sonoai-suggestion-desc" style="font-size: 12.5px; color: #888;">Rare neurological findings in pediatric patients</span>
-                            </div>
-                        </button>
-                    </div>
+                $greetings = [
+                    __( 'Ready when you are for your research.', 'sonoai' ),
+                    __( 'Where should we begin?', 'sonoai' ),
+                    __( "What's on your mind today?", 'sonoai' ),
+                    __( 'What are you working on?', 'sonoai' ),
+                ];
+
+                $last_idx = isset( $_SESSION['sonoai_last_greeting'] ) ? (int) $_SESSION['sonoai_last_greeting'] : -1;
+                $available_indices = array_keys( $greetings );
+                
+                if ( $last_idx !== -1 && count( $greetings ) > 1 ) {
+                    unset( $available_indices[ array_search( $last_idx, $available_indices ) ] );
+                }
+                
+                $current_idx = $available_indices[ array_rand( $available_indices ) ];
+                $_SESSION['sonoai_last_greeting'] = $current_idx;
+                $random_greeting = $greetings[ $current_idx ];
+                ?>
+                <div id="sonoai-welcome" class="sonoai-welcome" <?php echo $session_uuid ? 'style="display:none;"' : ''; ?>>
+                    <h2 class="sonoai-welcome-title">
+                        <?php echo esc_html( $random_greeting ); ?>
+                    </h2>
                 </div>
             </div>
 
             <!-- Input area -->
-            <div class="sonoai-input-area" style="background: transparent; padding: 24px 0 32px; max-width: 800px; width: 100%; margin: 0 auto; gap: 12px;">
-                <div class="sonoai-input-box" style="border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; background: #161618; padding: 6px 6px 6px 16px;">
+            <div class="sonoai-input-area">
+                <div class="sonoai-input-box">
                     <textarea
                         id="sonoai-input"
                         class="sonoai-textarea"
@@ -200,7 +194,16 @@ $is_logged_in = is_user_logged_in();
                     <button class="sonoai-mode-btn" data-mode="guideline"><?php esc_html_e( 'Guideline Mode', 'sonoai' ); ?></button>
                     <button class="sonoai-mode-btn" data-mode="research"><?php esc_html_e( 'Research Mode', 'sonoai' ); ?></button>
                 </div>
-                <p class="sonoai-disclaimer" style="color: #666; font-size: 11.5px;"><?php esc_html_e( '© 2024 Sono AI. Clinical Use Only. Precision research tool. | Legal | Privacy', 'sonoai' ); ?></p>
+                <p class="sonoai-disclaimer">
+                    <?php
+                    printf(
+                        /* translators: 1: Terms link, 2: Privacy Policy link */
+                        esc_html__( 'By messaging Sono AI - an AI Chatbot, you agree to our %1$s and have read our %2$s.', 'sonoai' ),
+                        '<a href="' . esc_url( home_url( '/terms/' ) ) . '" target="_blank">' . esc_html__( 'Terms', 'sonoai' ) . '</a>',
+                        '<a href="' . esc_url( home_url( '/privacy-policy/' ) ) . '" target="_blank">' . esc_html__( 'Privacy Policy', 'sonoai' ) . '</a>'
+                    );
+                    ?>
+                </p>
             </div>
         </main>
 

@@ -716,12 +716,73 @@ body.sonoai-fullscreen #sonoai-app {
 .sonoai-topnav {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 8px;
     padding: 0 20px;
-    height: 50px;
+    height: auto;
+    min-height: 50px;
     background: var(--sono-topnav-bg);
     border-bottom: 1px solid var(--sono-border);
     flex-shrink: 0;
+    position: relative;
+    flex-wrap: wrap;
+}
+
+.sonoai-topnav-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.sonoai-topnav-center {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+}
+
+.sonoai-topnav-right {
+    display: flex;
+    align-items: center;
+}
+
+.sonoai-auth-btns {
+    display: flex;
+    gap: 8px;
+    margin-right: 12px;
+}
+
+.sonoai-auth-btns .uwp-login-link {
+    background: transparent;
+    color: #ccc;
+    border: 1px solid rgba(255,255,255,0.1);
+    padding: 5px 12px;
+    border-radius: 99px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.sonoai-auth-btns .uwp-register-link {
+    background: #fff;
+    color: #000;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 99px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.sonoai-auth-btns .uwp-login-link:hover {
+    background: rgba(255,255,255,0.05);
+}
+
+.sonoai-auth-btns .uwp-register-link:hover {
+    opacity: 0.9;
 }
 
 .sonoai-hamburger {
@@ -743,12 +804,18 @@ body.sonoai-fullscreen #sonoai-app {
 }
 
 .sonoai-topnav-title {
-    font-size: 13.5px;
-    font-weight: 600;
+    font-size: 16px;
+    font-weight: 800;
     color: var(--sono-text);
-    letter-spacing: -0.01em;
+    letter-spacing: -0.02em;
     white-space: nowrap;
-    flex-shrink: 0;
+}
+
+.sonoai-beta-badge {
+    font-weight: 600;
+    font-size: 15px;
+    color: #ccc;
+    margin-left: 4px;
 }
 
 .sonoai-topnav-badge {
@@ -774,31 +841,35 @@ body.sonoai-fullscreen #sonoai-app {
 .sonoai-nav-pill-group {
     display: flex;
     align-items: center;
-    border: 1px solid var(--sono-border);
-    border-radius: var(--sono-radius-pill);
+    gap: 4px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: #161618;
+    border-radius: 9999px;
+    padding: 4px 6px;
     overflow: hidden;
-    background: var(--sono-surface-2);
 }
 
 .sonoai-nav-pill-group a {
-    font-size: 12.5px;
-    color: var(--sono-text-dim);
+    font-size: 13px;
+    font-weight: 500;
+    color: #888;
     text-decoration: none !important;
-    padding: 7px 15px;
+    padding: 6px 16px 7px;
     white-space: nowrap;
     line-height: 1;
     display: inline-block;
-    border-right: 1px solid var(--sono-border);
-    transition: color var(--sono-t), background var(--sono-t);
+    border-radius: 9999px;
+    transition: color 0.2s, background 0.2s;
 }
-.sonoai-nav-pill-group a:last-child { border-right: none; }
+
 .sonoai-nav-pill-group a:hover {
-    color: var(--sono-text);
-    background: var(--sono-surface-3);
+    color: #cecece;
+    background: rgba(255,255,255,0.05);
 }
+
 .sonoai-nav-pill-group a.active {
-    color: var(--sono-text);
-    background: var(--sono-surface-3);
+    color: #cecece;
+    background: rgba(255,255,255,0.08);
 }
 
 .sonoai-theme-toggle {
@@ -840,9 +911,10 @@ body.sonoai-fullscreen #sonoai-app {
     align-items: center;
     justify-content: center;
     flex: 1;
-    padding: 40px 48px 32px;
-    gap: 32px;
+    padding: 0 40px;
     animation: sonoai-fade-in 0.4s ease;
+    text-align: center;
+    user-select: none;
 }
 
 .sonoai-welcome-icon {
@@ -862,72 +934,19 @@ body.sonoai-fullscreen #sonoai-app {
 }
 
 .sonoai-welcome-title {
-    font-size: clamp(26px, 3.8vw, 44px);
-    font-weight: 800;
-    letter-spacing: -0.03em;
-    line-height: 1.18;
+    font-size: clamp(32px, 5vw, 42px);
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 1.1;
     text-align: center;
     color: var(--sono-text);
-    max-width: 660px;
+    max-width: 800px;
     width: 100%;
-}
-
-.sonoai-welcome-title span {
-    color: var(--sono-text-dim);
+    margin-bottom: 24px;
 }
 
 /* ── Suggestion cards ── */
-.sonoai-suggestion-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 14px;
-    width: 100%;
-    max-width: 640px;
-}
-
-.sonoai-suggestion {
-    background: #1d1d22;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
-    padding: 18px 20px;
-    cursor: pointer;
-    text-align: left;
-    display: flex;
-    align-items: flex-start;
-    gap: 14px;
-    transition: background var(--sono-t), border-color var(--sono-t), transform var(--sono-t), box-shadow var(--sono-t);
-    font-family: var(--sono-font);
-}
-
-.sonoai-suggestion:hover {
-    background: #252530;
-    border-color: rgba(255, 255, 255, 0.14);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-}
-
-.sonoai-suggestion-icon {
-    width: 38px;
-    height: 38px;
-    border-radius: 8px;
-    background: rgba(74, 144, 226, 0.2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #6aabf7;
-    flex-shrink: 0;
-    margin-top: 1px;
-}
-
-.sonoai-suggestion-body {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    min-width: 0;
-}
-
-.sonoai-suggestion-title {
-    font-size: 13px;
+/* ── Suggestion cards removed ── */    font-size: 13px;
     font-weight: 600;
     color: var(--sono-text);
     line-height: 1.3;
@@ -1318,15 +1337,20 @@ body.sonoai-fullscreen #sonoai-app {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px;
-    padding: 14px 24px 18px;
-    background: var(--sono-bg);
+    justify-content: center;
+    gap: 16px;
+    padding: 16px 20px 24px;
+    background: transparent;
     flex-shrink: 0;
+    width: 100%;
+    position: relative;
+    z-index: 5;
 }
 
 /* Mode toggle */
 #sonoai-app .sonoai-mode-toggle {
     display: inline-flex !important;
+    justify-content: center;
     background: transparent !important;
     border-radius: 9999px !important;
     padding: 6px !important;
@@ -1366,15 +1390,19 @@ body.sonoai-fullscreen #sonoai-app {
     align-items: flex-end;
     gap: 12px;
     background: #161618;
-    border-radius: 14px;
-    padding: 6px 6px 6px 16px;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 18px;
+    padding: 8px 8px 8px 18px;
     width: 100%;
-    border: 1px solid rgba(255,255,255,0.06);
-    transition: border-color var(--sono-t);
+    max-width: 840px;
+    margin: 0 auto;
+    transition: all 0.2s ease;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.25);
 }
 
 .sonoai-input-box:focus-within {
-    border-color: rgba(74, 144, 226, 0.4);
+    border-color: rgba(255,255,255,0.25);
+    background: #1a1a1c;
 }
 
 .sonoai-textarea {
@@ -1387,12 +1415,14 @@ body.sonoai-fullscreen #sonoai-app {
     font-family: var(--sono-font);
     font-size: 14.5px;
     font-weight: 400;
-    line-height: 1.55;
+    line-height: 1.5;
     min-height: 24px;
     max-height: 160px;
-    overflow-y: auto;
-    padding: 8px 0;
-    scrollbar-width: thin;
+    overflow-y: hidden; /* Hide scroll until needed */
+    padding: 6px 0;
+    scrollbar-width: none;
+    display: block;
+    width: 100%;
 }
 
 .sonoai-textarea::placeholder {
@@ -1432,6 +1462,27 @@ body.sonoai-fullscreen #sonoai-app {
 }
 
 /* Footer text */
+.sonoai-disclaimer {
+    color: #62626e;
+    font-size: 11.5px;
+    text-align: center;
+    margin-top: 4px;
+    line-height: 1.5;
+    max-width: 600px;
+}
+
+.sonoai-disclaimer a {
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-color: rgba(255,255,255,0.15);
+    text-underline-offset: 2px;
+    transition: text-decoration-color 0.2s;
+}
+
+.sonoai-disclaimer a:hover {
+    text-decoration-color: #999;
+}
+
 .sonoai-footer-text {
     font-size: 11px;
     color: var(--sono-text-muted);
@@ -1591,8 +1642,45 @@ body.sonoai-fullscreen #sonoai-app {
         display: flex;
     }
 
-    .sonoai-topnav-links {
-        display: none;
+    .sonoai-topnav {
+        padding: 8px 16px;
+        gap: 0;
+    }
+
+    .sonoai-topnav-center {
+        position: static;
+        width: 100%;
+        order: 3;
+        justify-content: center;
+        transform: none;
+        padding-top: 10px;
+        padding-bottom: 6px;
+    }
+
+    .sonoai-nav-pill-group {
+        padding: 3px 4px;
+        width: 100%;
+        justify-content: center;
+    }
+
+    .sonoai-nav-pill-group a {
+        padding: 5px 12px;
+        font-size: 11.5px;
+        flex: 1;
+        text-align: center;
+    }
+
+    .sonoai-topnav-right {
+        margin-left: auto;
+    }
+
+    .sonoai-auth-btns {
+        margin-right: 8px;
+    }
+
+    .sonoai-auth-btns button {
+        padding: 4px 10px !important;
+        font-size: 12px !important;
     }
 
     .sonoai-welcome {
