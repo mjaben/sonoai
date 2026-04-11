@@ -871,6 +871,8 @@ class KnowledgeBaseAjax {
         } else {
             wp_send_json_error( [ 'message' => __( 'Could not delete file.', 'sonoai' ) ] );
         }
+    }
+
     /**
      * Rebuild the Redis VSS index from MySQL.
      */
