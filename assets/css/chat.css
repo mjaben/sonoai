@@ -945,20 +945,7 @@ body.sonoai-fullscreen #sonoai-app {
     margin-bottom: 24px;
 }
 
-/* ── Suggestion cards ── */
-/* ── Suggestion cards removed ── */    font-size: 13px;
-    font-weight: 600;
-    color: var(--sono-text);
-    line-height: 1.3;
-    display: block;
-}
-
-.sonoai-suggestion-desc {
-    font-size: 11.5px;
-    color: var(--sono-text-muted);
-    line-height: 1.45;
-    display: block;
-}
+/* ── Suggestion cards removed ── */
 
 /* ── Chat message bubbles ── */
 .sonoai-message {
