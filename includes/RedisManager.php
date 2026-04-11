@@ -90,6 +90,7 @@ class RedisManager {
         $host = defined( 'SONOAI_REDIS_HOST' ) ? SONOAI_REDIS_HOST : $host;
         $port = defined( 'SONOAI_REDIS_PORT' ) ? SONOAI_REDIS_PORT : $port;
         $pass = defined( 'SONOAI_REDIS_PASSWORD' ) ? SONOAI_REDIS_PASSWORD : $pass;
+        $user = defined( 'SONOAI_REDIS_USERNAME' ) ? SONOAI_REDIS_USERNAME : null;
         $scheme = defined( 'SONOAI_REDIS_SCHEME' ) ? SONOAI_REDIS_SCHEME : 'tcp';
 
         $connection_params = [
@@ -98,6 +99,10 @@ class RedisManager {
             'port'    => $port,
             'timeout' => 5.0, // Generous 5-second timeout for remote production servers
         ];
+
+        if ( ! empty( $user ) ) {
+            $connection_params['username'] = $user;
+        }
 
         if ( ! empty( $pass ) ) {
             $connection_params['password'] = $pass;
