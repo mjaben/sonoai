@@ -2165,3 +2165,202 @@ a.sonoai-source-pill:hover strong {
     background: #2563eb;
     color: #fff;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   AUTH MODAL (UsersWP Overrides & Container)
+   ══════════════════════════════════════════════════════════════ */
+.sonoai-auth-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.sonoai-auth-modal.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.sonoai-auth-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.sonoai-auth-dialog {
+    position: relative;
+    width: 100%;
+    max-width: 440px;
+    background: rgba(22, 22, 24, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+    transform: translateY(20px);
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+.sonoai-auth-modal.active .sonoai-auth-dialog {
+    transform: translateY(0);
+}
+
+#sonoai-app.sonoai-light .sonoai-auth-dialog {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+}
+
+.sonoai-auth-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: transparent;
+    border: none;
+    color: var(--sono-text-muted);
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    z-index: 10;
+}
+
+.sonoai-auth-close:hover {
+    background: var(--sono-surface-2);
+    color: var(--sono-text);
+}
+
+.sonoai-auth-header {
+    display: flex;
+    border-bottom: 1px solid var(--sono-border);
+    padding: 0 24px;
+}
+
+.sonoai-auth-tab {
+    flex: 1;
+    background: transparent;
+    border: none;
+    padding: 20px 0 16px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--sono-text-muted);
+    cursor: pointer;
+    position: relative;
+    transition: color 0.2s;
+}
+
+.sonoai-auth-tab.active {
+    color: var(--sono-text);
+}
+
+.sonoai-auth-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 10%;
+    right: 10%;
+    height: 2px;
+    background: var(--sono-accent);
+    border-radius: 2px 2px 0 0;
+}
+
+.sonoai-auth-body {
+    padding: 32px 24px;
+}
+
+/* Force override UsersWP structure inside our modal */
+.sonoai-auth-pane .uwp-login,
+.sonoai-auth-pane .uwp-registration {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+}
+
+.sonoai-auth-pane form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.sonoai-auth-pane fieldset {
+    border: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sonoai-auth-pane label {
+    display: block;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--sono-text-dim);
+    margin-bottom: 6px;
+}
+
+.sonoai-auth-pane input[type="text"],
+.sonoai-auth-pane input[type="email"],
+.sonoai-auth-pane input[type="password"] {
+    width: 100%;
+    background: var(--sono-surface-2) !important;
+    border: 1px solid var(--sono-border) !important;
+    color: var(--sono-text) !important;
+    border-radius: 10px !important;
+    padding: 12px 14px !important;
+    font-size: 14px !important;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    font-family: var(--sono-font);
+}
+
+.sonoai-auth-pane input:focus {
+    outline: none;
+    border-color: var(--sono-accent) !important;
+    box-shadow: 0 0 0 3px var(--sono-accent-dim) !important;
+}
+
+.sonoai-auth-pane input[type="submit"],
+.sonoai-auth-pane button[type="submit"] {
+    width: 100%;
+    background: var(--sono-accent) !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: 10px !important;
+    padding: 14px !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    cursor: pointer !important;
+    transition: background 0.2s, transform 0.1s !important;
+    margin-top: 8px;
+}
+
+.sonoai-auth-pane input[type="submit"]:hover,
+.sonoai-auth-pane button[type="submit"]:hover {
+    background: #3a7bc8 !important;
+}
+
+.sonoai-auth-pane input[type="submit"]:active,
+.sonoai-auth-pane button[type="submit"]:active {
+    transform: scale(0.98) !important;
+}
+
+/* Light mode form overrides */
+#sonoai-app.sonoai-light .sonoai-auth-pane input[type="text"],
+#sonoai-app.sonoai-light .sonoai-auth-pane input[type="email"],
+#sonoai-app.sonoai-light .sonoai-auth-pane input[type="password"] {
+    background: #fff !important;
+    border-color: #ddd !important;
+    color: #111 !important;
+}

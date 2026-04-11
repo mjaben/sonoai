@@ -8,10 +8,11 @@
 
 defined( 'ABSPATH' ) || exit;
 $current_user = wp_get_current_user();
+$is_logged_in = is_user_logged_in();
 ?>
-<div id="sonoai-app" class="sonoai-app" aria-label="<?php esc_attr_e( 'SonoAI Chat', 'sonoai' ); ?>">
+<div id="sonoai-app" class="sonoai-app <?php echo $is_logged_in ? 'logged-in' : 'guest-mode'; ?>" aria-label="<?php esc_attr_e( 'SonoAI Chat', 'sonoai' ); ?>">
 
-    <?php if ( is_user_logged_in() ) : ?>
+    <?php if ( $is_logged_in ) : ?>
 
         <!-- ── Sidebar ───────────────────────────────────────────── -->
         <aside id="sonoai-sidebar" class="sonoai-sidebar" aria-label="<?php esc_attr_e( 'Chat History', 'sonoai' ); ?>">
@@ -99,6 +100,7 @@ $current_user = wp_get_current_user();
                 </div>
             </div>
         </div>
+        <?php endif; ?>
 
         <!-- ── Main chat area ────────────────────────────────────── -->
         <main id="sonoai-main" class="sonoai-main" role="main">
@@ -106,9 +108,11 @@ $current_user = wp_get_current_user();
             <!-- Top navigation -->
             <div class="sonoai-topnav" style="justify-content: space-between; position: relative;">
                 <div style="display: flex; align-items: center; gap: 12px;">
+                    <?php if ( $is_logged_in ) : ?>
                     <button id="sonoai-sidebar-toggle" class="sonoai-hamburger" aria-label="<?php esc_attr_e( 'Toggle sidebar', 'sonoai' ); ?>" aria-expanded="false" aria-controls="sonoai-sidebar">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
                     </button>
+                    <?php endif; ?>
                     <span class="sonoai-topnav-title" style="font-size: 16px; font-weight: 800; letter-spacing: -0.02em;">Sonohive Intelligence <span style="font-weight: 600; font-size: 15px; color: #ccc; margin-left: 4px;">Beta</span></span>
                 </div>
                 
@@ -122,6 +126,12 @@ $current_user = wp_get_current_user();
                 </div>
 
                 <div class="sonoai-topnav-right" style="display: flex; align-items: center;">
+                    <?php if ( ! $is_logged_in ) : ?>
+                        <div class="sonoai-auth-btns" style="display: flex; gap: 8px; margin-right: 12px;">
+                            <button class="uwp-login-link" style="background: transparent; color: #ccc; border: 1px solid rgba(255,255,255,0.1); padding: 5px 12px; border-radius: 99px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;"><?php esc_html_e( 'Log in', 'sonoai' ); ?></button>
+                            <button class="uwp-register-link" style="background: #fff; color: #000; border: none; padding: 6px 14px; border-radius: 99px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;"><?php esc_html_e( 'Sign up', 'sonoai' ); ?></button>
+                        </div>
+                    <?php endif; ?>
                     <button id="sonoai-theme-toggle" class="sonoai-theme-toggle" aria-label="<?php esc_attr_e( 'Toggle theme', 'sonoai' ); ?>">
                         <svg class="sonoai-icon-moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
                         <svg class="sonoai-icon-sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none;"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
@@ -194,30 +204,10 @@ $current_user = wp_get_current_user();
             </div>
         </main>
 
+        <?php if ( $is_logged_in ) : ?>
         <!-- Mobile sidebar overlay -->
         <div id="sonoai-overlay" class="sonoai-overlay" hidden aria-hidden="true"></div>
-
-    <?php else : ?>
-
-        <!-- ── Logged-out CTA ─────────────────────────────────────── -->
-        <div class="sonoai-login-wall">
-            <div class="sonoai-login-card">
-                <svg class="sonoai-login-icon" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <circle cx="26" cy="26" r="25" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.3"/>
-                    <path d="M8 26 Q14 10 20 26 Q26 42 32 26 Q38 10 44 26" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" fill="none"/>
-                    <circle cx="26" cy="26" r="3" fill="currentColor" opacity="0.65"/>
-                </svg>
-                <h2 class="sonoai-login-title"><?php esc_html_e( 'SonoAI', 'sonoai' ); ?></h2>
-                <p class="sonoai-login-desc"><?php esc_html_e( 'Sign in to access your AI-powered sonography assistant. Analyse scans, explore cases, and get expert answers.', 'sonoai' ); ?></p>
-                <a href="<?php echo esc_url( wp_login_url( get_permalink() ) ); ?>" class="sonoai-login-btn">
-                    <?php esc_html_e( 'Log In to Continue', 'sonoai' ); ?>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                </a>
-            </div>
-        </div>
-
-
-    <?php endif; ?>
+        <?php endif; ?>
 
     <!-- ── Clinical Lightbox ── -->
     <div id="sonoai-lightbox" class="sonoai-lightbox" hidden aria-hidden="true" role="dialog">

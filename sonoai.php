@@ -3,7 +3,7 @@
  * Plugin Name: Sono AI
  * Description: Educational AI-powered chat assistant for the ultrasound and sonography niche. Performs RAG over WordPress Knowledge Base.
  * Author:      Sonohive Ltd
- * Version:     1.0.3 Beta
+ * Version:     1.0.5 Beta
  * Text Domain: sonoai
  * License:     GPL2 or later
  */
@@ -21,7 +21,7 @@ function sonoai_log_error( $message ) {
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-define( 'SONOAI_VERSION',  '1.0.3' );
+define( 'SONOAI_VERSION',  '1.0.5' );
 define( 'SONOAI_DIR',      plugin_dir_path( __FILE__ ) );
 define( 'SONOAI_URL',      plugin_dir_url( __FILE__ ) );
 define( 'SONOAI_BASENAME', plugin_basename( __FILE__ ) );
@@ -153,6 +153,7 @@ final class SonoAI {
 
     private function boot(): void {
         add_action( 'admin_init', [ $this, 'maybe_run_migrations' ] );
+        add_action( 'admin_notices', [ $this, 'maybe_show_userswp_notice' ] );
 
         add_action( 'plugins_loaded', function () {
             try {
@@ -184,6 +185,12 @@ final class SonoAI {
             } catch ( \Throwable $t ) {
                 sonoai_log_error( 'Migration Error: ' . $t->getMessage() );
             }
+        }
+    }
+
+    public function maybe_show_userswp_notice(): void {
+        if ( ! class_exists( 'UsersWP' ) && current_user_can( 'activate_plugins' ) ) {
+            echo '<div class="notice notice-warning is-dismissible"><p><strong>' . esc_html__( 'SonoAI Alert:', 'sonoai' ) . '</strong> ' . esc_html__( 'The UsersWP plugin is not active. SonoAI requires UsersWP to handle user login and registration workflows on the chat interface. Your users will not be able to authenticate without it.', 'sonoai' ) . '</p></div>';
         }
     }
 }

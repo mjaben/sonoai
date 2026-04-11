@@ -11,8 +11,8 @@
 (function () {
     'use strict';
 
-    if ( ! sonoai_vars || ! sonoai_vars.is_logged_in ) {
-        return; // Nothing to boot for logged-out visitors.
+    if ( ! sonoai_vars ) {
+        return;
     }
 
     // ── State ──────────────────────────────────────────────────────────────
@@ -47,15 +47,17 @@
         initTheme();
         bindEvents();
 
-        // 1. If we have a UUID from PHP/URL, load it immediately to avoid "welcome flash".
-        if (state.sessionUuid) {
+        // 1. If we have a UUID from PHP/URL and user is logged in, load it immediately to avoid "welcome flash".
+        if (state.sessionUuid && sonoai_vars.is_logged_in) {
             openSession(state.sessionUuid, true);
         }
 
-        // 2. Load history in background.
-        loadHistory();
+        // 2. Load history & saved responses in background if logged in.
+        if (sonoai_vars.is_logged_in) {
+            loadHistory();
+            loadSavedResponses();
+        }
         
-        loadSavedResponses();
         autoResizeTextarea();
     }
 
@@ -177,6 +179,9 @@
                 if (e.key === 'ArrowRight') navigateLightbox(1);
             });
         }
+
+        // ── Auth Modal Logic ──
+        // Delegated natively to UsersWP via .uwp-login-link and .uwp-register-link classes
     }
 
     // ── Theme init (restore from localStorage) ────────────────────────────
@@ -427,6 +432,16 @@
 
     // ── Send message ───────────────────────────────────────────────────────
     function handleSend() {
+        if (!sonoai_vars.is_logged_in) {
+            if (typeof window.uwp_modal_login_form === 'function') {
+                window.uwp_modal_login_form();
+            } else {
+                const loginLink = document.querySelector('.uwp-login-link');
+                if (loginLink) loginLink.click();
+            }
+            return;
+        }
+
         const text = textarea.value.trim();
         if (!text || state.sending) {
             return;

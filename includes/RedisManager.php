@@ -84,15 +84,26 @@ class RedisManager {
         $host = defined( 'SONOAI_REDIS_HOST' ) ? SONOAI_REDIS_HOST : $host;
         $port = defined( 'SONOAI_REDIS_PORT' ) ? SONOAI_REDIS_PORT : $port;
         $pass = defined( 'SONOAI_REDIS_PASSWORD' ) ? SONOAI_REDIS_PASSWORD : $pass;
+        $scheme = defined( 'SONOAI_REDIS_SCHEME' ) ? SONOAI_REDIS_SCHEME : 'tcp';
+
+        $connection_params = [
+            'scheme'  => $scheme,
+            'host'    => $host,
+            'port'    => $port,
+            'timeout' => 5.0, // Generous 5-second timeout for remote production servers
+        ];
+
+        if ( ! empty( $pass ) ) {
+            $connection_params['password'] = $pass;
+        }
+
+        $client_options = [];
+        if ( $scheme === 'tls' ) {
+            $client_options['ssl'] = ['verify_peer' => false]; // Common for managed Redis with self-signed or pooled certs
+        }
 
         try {
-            self::$client = new RedisClient([
-                'scheme'   => 'tcp',
-                'host'     => $host,
-                'port'     => $port,
-                'password' => $pass,
-                'timeout'  => 1.0, // Slightly more generous for remote Redis
-            ]);
+            self::$client = new RedisClient( $connection_params, $client_options );
             // Test connection
             self::$client->connect();
         } catch ( \Exception $e ) {
