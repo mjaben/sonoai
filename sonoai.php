@@ -64,7 +64,9 @@ if ( ! sonoai_meets_requirements() ) {
 }
 
 // ─── Vendor Autoload ─────────────────────────────────────────────────────────
-if ( file_exists( SONOAI_DIR . 'vendor/autoload.php' ) ) {
+define( 'SONOAI_VENDOR_MISSING', ! file_exists( SONOAI_DIR . 'vendor/autoload.php' ) );
+
+if ( ! SONOAI_VENDOR_MISSING ) {
     try {
         require_once SONOAI_DIR . 'vendor/autoload.php';
     } catch ( \Throwable $t ) {
@@ -72,7 +74,7 @@ if ( file_exists( SONOAI_DIR . 'vendor/autoload.php' ) ) {
     }
 } else {
     // Note: Don't hard-crash here, just log. The autoload check below will handle missing classes.
-    sonoai_log_error( 'vendor/autoload.php not found. Please ensure the vendor folder was uploaded correctly.' );
+    sonoai_log_error( 'CRITICAL: vendor/autoload.php not found. Please ensure you have run "composer install" or uploaded the "vendor" folder to your production server.' );
 }
 
 // ─── Autoload ────────────────────────────────────────────────────────────────

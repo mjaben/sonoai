@@ -73,7 +73,7 @@ class RedisManager {
         // Configuration from sonoai_settings
         $enabled = sonoai_option( 'redis_enabled', false );
         if ( ! $enabled && ! defined( 'SONOAI_REDIS_FORCE' ) ) {
-            return null;
+            return null; // Silent return if disabled
         }
 
         $host = sonoai_option( 'redis_host', '127.0.0.1' );
@@ -102,10 +102,17 @@ class RedisManager {
             $client_options['ssl'] = ['verify_peer' => false]; // Common for managed Redis with self-signed or pooled certs
         }
 
+        if ( ! class_exists( 'Predis\Client' ) ) {
+            error_log( '[SonoAI] Redis Error: Predis\Client class not found. Ensure the vendor folder was uploaded correctly.' );
+            return null;
+        }
+
         try {
+            error_log( sprintf( '[SonoAI] Redis: Attempting connection to %s://%s:%d (Timeout: 5s)', $scheme, $host, $port ) );
             self::$client = new RedisClient( $connection_params, $client_options );
             // Test connection
             self::$client->connect();
+            error_log( '[SonoAI] Redis: Connection successful.' );
         } catch ( \Exception $e ) {
             error_log( '[SonoAI] Redis connection failed: ' . $e->getMessage() );
             self::$client = null;
