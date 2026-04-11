@@ -117,10 +117,13 @@ class ApiConfig {
         wp_enqueue_script(
             'sonoai-api-config',
             SONOAI_URL . 'assets/js/api-config.js',
-            [],
+            [ 'jquery' ],
             SONOAI_VERSION,
             true
         );
+        wp_localize_script( 'sonoai-api-config', 'sonoai_vars', [
+            'nonce' => wp_create_nonce( 'sonoai_admin_nonce' ),
+        ] );
     }
 
     // ── Render ────────────────────────────────────────────────────────────────
@@ -414,9 +417,20 @@ class ApiConfig {
                                     <label style="font-size: 11px; text-transform: uppercase; color: #888;"><?php esc_html_e( 'Password (Optional)', 'sonoai' ); ?></label>
                                     <input type="password" name="sonoai_settings[redis_password]" value="" class="sac-input-sm" placeholder="<?php echo !empty($opts['redis_password']) ? '••••••••' : 'No password'; ?>">
                                 </div>
-                                <div class="sac-notice-inline" style="background: rgba(0,0,0,0.05);">
+                                <div class="sac-notice-inline" style="background: rgba(0,0,0,0.05); margin-bottom: 15px;">
                                     <span>ℹ</span>
                                     <?php esc_html_e( 'Use Redis for sub-millisecond retrieval. If disabled, SonoAI will fall back to MySQL vector storage.', 'sonoai' ); ?>
+                                </div>
+
+                                <div class="sac-redis-actions">
+                                    <button type="button" id="sac-redis-sync-btn" class="sac-btn-secondary" style="background: var(--sac-accent-dim); color: var(--sac-accent); border: 1px solid var(--sac-accent-dim); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 8px;">
+                                        <span class="sac-sync-icon">🔄</span>
+                                        <span class="sac-btn-text"><?php esc_html_e( 'Sync MySQL Vectors to Redis', 'sonoai' ); ?></span>
+                                        <span class="sac-spinner" style="display:none; border: 2px solid rgba(0,0,0,0.1); border-left-color: var(--sac-accent); border-radius: 50%; width: 14px; height: 14px; animation: sac-spin 0.8s linear infinite;"></span>
+                                    </button>
+                                    <p class="description" style="margin-top: 8px; font-size: 11px;">
+                                        <?php esc_html_e( 'Click this after the first connection to push your existing Knowledge Base vectors into Redis for high-performance retrieval.', 'sonoai' ); ?>
+                                    </p>
                                 </div>
                             </div>
                         </div>

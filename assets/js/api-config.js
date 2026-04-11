@@ -90,6 +90,44 @@
             input.dataset.maskedPlaceholder = input.placeholder;
         });
 
+        // ── Redis Sync ───────────────────────────────────────────────────────
+        var redisSyncBtn = document.getElementById('sac-redis-sync-btn');
+        if (redisSyncBtn) {
+            redisSyncBtn.addEventListener('click', function () {
+                var btn      = this;
+                var btnText  = btn.querySelector('.sac-btn-text');
+                var spinner  = btn.querySelector('.sac-spinner');
+                var oldText  = btnText.innerText;
+
+                if (btn.disabled) return;
+                if (!confirm('Are you sure you want to rebuild the Redis index? This will push all current knowledge base items from MySQL into Redis.')) return;
+
+                btn.disabled = true;
+                btnText.innerText = 'Syncing...';
+                if (spinner) spinner.style.display = 'block';
+
+                jQuery.post(ajaxurl, {
+                    action: 'sonoai_kb_rebuild_redis',
+                    security: (typeof sonoai_vars !== 'undefined') ? sonoai_vars.nonce : '' // Corrected key to 'security'
+                }, function (response) {
+                    btn.disabled = false;
+                    btnText.innerText = oldText;
+                    if (spinner) spinner.style.display = 'none';
+
+                    if (response.success) {
+                        alert(response.data.message);
+                    } else {
+                        alert('Error: ' + (response.data.message || 'Unknown error.'));
+                    }
+                }).fail(function () {
+                    btn.disabled = false;
+                    btnText.innerText = oldText;
+                    if (spinner) spinner.style.display = 'none';
+                    alert('Request failed. Check your server connection.');
+                });
+            });
+        }
+
         // ── Redis Toggle ──────────────────────────────────────────────────────
         var redisToggle = document.querySelector('input[name="sonoai_settings[redis_enabled]"]');
         var redisDetails = document.querySelector('.sac-redis-details');

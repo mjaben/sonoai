@@ -39,6 +39,7 @@ class KnowledgeBaseAjax {
             'sonoai_kb_sync_topics',
             'sonoai_kb_upload_img',
             'sonoai_kb_delete_img_file',
+            'sonoai_kb_rebuild_redis',
         ];
         foreach ( $actions as $action ) {
             add_action( "wp_ajax_{$action}", [ $this, str_replace( 'sonoai_kb_', 'handle_', $action ) ] );
@@ -869,6 +870,29 @@ class KnowledgeBaseAjax {
             wp_send_json_success( [ 'message' => __( 'File deleted.', 'sonoai' ) ] );
         } else {
             wp_send_json_error( [ 'message' => __( 'Could not delete file.', 'sonoai' ) ] );
+        }
+    /**
+     * Rebuild the Redis VSS index from MySQL.
+     */
+    public function handle_rebuild_redis(): void {
+        $this->check( 'sonoai_admin_nonce' );
+
+        if ( ! class_exists( 'SonoAI\RedisMigration' ) ) {
+            require_once SONOAI_DIR . 'includes/RedisMigration.php';
+        }
+
+        $result = RedisMigration::rebuild_index();
+
+        if ( $result['success'] ) {
+            wp_send_json_success( [
+                'message' => sprintf( 
+                    __( 'Redis index rebuilt successfully! Indexed %d chunks with %d errors.', 'sonoai' ), 
+                    $result['indexed'], 
+                    $result['errors'] 
+                )
+            ] );
+        } else {
+            wp_send_json_error( [ 'message' => $result['message'] ?? __( 'Unknown error during Redis migration.', 'sonoai' ) ] );
         }
     }
 }
