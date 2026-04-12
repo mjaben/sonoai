@@ -74,9 +74,22 @@ $is_logged_in = is_user_logged_in();
                     </span>
                     <!-- <span class="sonoai-user-role">Clinical Lead</span> -->
                 </div>
-                <button class="sonoai-user-menu-btn" aria-label="<?php esc_attr_e( 'User menu', 'sonoai' ); ?>">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
-                </button>
+                <div class="sonoai-user-menu-wrapper">
+                    <button class="sonoai-user-menu-btn" id="sonoai-user-menu-trigger" aria-label="<?php esc_attr_e( 'User menu', 'sonoai' ); ?>" aria-haspopup="true" aria-expanded="false">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+                    </button>
+                    <div class="sonoai-user-dropdown" id="sonoai-user-dropdown" hidden aria-label="<?php esc_attr_e( 'User actions', 'sonoai' ); ?>">
+                        <div class="sonoai-dropdown-header">
+                            <span class="sonoai-dropdown-user"><?php echo esc_html( $current_user->display_name ); ?></span>
+                            <span class="sonoai-dropdown-email"><?php echo esc_html( $current_user->user_email ); ?></span>
+                        </div>
+                        <div class="sonoai-dropdown-divider"></div>
+                        <a href="<?php echo esc_url( wp_logout_url( home_url() ) ); ?>" class="sonoai-dropdown-item logout">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                            <span><?php esc_html_e( 'Log out', 'sonoai' ); ?></span>
+                        </a>
+                    </div>
+                </div>
             </div>
 
         </aside>

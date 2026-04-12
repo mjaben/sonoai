@@ -182,6 +182,34 @@
 
         // ── Auth Modal Logic ──
         // Delegated natively to UsersWP via .uwp-login-link and .uwp-register-link classes
+
+        // ── User Dropdown Logic ──
+        var userMenuTrigger = document.getElementById('sonoai-user-menu-trigger');
+        var userDropdown    = document.getElementById('sonoai-user-dropdown');
+        if (userMenuTrigger && userDropdown) {
+            userMenuTrigger.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var isHidden = userDropdown.hidden;
+                userDropdown.hidden = !isHidden;
+                userMenuTrigger.setAttribute('aria-expanded', isHidden);
+            });
+
+            // Close when clicking elsewhere
+            document.addEventListener('click', function (e) {
+                if (!userMenuTrigger.contains(e.target) && !userDropdown.contains(e.target)) {
+                    userDropdown.hidden = true;
+                    userMenuTrigger.setAttribute('aria-expanded', 'false');
+                }
+            });
+
+            // Close on Escape
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && !userDropdown.hidden) {
+                    userDropdown.hidden = true;
+                    userMenuTrigger.setAttribute('aria-expanded', 'false');
+                }
+            });
+        }
     }
 
     // ── Theme init (restore from localStorage) ────────────────────────────
