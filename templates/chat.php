@@ -72,7 +72,7 @@ $is_logged_in = is_user_logged_in();
                     <span class="sonoai-user-name">
                         <?php echo esc_html( $current_user->first_name ?: $current_user->display_name ); ?>
                     </span>
-                    <span class="sonoai-user-role">Clinical Lead</span>
+                    <!-- <span class="sonoai-user-role">Clinical Lead</span> -->
                 </div>
                 <button class="sonoai-user-menu-btn" aria-label="<?php esc_attr_e( 'User menu', 'sonoai' ); ?>">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
@@ -118,10 +118,10 @@ $is_logged_in = is_user_logged_in();
                 
                 <div class="sonoai-topnav-center">
                     <div class="sonoai-nav-pill-group">
-                        <a href="#"><?php esc_html_e( 'Homepage', 'sonoai' ); ?></a>
-                        <a href="#" class="active"><?php esc_html_e( 'Events', 'sonoai' ); ?></a>
-                        <a href="#"><?php esc_html_e( 'Cases', 'sonoai' ); ?></a>
-                        <a href="#"><?php esc_html_e( 'Forum', 'sonoai' ); ?></a>
+                        <a href="https://sonohive.com"><?php esc_html_e( 'Homepage', 'sonoai' ); ?></a>
+                        <a href="https://sonohive.com/events"><?php esc_html_e( 'Events', 'sonoai' ); ?></a>
+                        <a href="https://sonohive.com/cases"><?php esc_html_e( 'Cases', 'sonoai' ); ?></a>
+                        <a href="https://sonohive.com/forum"><?php esc_html_e( 'Forum', 'sonoai' ); ?></a>
                     </div>
                 </div>
 
