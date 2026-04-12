@@ -212,8 +212,8 @@ $is_logged_in = is_user_logged_in();
                     printf(
                         /* translators: 1: Terms link, 2: Privacy Policy link */
                         esc_html__( 'By messaging Sono AI - an AI Chatbot, you agree to our %1$s and have read our %2$s.', 'sonoai' ),
-                        '<a href="' . esc_url( home_url( '/terms/' ) ) . '" target="_blank">' . esc_html__( 'Terms', 'sonoai' ) . '</a>',
-                        '<a href="' . esc_url( home_url( '/privacy-policy/' ) ) . '" target="_blank">' . esc_html__( 'Privacy Policy', 'sonoai' ) . '</a>'
+                        '<a href="' . esc_url( home_url( '/terms-of-use/' ) ) . '" target="_blank">' . esc_html__( 'Terms of Use', 'sonoai' ) . '</a>',
+                        '<a href="' . esc_url( home_url( '/sonohive-privacy-policy/' ) ) . '" target="_blank">' . esc_html__( 'Privacy Policy', 'sonoai' ) . '</a>'
                     );
                     ?>
                 </p>
