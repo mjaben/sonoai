@@ -102,6 +102,14 @@ class Embedding {
         $modified_gmt = current_time( 'mysql', true );
         $image_json   = ! empty( $image_urls ) ? wp_json_encode( array_values( $image_urls ) ) : null;
         $errors       = 0;
+        $redis        = RedisManager::instance();
+
+        // ── Prevention of Duplicates ──
+        // Before inserting new chunks into MySQL or Redis, clear existing Redis keys for this post.
+        if ( $post_id > 0 ) {
+            $redis->delete_vectors_by_post( $post_id );
+        }
+        // ──────────────────────────────
 
         foreach ( $chunks as $idx => $chunk_text ) {
             $embedding = AIProvider::generate_embedding( $chunk_text );

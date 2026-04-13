@@ -198,17 +198,48 @@ class RedisManager {
 
             // VSS Format: Binary vector blob
             $binary_vector = pack( 'f*', ...$vector );
+            $mode_slug     = in_array( $meta['mode'] ?? 'guideline', [ 'guideline', 'research' ], true ) ? $meta['mode'] : 'guideline';
             
-            $key = "sonoai:vss:{$knowledge_id}";
+            // New structure: sonoai:vss:{mode}:{knowledge_id}
+            $key = "sonoai:vss:{$mode_slug}:{$knowledge_id}";
+            
             $client->hset( $key, 'v', $binary_vector );
             $client->hset( $key, 'mode', $meta['mode'] );
             $client->hset( $key, 'post_id', $meta['post_id'] );
             $client->hset( $key, 'm', wp_json_encode( $meta ) );
-            $client->expire( $key, 86400 * 7 ); // Cache for 7 days
+            $client->expire( $key, 86400 * 30 ); // Cache for 30 days
         } catch ( \Exception $e ) {
             error_log( '[SonoAI] Redis Cache Failure: ' . $e->getMessage() );
             self::$client = null;
             self::$skip_redis = true;
+        }
+    }
+
+    /**
+     * Delete all vector keys associated with a specific knowledge ID across all modes.
+     */
+    public function delete_vectors_by_id( string $id ): void {
+        $client = $this->get_client();
+        if ( ! $client ) return;
+
+        try {
+            // We search for sonoai:vss:*:ID because mode might have changed
+            $iterator = null;
+            while ( true ) {
+                $result = $client->scan( $iterator, [ 'MATCH' => "sonoai:vss:*:$id*", 'COUNT' => 100 ] );
+                if ( empty( $result ) ) break;
+                
+                $iterator = $result[0];
+                $keys     = $result[1];
+                
+                if ( ! empty( $keys ) ) {
+                    $client->del( $keys );
+                }
+                
+                if ( $iterator == 0 ) break;
+            }
+        } catch ( \Exception $e ) {
+            error_log( "[SonoAI] Redis Delete ID Failure ($id): " . $e->getMessage() );
         }
     }
 
@@ -312,6 +343,24 @@ class RedisManager {
         }
 
         return $count;
+    }
+
+    /**
+     * Sync vectors for a specific post. Useful for preventing duplicates on individual edit.
+     */
+    public function delete_vectors_by_post( int $post_id ): void {
+        $client = $this->get_client();
+        if ( ! $client ) return;
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'sonoai_embeddings';
+        $ids   = $wpdb->get_col( $wpdb->prepare( "SELECT DISTINCT knowledge_id FROM `{$table}` WHERE post_id = %d", $post_id ) );
+
+        if ( ! empty( $ids ) ) {
+            foreach ( $ids as $id ) {
+                $this->delete_vectors_by_id( $id );
+            }
+        }
     }
 
     /**

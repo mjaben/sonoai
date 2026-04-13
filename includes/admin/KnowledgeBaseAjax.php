@@ -643,8 +643,12 @@ class KnowledgeBaseAjax {
         $table_kb  = $this->kb_table();
         $table_emb = $this->emb_table();
 
+        // Delete from MySQL
         $wpdb->delete( $table_kb,  [ 'knowledge_id' => $knowledge_id ], [ '%s' ] );
         $wpdb->delete( $table_emb, [ 'knowledge_id' => $knowledge_id ], [ '%s' ] );
+
+        // Delete from Redis
+        RedisManager::instance()->delete_vectors_by_id( $knowledge_id );
 
         wp_send_json_success( [ 'message' => __( 'Item deleted from knowledge base.', 'sonoai' ) ] );
     }

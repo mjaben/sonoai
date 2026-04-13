@@ -560,9 +560,11 @@
                     images: JSON.stringify(images),
                     mode: modeSel.value,
                     topic_id: (document.getElementById('kb-txt-topic') || {}).value,
-                    country: (document.getElementById('kb-txt-country') || {}).value
+                    country: (document.getElementById('kb-txt-country') || {}).value,
+                    source_name: (document.getElementById('kb-txt-source-name') || {}).value,
+                    source_url:  (document.getElementById('kb-txt-source-url') || {}).value
                 };
-                var editId = document.getElementById('kb-edit-knowledge-id');
+                var editId = document.getElementById('qe-post-id') || document.getElementById('kb-edit-knowledge-id');
                 if (editId) payload.knowledge_id = editId.value;
 
                 $.ajax({

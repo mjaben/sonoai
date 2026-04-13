@@ -35,7 +35,23 @@ class RedisMigration {
             return [ 'success' => false, 'message' => 'Redis not active.' ];
         }
 
-        // Drop and recreate index to ensure clean state
+        // 1. Wipe all existing VSS keys. Using scan is safer than keys *
+        $iterator = null;
+        while ( true ) {
+            $result = $client->scan( $iterator, [ 'MATCH' => 'sonoai:vss:*', 'COUNT' => 100 ] );
+            if ( empty( $result ) ) break;
+            
+            $iterator = $result[0];
+            $keys     = $result[1];
+            
+            if ( ! empty( $keys ) ) {
+                $client->del( $keys );
+            }
+            
+            if ( $iterator == 0 ) break;
+        }
+
+        // 2. Drop and recreate index to ensure clean state
         try {
             $client->executeRaw(['FT.DROPINDEX', 'idx:sonoai_vss']);
         } catch ( \Exception $e ) {
