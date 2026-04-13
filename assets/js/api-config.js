@@ -107,8 +107,8 @@
                 if (spinner) spinner.style.display = 'block';
 
                 jQuery.post(ajaxurl, {
-                    action: 'sonoai_kb_rebuild_redis',
-                    security: (typeof sonoai_vars !== 'undefined') ? sonoai_vars.nonce : '' // Corrected key to 'security'
+                    action: 'sonoai_kb_sync_redis',
+                    security: (typeof sonoai_vars !== 'undefined') ? sonoai_vars.nonce : ''
                 }, function (response) {
                     btn.disabled = false;
                     btnText.innerText = oldText;

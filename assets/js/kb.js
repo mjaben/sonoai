@@ -161,7 +161,7 @@
             
             var payload = {
                 action:    'sonoai_kb_get_posts',
-                nonce:     nonces.getPosts,
+                security:  nonces.getPosts,
                 post_type: postType,
                 page:      page,
                 search:    search,
@@ -221,7 +221,7 @@
                     + '<td class="kb-col-date">' + escHtml(p.kb_added) + '</td>'
                     + '<td>' + badgeHtml + '</td>'
                     + '<td>' + escHtml(p.mode) + '</td>'
-                    + '<td>' + escHtml(p.topic_name) + '</td>'
+                    + '<td>' + (p.raw_mode === 'guideline' ? escHtml(p.country) : escHtml(p.topic_name)) + '</td>'
                     + '<td>' + (p.ai_model !== '—' ? '<span class="kb-badge-model">' + escHtml(p.ai_model) + '</span>' : '—') + '</td>'
                     + '<td>' + btnsHtml + '</td>'
                     + '</tr>';
@@ -241,9 +241,9 @@
                     if (text) text.style.opacity = '0.5';
 
                     var payload = {
-                        action:  isRemove ? 'sonoai_kb_remove_post' : 'sonoai_kb_add_post',
-                        nonce:   isRemove ? nonces.removePost : nonces.addPost,
-                        post_id: pid,
+                        action:   isRemove ? 'sonoai_kb_remove_post' : 'sonoai_kb_add_post',
+                        security: isRemove ? nonces.removePost : nonces.addPost,
+                        post_id:  pid,
                     };
 
                     if (!isRemove) {
@@ -356,7 +356,7 @@
 
             var fd = new FormData();
             fd.append('action', 'sonoai_kb_add_pdf');
-            fd.append('nonce',  nonces.addPdf);
+            fd.append('security', nonces.addPdf);
             fd.append('pdf_file', fileInp.files[0]);
             
             ['mode', 'topic_id', 'country', 'source_name', 'source_url'].forEach(function(f) {
@@ -407,7 +407,7 @@
             
             var payload = { 
                 action: 'sonoai_kb_add_url', 
-                nonce: nonces.addUrl, 
+                security: nonces.addUrl, 
                 url: input.value.trim() 
             };
             ['mode', 'topic_id', 'country', 'source_name', 'source_url'].forEach(function(f) {
@@ -555,7 +555,7 @@
 
                 var payload = {
                     action: action,
-                    nonce: nonce,
+                    security: nonce,
                     content: content,
                     images: JSON.stringify(images),
                     mode: modeSel.value,
@@ -583,7 +583,7 @@
             if (!confirm('Delete this item?')) return;
             var kid = this.dataset.knowledgeId;
             var row = $(this).closest('tr');
-            $.post(ajax, { action: 'sonoai_kb_delete_item', nonce: nonces.deleteItem, knowledge_id: kid }, function(res) {
+            $.post(ajax, { action: 'sonoai_kb_delete_item', security: nonces.deleteItem, knowledge_id: kid }, function(res) {
                 if (res.success) row.fadeOut();
             });
         });

@@ -2369,6 +2369,31 @@ a.sonoai-source-pill:hover strong {
     color: #fff;
 }
 
+.sonoai-country-badge {
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+    background: rgba(255,255,255,0.08);
+    color: var(--sono-text-muted);
+    padding: 1px 5px;
+    border-radius: 4px;
+    margin-left: 6px;
+    letter-spacing: 0.05em;
+    border: 1px solid rgba(255,255,255,0.05);
+}
+
+#sonoai-app.sonoai-light .sonoai-country-badge {
+    background: rgba(0,0,0,0.05);
+    color: var(--sono-text-muted);
+    border-color: rgba(0,0,0,0.1);
+}
+
+a.sonoai-source-pill:hover .sonoai-country-badge {
+    background: rgba(255,255,255,0.2);
+    color: #fff;
+    border-color: rgba(255,255,255,0.3);
+}
+
 /* ══════════════════════════════════════════════════════════════
    AUTH MODAL (UsersWP Overrides & Container)
    ══════════════════════════════════════════════════════════════ */

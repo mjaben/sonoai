@@ -430,7 +430,7 @@ class KnowledgeBase {
                         <th><?php esc_html_e( 'Added to KB', 'sonoai' ); ?></th>
                         <th><?php esc_html_e( 'KB Status', 'sonoai' ); ?></th>
                         <th><?php esc_html_e( 'Mode', 'sonoai' ); ?></th>
-                        <th><?php esc_html_e( 'Topic', 'sonoai' ); ?></th>
+                        <th><?php esc_html_e( 'Topic / Country', 'sonoai' ); ?></th>
                         <th><?php esc_html_e( 'AI Model', 'sonoai' ); ?></th>
                         <th><?php esc_html_e( 'Action', 'sonoai' ); ?></th>
                     </tr>
@@ -907,7 +907,7 @@ class KnowledgeBase {
                             <span class="kb-content-preview"><?php echo esc_html( $preview ); ?></span>
                             <div style="font-size: 0.85em; color: #666; margin-top: 4px;">
                                 <strong><?php esc_html_e( 'Mode:', 'sonoai' ); ?></strong> <?php echo esc_html( $mode_label ); ?> |
-                                <strong><?php esc_html_e( 'Topic:', 'sonoai' ); ?></strong> <?php echo esc_html( $topic_name ); ?>
+                                <strong><?php esc_html_e( ( $item->mode ?? 'guideline' ) === 'research' ? 'Topic:' : 'Country:', 'sonoai' ); ?></strong> <?php echo esc_html( ( $item->mode ?? 'guideline' ) === 'research' ? $topic_name : ( $item->country ?: '—' ) ); ?>
                             </div>
                         </td>
                         <td class="kb-col-model">
@@ -1023,7 +1023,7 @@ class KnowledgeBase {
                             <?php endif; ?>
                             <div style="font-size: 0.85em; color: #666; margin-top: 4px;">
                                 <strong><?php esc_html_e( 'Mode:', 'sonoai' ); ?></strong> <?php echo esc_html( $mode_label ); ?> |
-                                <strong><?php esc_html_e( 'Topic:', 'sonoai' ); ?></strong> <?php echo esc_html( $topic_name ); ?>
+                                <strong><?php esc_html_e( ( $item->mode ?? 'guideline' ) === 'research' ? 'Topic:' : 'Country:', 'sonoai' ); ?></strong> <?php echo esc_html( ( $item->mode ?? 'guideline' ) === 'research' ? $topic_name : ( $item->country ?: '—' ) ); ?>
                             </div>
                         </td>
                         <td class="kb-col-model">

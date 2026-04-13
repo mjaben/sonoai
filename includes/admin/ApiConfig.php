@@ -122,7 +122,7 @@ class ApiConfig {
             true
         );
         wp_localize_script( 'sonoai-api-config', 'sonoai_vars', [
-            'nonce' => wp_create_nonce( 'sonoai_admin_nonce' ),
+            'nonce' => wp_create_nonce( 'sonoai_kb_sync_redis' ),
         ] );
     }
 

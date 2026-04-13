@@ -318,6 +318,7 @@ class KnowledgeBaseAjax {
                 kb.embedding_model as model,
                 kb.mode as mode,
                 kb.topic_id as topic_id,
+                kb.country as country,
                 t.name as topic_name
             FROM $posts_tbl p
             $join
@@ -350,6 +351,7 @@ class KnowledgeBaseAjax {
                         'mode'          => $p->mode ? ucfirst( $p->mode ) : '—',
                         'topic_name'    => $p->topic_name ? $p->topic_name : '—',
                         'topic_id'      => $p->topic_id ? (int) $p->topic_id : 0,
+                        'country'       => $p->country ? $p->country : '—',
                         'raw_mode'      => $p->mode ? $p->mode : '',
                         'ai_model'      => $p->model ? ( ucfirst( $p->provider ) . ' / ' . $p->model ) : '—',
                         'edit_url'      => get_edit_post_link( $p->id, 'raw' ),

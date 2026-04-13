@@ -262,7 +262,7 @@
     border-radius: 7px !important;
     color: #1a1d23 !important;
     font-family: 'Inter', sans-serif !important;
-    font-size: 13px !important;
+    font-size: 16px !important;
     font-weight: 500 !important;
     padding: 9px 30px 9px 11px !important;
     cursor: pointer !important;
@@ -293,7 +293,7 @@
     border-radius: 7px !important;
     color: #1a1d23 !important;
     font-family: 'Courier New', 'Consolas', monospace !important;
-    font-size: 13px !important;
+    font-size: 16px !important;
     padding: 9px 40px 9px 11px !important;
     height: auto !important;
     line-height: 1.4 !important;
@@ -444,7 +444,7 @@
     background: #f8fafc !important;
     border: 1px solid #e2e8f0 !important;
     border-radius: 6px !important;
-    font-size: 12px !important;
+    font-size: 16px !important;
     padding: 7px 10px !important;
     color: #1e293b !important;
 }

@@ -127,7 +127,7 @@ class RAG {
         // Mode-specific preamble
         $mode_preamble = ( $mode === 'research' ) 
             ? "\n\nYou are in RESEARCH MODE. Priority: Peer-reviewed evidence. Acknowledge uncertainty. Provide highly detailed citations using the Source Title and Topic (e.g. [Source: Clinical Pathology, Topic: Liver])."
-            : "\n\nYou are in GUIDELINE MODE. Priority: Established protocols. Be precise and provide professional citations citing both Source Name and Country (e.g. [Source: ISUOG Protocol, UK]).";
+            : "\n\nYou are in GUIDELINE MODE. Priority: Established protocols. Be precise and provide professional citations at the end of your response using the structured block.";
         
         $base_prompt .= $mode_preamble . "\n\nCURRENT STATE: Turn " . ( $turn_count + 1 ) . " of conversation." . $history_context;
 
@@ -178,9 +178,9 @@ class RAG {
 
 Finally, you MUST end your response with a structured sources block using the following format:
 :::sources
-Source Name | https://url.com
+Source Name | Country | https://url.com
 :::
-(Use the exact Source Name provided in the ## headers above. Only include valid URLs if provided in the context.)";
+(Use the exact Source Name and Country provided in the ## headers above. Only include valid URLs if provided in the context.)";
 
         return [
             'prompt' => $base_prompt,

@@ -207,6 +207,34 @@ class AIProvider {
         return $body['choices'][0]['message']['content'];
     }
 
+    private static function openai_chat_stream( array $messages, callable $callback ) {
+        $url = 'https://api.openai.com/v1/chat/completions';
+        $payload = wp_json_encode( [
+            'model'    => self::get_chat_model(),
+            'messages' => $messages,
+            'stream'   => true,
+        ] );
+
+        $headers = [
+            'Authorization: Bearer ' . self::get_api_key(),
+            'Content-Type: application/json',
+        ];
+
+        return self::execute_curl_stream( $url, $headers, $payload, function($line) use ($callback) {
+            if ( str_starts_with( $line, 'data: ' ) ) {
+                $data_str = substr( $line, 6 );
+                if ( $data_str === '[DONE]' ) return '';
+                $decoded = json_decode( $data_str, true );
+                if ( isset( $decoded['choices'][0]['delta']['content'] ) ) {
+                    $text = $decoded['choices'][0]['delta']['content'];
+                    $callback( $text );
+                    return $text;
+                }
+            }
+            return '';
+        } );
+    }
+
     // ── Gemini internals ──────────────────────────────────────────────────────
 
     private static function gemini_embedding( string $text ) {
@@ -290,6 +318,50 @@ class AIProvider {
         }
 
         return $data['candidates'][0]['content']['parts'][0]['text'];
+    }
+
+    private static function gemini_chat_stream( array $messages, callable $callback ) {
+        $api_key  = self::get_api_key();
+        $model    = self::get_chat_model();
+        $endpoint = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:streamGenerateContent?alt=sse&key={$api_key}";
+
+        // Convert messages to Gemini format.
+        $system_parts = [];
+        $gemini_contents = [];
+        foreach ( $messages as $msg ) {
+            $role    = $msg['role'] ?? 'user';
+            $content = $msg['content'] ?? '';
+            if ( 'system' === $role ) {
+                $system_parts[] = [ 'text' => $content ];
+                continue;
+            }
+            $gemini_contents[] = [
+                'role'  => 'user' === $role ? 'user' : 'model',
+                'parts' => [ [ 'text' => $content ] ],
+            ];
+        }
+
+        $body = [ 'contents' => $gemini_contents ];
+        if ( ! empty( $system_parts ) ) {
+            $body['system_instruction'] = [ 'parts' => $system_parts ];
+        }
+
+        $headers = [ 'Content-Type: application/json' ];
+        $payload = wp_json_encode( $body );
+
+        return self::execute_curl_stream( $endpoint, $headers, $payload, function($line) use ($callback) {
+            // Gemini SSE usually starts with data: { ... }
+            if ( str_starts_with( $line, 'data: ' ) ) {
+                $data_str = substr( $line, 6 );
+                $decoded = json_decode( $data_str, true );
+                if ( isset( $decoded['candidates'][0]['content']['parts'][0]['text'] ) ) {
+                    $text = $decoded['candidates'][0]['content']['parts'][0]['text'];
+                    $callback( $text );
+                    return $text;
+                }
+            }
+            return '';
+        } );
     }
 
     // ── Mistral internals ─────────────────────────────────────────────────────

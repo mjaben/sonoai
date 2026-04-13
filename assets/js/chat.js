@@ -1267,11 +1267,22 @@
             var lines = inner.trim().split('\n').filter(function(l) { return l.trim(); });
             var h = '<div class="sonoai-sources-container">';
             lines.forEach(function(line) {
-                var parts = line.split('|').map(function(p) { return p.trim(); });
-                var name  = escapeHtml(parts[0]);
-                var url   = parts[1] || '';
+                var parts   = line.split('|').map(function(p) { return p.trim(); });
+                var name    = escapeHtml(parts[0]);
+                var country = '';
+                var url     = '';
+
+                if (parts.length === 3) {
+                    country = escapeHtml(parts[1]);
+                    url     = parts[2];
+                } else {
+                    url     = parts[1] || '';
+                }
                 
                 var labelHtml = '<strong>Source:</strong> <span>' + name + '</span>';
+                if (country) {
+                    labelHtml += '<span class="sonoai-country-badge">' + country + '</span>';
+                }
                 
                 if (url && (url.startsWith('http') || url.startsWith('www'))) {
                     h += '<a href="' + url + '" target="_blank" class="sonoai-source-pill">' + linkSvg + labelHtml + '</a>';
@@ -1279,6 +1290,32 @@
                     h += '<span class="sonoai-source-pill">' + labelHtml + '</span>';
                 }
             });
+            h += '</div>';
+            return protect(h);
+        });
+
+        // 3a(bis). Fallback for bracketed sources [Source: Name | Country | URL]
+        text = text.replace(/\[Source:\s*(.*?)\s*\|?\s*(.*?|)\s*\|?\s*(.*?|)\s*\]/gi, function(_, name, country, url) {
+            var h = '<div class="sonoai-sources-container">';
+            name = name.trim();
+            country = (country || '').trim();
+            url = (url || '').trim();
+
+            if (!url && country.startsWith('http')) {
+                url = country;
+                country = '';
+            }
+
+            var labelHtml = '<strong>Source:</strong> <span>' + escapeHtml(name) + '</span>';
+            if (country) {
+                labelHtml += '<span class="sonoai-country-badge">' + escapeHtml(country) + '</span>';
+            }
+            
+            if (url && (url.startsWith('http') || url.startsWith('www'))) {
+                h += '<a href="' + url + '" target="_blank" class="sonoai-source-pill">' + linkSvg + labelHtml + '</a>';
+            } else {
+                h += '<span class="sonoai-source-pill">' + labelHtml + '</span>';
+            }
             h += '</div>';
             return protect(h);
         });

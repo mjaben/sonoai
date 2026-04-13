@@ -582,26 +582,30 @@
 
 .kb-wrap .kb-select-sm {
     border: 1px solid #d1d5db !important;
-    border-radius: 5px !important;
+    border-radius: 6px !important;
     background: #f9fafb !important;
     color: #374151 !important;
-    font-size: 12px !important;
-    padding: 5px 8px !important;
-    height: auto !important;
+    font-size: 13px !important;
+    padding: 0 10px !important;
+    height: 34px !important;
+    line-height: normal !important;
     box-shadow: none !important;
 }
 
 .kb-wrap .kb-btn-sm {
     background: #f3f4f6 !important;
     border: 1px solid #d1d5db !important;
-    border-radius: 5px !important;
+    border-radius: 6px !important;
     color: #374151 !important;
-    font-size: 12px !important;
-    font-weight: 500 !important;
-    padding: 5px 10px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    padding: 0 14px !important;
     cursor: pointer !important;
     box-shadow: none !important;
-    height: auto !important;
+    height: 34px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
     min-height: 0 !important;
 }
 
@@ -616,9 +620,9 @@
     border-radius: 6px !important;
     background: #fff !important;
     color: #1a1d23 !important;
-    font-size: 12px !important;
-    padding: 6px 10px !important;
-    height: auto !important;
+    font-size: 13px !important;
+    padding: 0 10px !important;
+    height: 34px !important;
     box-shadow: none !important;
     width: 200px !important;
 }
@@ -856,7 +860,7 @@
     border-radius: 6px !important;
     background: #f9fafb !important;
     color: #1a1d23 !important;
-    font-size: 13px !important;
+    font-size: 16px !important;
     padding: 9px 12px !important;
     height: auto !important;
     box-shadow: none !important;
@@ -1142,7 +1146,7 @@ dialog.kb-modal::backdrop {
     border: 1px solid #d1d5db !important;
     border-radius: 8px !important;
     padding: 10px 14px !important;
-    font-size: 13px !important;
+    font-size: 16px !important;
     background: #f9fafb !important;
     color: #1a1d23 !important;
     box-shadow: none !important;
@@ -1328,8 +1332,24 @@ dialog.kb-modal::backdrop {
 
 .kb-wrap.kb-dark .kb-select-sm,
 .kb-wrap.kb-dark .kb-search-input {
-    background: #0d0f14 !important;
+    background: #1a1d23 !important;
     border-color: rgba(255, 255, 255, 0.1) !important;
+    color: #e4e6eb !important;
+}
+
+.kb-wrap.kb-dark .kb-btn-sm {
+    background: #1a1d23 !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    color: #e4e6eb !important;
+}
+
+.kb-wrap.kb-dark .kb-btn-sm:hover {
+    background: #252a33 !important;
+    color: #fff !important;
+}
+
+.kb-wrap.kb-dark select option {
+    background-color: #1a1d23 !important;
     color: #e4e6eb !important;
 }
 
@@ -1475,7 +1495,8 @@ dialog.kb-modal::backdrop {
 }
 
 .kb-filter-mode-btn {
-    padding: 5px 12px;
+    padding: 0 14px;
+    height: 28px;
     border: none;
     background: transparent;
     border-radius: 6px;
@@ -1485,6 +1506,9 @@ dialog.kb-modal::backdrop {
     cursor: pointer;
     transition: all 0.2s;
     white-space: nowrap;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .kb-filter-mode-btn:hover {
@@ -1518,9 +1542,9 @@ dialog.kb-modal::backdrop {
     background: #fff !important;
     border: 1px solid #d1d5db !important;
     border-radius: 6px !important;
-    padding: 5px 10px !important;
-    font-size: 16px !important;
-    height: 32px !important;
+    padding: 0 10px !important;
+    font-size: 13px !important;
+    height: 34px !important;
     color: #1e293b !important;
     box-shadow: none !important;
     min-width: 140px;
@@ -1528,9 +1552,14 @@ dialog.kb-modal::backdrop {
 
 .kb-dark .kb-filter-input,
 .kb-dark .kb-filter-select {
-    background: rgba(255,255,255,0.05) !important;
-    border-color: rgba(255,255,255,0.1) !important;
-    color: #fff !important;
+    background-color: #1a1d23 !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    color: #e4e6eb !important;
+}
+
+.kb-dark .kb-filter-select option {
+    background-color: #1a1d23;
+    color: #e4e6eb;
 }
 
 .kb-filter-input:focus,
