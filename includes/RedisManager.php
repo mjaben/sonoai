@@ -20,6 +20,7 @@ class RedisManager {
 
     private static ?RedisClient $client = null;
     private static ?RedisManager $instance = null;
+    private static bool $skip_redis = false;
 
     public static function instance(): RedisManager {
         if ( null === self::$instance ) {
@@ -66,6 +67,10 @@ class RedisManager {
      * Get the Predis client instance.
      */
     public function get_client(): ?RedisClient {
+        if ( self::$skip_redis ) {
+            return null;
+        }
+
         if ( null !== self::$client ) {
             return self::$client;
         }
@@ -97,7 +102,8 @@ class RedisManager {
             'scheme'  => $scheme,
             'host'    => $host,
             'port'    => $port,
-            'timeout' => 5.0, // Generous 5-second timeout for remote production servers
+            'timeout'            => 5.0, 
+            'read_write_timeout' => 5.0,
         ];
 
         if ( ! empty( $user ) ) {
@@ -127,6 +133,7 @@ class RedisManager {
         } catch ( \Exception $e ) {
             error_log( '[SonoAI] Redis connection failed: ' . $e->getMessage() );
             self::$client = null;
+            self::$skip_redis = true; 
         }
 
         return self::$client;
@@ -142,28 +149,41 @@ class RedisManager {
      * Store a message in the Redis session cache.
      */
     public function store_memory( string $session_uuid, array $message, int $ttl = 3600 ): void {
-        $client = $this->get_client();
-        if ( ! $client ) return;
+        try {
+            $client = $this->get_client();
+            if ( ! $client ) return;
 
-        $key = "sonoai:memory:{$session_uuid}";
-        $client->rpush( $key, wp_json_encode( $message ) );
-        $client->ltrim( $key, -10, -1 ); // Keep last 10 messages for context
-        $client->expire( $key, $ttl );
+            $key = "sonoai:memory:{$session_uuid}";
+            $client->rpush( $key, [ wp_json_encode( $message ) ] );
+            $client->ltrim( $key, -10, -1 ); // Keep last 10 messages for context
+            $client->expire( $key, $ttl );
+        } catch ( \Exception $e ) {
+            error_log( '[SonoAI] Redis Memory Store Failure: ' . $e->getMessage() );
+            self::$client = null;
+            self::$skip_redis = true;
+        }
     }
 
     /**
      * Retrieve the last N messages from Redis memory.
      */
     public function get_memory( string $session_uuid, int $limit = 5 ): array {
-        $client = $this->get_client();
-        if ( ! $client ) return [];
+        try {
+            $client = $this->get_client();
+            if ( ! $client ) return [];
 
-        $key  = "sonoai:memory:{$session_uuid}";
-        $data = $client->lrange( $key, -$limit, -1 );
+            $key  = "sonoai:memory:{$session_uuid}";
+            $data = $client->lrange( $key, -$limit, -1 );
 
-        if ( empty( $data ) ) return [];
+            if ( empty( $data ) ) return [];
 
-        return array_map( fn( $m ) => json_decode( $m, true ), $data );
+            return array_map( fn( $m ) => json_decode( $m, true ), $data );
+        } catch ( \Exception $e ) {
+            error_log( '[SonoAI] Redis Memory Retrieve Failure: ' . $e->getMessage() );
+            self::$client = null;
+            self::$skip_redis = true;
+            return [];
+        }
     }
 
     // ── Vector Cache (Fast Semantic Search) ───────────────────────────────────
@@ -172,18 +192,24 @@ class RedisManager {
      * Cache an embedding for fast similarity search.
      */
     public function cache_embedding( string $knowledge_id, array $vector, array $meta ): void {
-        $client = $this->get_client();
-        if ( ! $client ) return;
+        try {
+            $client = $this->get_client();
+            if ( ! $client ) return;
 
-        // VSS Format: Binary vector blob
-        $binary_vector = pack( 'f*', ...$vector );
-        
-        $key = "sonoai:vss:{$knowledge_id}";
-        $client->hset( $key, 'v', $binary_vector );
-        $client->hset( $key, 'mode', $meta['mode'] );
-        $client->hset( $key, 'post_id', $meta['post_id'] );
-        $client->hset( $key, 'm', wp_json_encode( $meta ) );
-        $client->expire( $key, 86400 * 7 ); // Cache for 7 days
+            // VSS Format: Binary vector blob
+            $binary_vector = pack( 'f*', ...$vector );
+            
+            $key = "sonoai:vss:{$knowledge_id}";
+            $client->hset( $key, 'v', $binary_vector );
+            $client->hset( $key, 'mode', $meta['mode'] );
+            $client->hset( $key, 'post_id', $meta['post_id'] );
+            $client->hset( $key, 'm', wp_json_encode( $meta ) );
+            $client->expire( $key, 86400 * 7 ); // Cache for 7 days
+        } catch ( \Exception $e ) {
+            error_log( '[SonoAI] Redis Cache Failure: ' . $e->getMessage() );
+            self::$client = null;
+            self::$skip_redis = true;
+        }
     }
 
     /**
@@ -192,16 +218,16 @@ class RedisManager {
      * For large scale, we would use RediSearch FT.SEARCH.
      */
     public function search_vectors( array $query_vector, string $mode, float $min_sim = 0.70, int $limit = 5 ): array {
-        $client = $this->get_client();
-        if ( ! $client ) return [];
-
-        $binary_query = pack( 'f*', ...$query_vector );
-        
-        // RediSearch KNN Query: Filter by mode TAG, then perform Vector Search
-        // Query format: "@mode:{guideline} => [KNN $limit @v $binary_query AS score]"
-        $query = sprintf( '@mode:{%s} => [KNN %d @v $v_blob AS score]', $mode, $limit );
-        
         try {
+            $client = $this->get_client();
+            if ( ! $client ) return [];
+
+            $binary_query = pack( 'f*', ...$query_vector );
+            
+            // RediSearch KNN Query: Filter by mode TAG, then perform Vector Search
+            // Query format: "@mode:{guideline} => [KNN $limit @v $binary_query AS score]"
+            $query = sprintf( '@mode:{%s} => [KNN %d @v $v_blob AS score]', $mode, $limit );
+            
             $response = $client->executeRaw([
                 'FT.SEARCH', 'idx:sonoai_vss',
                 $query,
@@ -215,7 +241,6 @@ class RedisManager {
             }
 
             $results = [];
-            $count = $response[0];
             
             // FT.SEARCH returns [count, key1, [fields...], key2, [fields...]]
             for ( $i = 1; $i < count( $response ); $i += 2 ) {
@@ -227,7 +252,7 @@ class RedisManager {
 
                 if ( ! empty( $item['m'] ) ) {
                     $meta = json_decode( $item['m'], true );
-                    $score = 1 - (float) $item['score']; // Convert distance to similarity
+                    $score = 1 - (float) ( $item['score'] ?? 0 ); // Convert distance to similarity
                     
                     if ( $score >= $min_sim ) {
                         $results[] = array_merge( $meta, [ 'similarity' => $score ] );
@@ -238,7 +263,9 @@ class RedisManager {
             return $results;
 
         } catch ( \Exception $e ) {
-            error_log( '[SonoAI] RediSearch Search Failed: ' . $e->getMessage() );
+            error_log( '[SonoAI] Redis Search Failure: ' . $e->getMessage() );
+            self::$client = null;
+            self::$skip_redis = true; 
             return []; // Fallback to empty if VSS fails
         }
     }

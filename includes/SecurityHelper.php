@@ -71,6 +71,10 @@ class SecurityHelper {
                 return sanitize_email( $value );
             case 'textarea':
                 return sanitize_textarea_field( $value );
+            case 'html':
+                return wp_kses_post( $value );
+            case 'raw':
+                return $value;
             default:
                 return sanitize_text_field( $value );
         }

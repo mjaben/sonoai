@@ -106,6 +106,13 @@ class Embedding {
         foreach ( $chunks as $idx => $chunk_text ) {
             $embedding = AIProvider::generate_embedding( $chunk_text );
 
+            // Retry once on transient timeout errors
+            if ( is_wp_error( $embedding ) && ( str_contains( $embedding->get_error_message(), 'timeout' ) || str_contains( $embedding->get_error_message(), 'timed out' ) ) ) {
+                error_log( '[SonoAI] Embedding timeout for chunk ' . $idx . '. Retrying in 2s...' );
+                sleep( 2 ); 
+                $embedding = AIProvider::generate_embedding( $chunk_text );
+            }
+
             if ( is_wp_error( $embedding ) ) {
                 error_log( '[SonoAI] Embedding failed for post ' . $post_id . ': ' . $embedding->get_error_message() );
                 $errors++;

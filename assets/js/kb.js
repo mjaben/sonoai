@@ -565,13 +565,23 @@
                 var editId = document.getElementById('kb-edit-knowledge-id');
                 if (editId) payload.knowledge_id = editId.value;
 
-                $.post(ajax, payload, function(res) {
-                    if (res.success) {
-                        location.reload();
-                    } else {
-                        alert(res.data.message || 'Error');
+                $.ajax({
+                    url: ajax,
+                    type: 'POST',
+                    data: payload,
+                    success: function(res) {
+                        if (res.success) {
+                            location.reload();
+                        } else {
+                            alert(res.data && res.data.message ? res.data.message : 'Error: ' + JSON.stringify(res));
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        alert('Server error (' + status + '): ' + error);
+                    },
+                    complete: function() {
                         submitBtn.disabled = false;
-                        submitBtn.textContent = 'Save';
+                        submitBtn.textContent = submitBtn.dataset.action === 'edit' ? 'Update Knowledge Base' : 'Add to Knowledge Base';
                     }
                 });
             });

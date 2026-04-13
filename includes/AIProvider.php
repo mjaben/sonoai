@@ -152,7 +152,7 @@ class AIProvider {
         $response = wp_remote_post(
             'https://api.openai.com/v1/embeddings',
             [
-                'timeout' => 30,
+                'timeout' => 60,
                 'headers' => [
                     'Authorization' => 'Bearer ' . $api_key,
                     'Content-Type'  => 'application/json',
@@ -245,7 +245,7 @@ class AIProvider {
         $response = wp_remote_post(
             $endpoint,
             [
-                'timeout' => 30,
+                'timeout' => 60,
                 'headers' => [ 'Content-Type' => 'application/json' ],
                 'body'    => wp_json_encode( [
                     'model'   => 'models/' . $model,
@@ -370,7 +370,7 @@ class AIProvider {
         $response = wp_remote_post(
             'https://api.mistral.ai/v1/embeddings',
             [
-                'timeout' => 30,
+                'timeout' => 60,
                 'headers' => [
                     'Authorization' => 'Bearer ' . self::get_api_key(),
                     'Content-Type'  => 'application/json',

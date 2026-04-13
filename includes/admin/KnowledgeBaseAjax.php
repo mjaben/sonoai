@@ -544,12 +544,12 @@ class KnowledgeBaseAjax {
 
     public function handle_add_txt(): void {
         $this->check( 'sonoai_kb_add_txt' );
-        $raw_html  = wp_kses_post( SecurityHelper::get_param( 'content' ) );
+        $raw_html  = SecurityHelper::get_param( 'content', '', 'html' );
         if ( empty( trim( wp_strip_all_tags( $raw_html ) ) ) ) {
             wp_send_json_error( [ 'message' => __( 'Content cannot be empty.', 'sonoai' ) ] );
         }
 
-        $images_param = SecurityHelper::get_param( 'images' );
+        $images_param = SecurityHelper::get_param( 'images', '', 'raw' );
         $manual_images = ! empty( $images_param ) ? json_decode( $images_param, true ) : [];
         if ( ! is_array( $manual_images ) ) $manual_images = [];
 
@@ -587,7 +587,7 @@ class KnowledgeBaseAjax {
         $this->check( 'sonoai_kb_edit_txt' );
         global $wpdb;
         $knowledge_id = SecurityHelper::get_param( 'knowledge_id' );
-        $raw_html     = wp_kses_post( SecurityHelper::get_param( 'content' ) );
+        $raw_html     = SecurityHelper::get_param( 'content', '', 'html' );
 
         if ( empty( $knowledge_id ) || empty( trim( wp_strip_all_tags( $raw_html ) ) ) ) {
             wp_send_json_error( [ 'message' => __( 'Invalid request.', 'sonoai' ) ] );
@@ -600,7 +600,7 @@ class KnowledgeBaseAjax {
         $wpdb->delete( $table_emb, [ 'knowledge_id' => $knowledge_id ], [ '%s' ] );
         $wpdb->delete( $table_kb,  [ 'knowledge_id' => $knowledge_id ], [ '%s' ] );
 
-        $images_param = SecurityHelper::get_param( 'images' );
+        $images_param = SecurityHelper::get_param( 'images', '', 'raw' );
         $manual_images = ! empty( $images_param ) ? json_decode( $images_param, true ) : [];
         if ( ! is_array( $manual_images ) ) $manual_images = [];
 
