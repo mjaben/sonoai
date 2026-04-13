@@ -80,7 +80,7 @@
     color: #e4e6eb !important;
     border-radius: 7px !important;
     font-family: 'Inter', sans-serif;
-    font-size: 13px;
+    font-size: 16px !important;
     padding: 8px 10px !important;
     transition: border-color 0.2s;
 }

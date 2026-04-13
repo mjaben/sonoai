@@ -1519,7 +1519,7 @@ dialog.kb-modal::backdrop {
     border: 1px solid #d1d5db !important;
     border-radius: 6px !important;
     padding: 5px 10px !important;
-    font-size: 12px !important;
+    font-size: 16px !important;
     height: 32px !important;
     color: #1e293b !important;
     box-shadow: none !important;
