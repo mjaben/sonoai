@@ -3,7 +3,7 @@
  * Plugin Name: Sono AI
  * Description: Educational AI-powered chat assistant for the ultrasound and sonography niche. Performs RAG over WordPress Knowledge Base.
  * Author:      Sonohive Ltd
- * Version:     1.0.7 Beta
+ * Version:     1.0.8 Beta
  * Text Domain: sonoai
  * License:     GPL2 or later
  */
@@ -21,7 +21,7 @@ function sonoai_log_error( $message ) {
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-define( 'SONOAI_VERSION',  '1.0.7' );
+define( 'SONOAI_VERSION',  '1.0.8' );
 define( 'SONOAI_DIR',      plugin_dir_path( __FILE__ ) );
 define( 'SONOAI_URL',      plugin_dir_url( __FILE__ ) );
 define( 'SONOAI_BASENAME', plugin_basename( __FILE__ ) );
