@@ -1,0 +1,16 @@
+<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Outer Geometric Frame -->
+  <path d="M10 2L13.5 3.5L16.5 6.5L18 10L16.5 13.5L13.5 16.5L10 18L6.5 16.5L3.5 13.5L2 10L3.5 6.5L6.5 3.5L10 2Z" stroke="#3498db" stroke-width="0.8" stroke-linejoin="round"/>
+  <circle cx="10" cy="10" r="7" stroke="#3498db" stroke-width="0.5" stroke-dasharray="1 1"/>
+  
+  <!-- Intersecting Loops -->
+  <ellipse cx="10" cy="10" rx="8" ry="3" stroke="#3498db" stroke-width="0.6" transform="rotate(0 10 10)"/>
+  <ellipse cx="10" cy="10" rx="8" ry="3" stroke="#3498db" stroke-width="0.6" transform="rotate(60 10 10)"/>
+  <ellipse cx="10" cy="10" rx="8" ry="3" stroke="#3498db" stroke-width="0.6" transform="rotate(120 10 10)"/>
+
+  <!-- Central Hub -->
+  <circle cx="10" cy="10" r="4.5" fill="#1a1d23" stroke="#3498db" stroke-width="0.8"/>
+  
+  <!-- "AI" Text -->
+  <text x="10" y="11.5" font-family="Arial, sans-serif" font-size="4" font-weight="bold" fill="#3498db" text-anchor="middle" style="letter-spacing: 0.2px;">AI</text>
+</svg>

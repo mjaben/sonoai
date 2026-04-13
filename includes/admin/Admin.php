@@ -35,7 +35,7 @@ class Admin {
             'manage_options',
             'sonoai-settings',
             [ $this, 'render_settings_page' ],
-            'dashicons-robot',
+            SONOAI_URL . 'assets/images/sonoai-brand-icon.svg',
             58
         );
 
