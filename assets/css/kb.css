@@ -8,8 +8,9 @@
 /* ── Wrapper ────────────────────────────────────────────────── */
 .kb-wrap {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
-    max-width: 1060px;
-    margin: 20px 20px 60px 0;
+    max-width: none !important;
+    width: auto !important;
+    margin: 20px 20px 60px 10px !important;
     color: #1a1d23;
 }
 
@@ -21,7 +22,7 @@
     flex-wrap: wrap;
     gap: 16px;
     background: linear-gradient(135deg, #0a1628 0%, #0f2552 50%, #1a3a8f 100%);
-    border-radius: 12px;
+    border-radius: 12px 12px 0 0;
     padding: 22px 28px;
     margin-bottom: 0;
     box-shadow: 0 4px 24px rgba(10, 22, 40, 0.3);
@@ -196,6 +197,40 @@
     to { transform: rotate(360deg); }
 }
 
+/* ── Re-index All Button ──────────────────────────────────────── */
+.kb-wrap .kb-stat-btn-reindex {
+    background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+    border: 1px solid rgba(255, 255, 255, 0.25) !important;
+    border-radius: 20px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    padding: 6px 14px !important;
+    color: #fff !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    transition: all 0.2s ease !important;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.35) !important;
+    white-space: nowrap;
+    flex-shrink: 0;
+    line-height: 1.2 !important;
+    height: auto !important;
+    min-height: 0 !important;
+}
+
+.kb-wrap .kb-stat-btn-reindex:hover:not(:disabled) {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(245, 158, 11, 0.5) !important;
+}
+
+.kb-wrap .kb-stat-btn-reindex:disabled {
+    opacity: 0.6 !important;
+    cursor: not-allowed !important;
+}
+
+
 .kb-wrap .kb-icon-light {
     display: none;
 }
@@ -208,14 +243,14 @@
     display: inline;
 }
 
-/* ── Tabs ───────────────────────────────────────────────────── */
+/* ── Tabs (Pill Style Toggle) ─────────────────────────────── */
 .kb-wrap .kb-tabs {
     display: flex;
-    align-items: stretch;
-    background: #fff;
-    border: 1px solid #e2e8f0;
-    border-top: none;
-    border-radius: 0 0 0 0;
+    align-items: center;
+    background: #111827; /* Deep midnight for the tab bar */
+    padding: 6px 10px;
+    gap: 6px;
+    border-top: 1px solid rgba(255,255,255,0.05);
     overflow-x: auto;
     scrollbar-width: none;
 }
@@ -224,25 +259,28 @@
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    padding: 11px 16px;
-    font-size: 13px;
+    padding: 6px 12px;
+    font-size: 12px;
     font-weight: 500;
-    color: #64748b;
+    color: rgba(255,255,255,0.6);
     text-decoration: none;
-    border-bottom: 3px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    transition: all 0.2s ease;
     white-space: nowrap;
-    transition: color 0.15s, border-color 0.15s;
-    flex-shrink: 0;
+    border: none;
 }
 
 .kb-wrap .kb-tab:hover {
-    color: #1e40af;
+    color: #fff;
+    background: rgba(255,255,255,0.05);
     text-decoration: none;
 }
 
 .kb-wrap .kb-tab-active {
-    color: #1e40af;
-    border-bottom-color: #3b82f6;
+    color: #fff;
+    background: rgba(255,255,255,0.12);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     font-weight: 600;
 }
 
@@ -265,7 +303,7 @@
     border-top: none;
     border-radius: 0 0 12px 12px;
     padding: 24px;
-    min-height: 300px;
+    min-height: 400px;
 }
 
 /* ── Overview source grid ────────────────────────────────────── */
@@ -1590,9 +1628,58 @@ dialog.kb-modal::backdrop {
     .kb-filter-topic-wrap {
         flex: 1;
         width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 6px;
     }
     .kb-filter-input,
     .kb-filter-select {
+        width: 100% !important;
+    }
+}
+
+.kb-filter-country-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.kb-filter-go-btn {
+    background: #3b82f6 !important;
+    border: 1px solid #2563eb !important;
+    color: #fff !important;
+    border-radius: 6px !important;
+    height: 34px !important;
+    width: 34px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    font-size: 14px !important;
+    transition: background 0.2s !important;
+    box-shadow: none !important;
+}
+
+.kb-filter-go-btn:hover {
+    background: #2563eb !important;
+}
+
+.kb-filter-clear {
+    font-size: 12px;
+    color: #64748b;
+    text-decoration: underline;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.kb-filter-clear:hover {
+    color: #ef4444;
+}
+
+.kb-dark .kb-filter-clear {
+    color: rgba(255,255,255,0.4);
+}
         width: 100%;
     }
 }

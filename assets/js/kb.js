@@ -6,7 +6,6 @@
 (function ($) {
     'use strict';
 
-    console.log('SonoAI KB: v1.3.1 Active');
 
     var THEME_KEY = 'sonoai_kb_theme';
     var KB = window.sonoaiKB || {};
@@ -34,13 +33,82 @@
         initWpTab();
         initPdfTab();
         initUrlTab();
+        initJsonlTab();
         initTxtTab();
         initGlobalFilters();
         initDeleteButtons();
         initViewModal();
         initTopicsTab();
         initRedisSync();
+        initReindexAll();
     });
+
+    /**
+     * Tab: JSONL
+     */
+    function initJsonlTab() {
+        var form = document.getElementById('kb-jsonl-form');
+        if (!form) return;
+
+        var fileInp = document.getElementById('kb-jsonl-file');
+        var fileNameHint = document.getElementById('kb-jsonl-filename');
+        var submitBtn = document.getElementById('kb-jsonl-submit');
+        var notice = document.getElementById('kb-jsonl-notice');
+
+        if (fileInp) {
+            fileInp.addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    var name = this.files[0].name;
+                    if (fileNameHint) fileNameHint.textContent = name;
+                    if (submitBtn) submitBtn.disabled = false;
+                } else {
+                    if (fileNameHint) fileNameHint.textContent = 'No file chosen';
+                    if (submitBtn) submitBtn.disabled = true;
+                }
+            });
+        }
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (!fileInp || !fileInp.files[0]) return;
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Processing...';
+            if (notice) { notice.style.display = 'none'; }
+
+            var fd = new FormData();
+            fd.append('action', 'sonoai_kb_add_jsonl');
+            fd.append('security', nonces.addJsonl || ''); // I need to add this to localization
+            fd.append('jsonl_file', fileInp.files[0]);
+            
+            // Overrides
+            fd.append('mode', document.getElementById('kb-jsonl-mode').value);
+            fd.append('topic_id', document.getElementById('kb-jsonl-topic').value);
+
+            $.ajax({
+                url: ajax,
+                type: 'POST',
+                data: fd,
+                processData: false,
+                contentType: false,
+                success: function (res) {
+                    if (res.success) {
+                        showToast(res.data.message || 'Import successful!', 'success');
+                        setTimeout(function() { window.location.reload(); }, 1500);
+                    } else {
+                        showToast(res.data.message || 'Error occurred.', 'error');
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Process & Index';
+                    }
+                },
+                error: function () {
+                    showToast('Fatal error during upload.', 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Process & Index';
+                }
+            });
+        });
+    }
 
     /**
      * Manual Redis Sync Button
@@ -80,8 +148,46 @@
     }
 
     /**
-     * Toast Notification Helper
+     * Re-index All with Current Model Button
      */
+    function initReindexAll() {
+        var btn = document.getElementById('kb-reindex-all');
+        if (!btn) return;
+
+        btn.addEventListener('click', function() {
+            var model = (KB.currentProvider || 'openai') + ' / ' + (KB.currentModel || 'current model');
+            if (!confirm('This will re-embed ALL ' + KB.currentProvider + ' Knowledge Base items using "' + (KB.currentModel || 'current model') + '"\n\nOld vectors will be deleted and regenerated. This may take a moment.\n\nContinue?')) {
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = '⏳ Re-indexing…';
+            showToast('Re-indexing all items with ' + model + '. Please wait…', 'info');
+
+            var payload = {
+                action:   'sonoai_kb_reindex_all',
+                security: nonces.reindexAll
+            };
+
+            $.post(ajax, payload, function(res) {
+                if (res.success) {
+                    showToast(res.data.message || 'Re-index complete!', 'success');
+                    // Refresh the visible list so the AI Model column updates
+                    setTimeout(function() {
+                        if (typeof loadPosts === 'function') loadPosts(1, '');
+                        if (typeof loadCustomItems === 'function') loadCustomItems();
+                    }, 600);
+                } else {
+                    showToast(res.data.message || 'Re-index failed.', 'error');
+                }
+            }).fail(function() {
+                showToast('Fatal error during re-index.', 'error');
+            }).always(function() {
+                btn.disabled = false;
+                btn.innerHTML = '&#9889; Re-index (' + (KB.currentModel || '') + ')';
+            });
+        });
+    }
     function showToast(msg, type) {
         var container = document.getElementById('sonoai-kb-notify');
         if (!container) {
@@ -120,7 +226,6 @@
      * Tab: WordPress Posts
      */
     function initWpTab() {
-        console.log('SonoAI KB: initWpTab starting...');
         
         var tbody = document.getElementById('kb-wp-tbody');
         if (!tbody) {
@@ -153,7 +258,6 @@
 
         function loadPosts(page, search) {
             var filters = getGlobalFilters();
-            console.log('SonoAI KB: loadPosts()', { page, search, filters });
             
             currentPage   = page;
             currentSearch = search;
@@ -172,7 +276,6 @@
             };
             
             $.post(ajax, payload, function (res) {
-                console.log('SonoAI KB: loadPosts() success', res);
                 renderPosts(res.data);
             }).fail(function (xhr) {
                 console.error('SonoAI KB: loadPosts() fatal error', xhr);
@@ -602,18 +705,44 @@
     }
 
     function initGlobalFilters() {
+        // Mode selector
         $('.kb-filter-mode-btn').on('click', function() {
             var mode = $(this).data('mode');
-            $('.kb-filter-mode-btn').removeClass('active');
-            $(this).addClass('active');
-            
-            // Sync visibility
-            $('.kb-filter-country-wrap').toggle(mode === 'guideline');
-            $('.kb-filter-topic-wrap').toggle(mode === 'research');
-            
-            // Hard reload for now to let PHP handle URL params or re-init
             var url = new URL(window.location.href);
             url.searchParams.set('mode', mode);
+            // Don't lose existing country/topic if they are relevant?
+            // Actually, usually changing mode resets context.
+            window.location.href = url.toString();
+        });
+
+        // Country search trigger (Button)
+        $('#kb-trigger-country-filter').on('click', function() {
+            var country = $('#kb-global-country-filter').val();
+            var url = new URL(window.location.href);
+            if (country) {
+                url.searchParams.set('country', country);
+            } else {
+                url.searchParams.delete('country');
+            }
+            window.location.href = url.toString();
+        });
+
+        // Country search trigger (Enter Key)
+        $('#kb-global-country-filter').on('keypress', function(e) {
+            if (e.which === 13) {
+                $('#kb-trigger-country-filter').trigger('click');
+            }
+        });
+
+        // Topic selector trigger
+        $('#kb-global-topic-filter').on('change', function() {
+            var tid = $(this).val();
+            var url = new URL(window.location.href);
+            if (tid) {
+                url.searchParams.set('topic_id', tid);
+            } else {
+                url.searchParams.delete('topic_id');
+            }
             window.location.href = url.toString();
         });
     }

@@ -18,7 +18,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 function sonoai_option( string $key, $default = '' ) {
     $options = get_option( 'sonoai_settings', [] );
-    return $options[ $key ] ?? $default;
+    $val     = $options[ $key ] ?? $default;
+    return ( is_string( $val ) && trim( $val ) === '' ) ? $default : $val;
 }
 
 /**

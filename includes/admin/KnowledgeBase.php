@@ -70,7 +70,8 @@ class KnowledgeBase {
                 'removePost' => wp_create_nonce( 'sonoai_kb_remove_post' ),
                 'addPdf'     => wp_create_nonce( 'sonoai_kb_add_pdf' ),
                 'addUrl'     => wp_create_nonce( 'sonoai_kb_add_url' ),
-                'addTxt'     => wp_create_nonce( 'sonoai_kb_add_txt' ),
+                'addImg'     => wp_create_nonce( 'sonoai_kb_add_img' ),
+                'addJsonl'   => wp_create_nonce( 'sonoai_kb_add_jsonl' ),
                 'editTxt'    => wp_create_nonce( 'sonoai_kb_edit_txt' ),
                 'deleteItem' => wp_create_nonce( 'sonoai_kb_delete_item' ),
                 'getPosts'   => wp_create_nonce( 'sonoai_kb_get_posts' ),
@@ -79,10 +80,13 @@ class KnowledgeBase {
                 'syncTopics' => wp_create_nonce( 'sonoai_kb_sync_topics' ),
                 'uploadImg'  => wp_create_nonce( 'sonoai_kb_upload_img' ),
                 'syncRedis'  => wp_create_nonce( 'sonoai_kb_sync_redis' ),
+                'reindexAll' => wp_create_nonce( 'sonoai_kb_reindex_all' ),
             ],
             'postTypes'  => self::get_eligible_post_types(),
             'providerLabel' => sonoai_option( 'active_provider', 'openai' ),
-            'syncIcon'   => SONOAI_URL . 'assets/images/sync-icon.png',
+            'syncIcon'      => SONOAI_URL . 'assets/images/sync-icon.png',
+            'currentModel'  => AIProvider::get_embedding_model(),
+            'currentProvider' => sonoai_option( 'active_provider', 'openai' ),
         ] );
     }
 
@@ -106,7 +110,7 @@ class KnowledgeBase {
     public static function get_kb_stats(): array {
         global $wpdb;
         $rows = $wpdb->get_results( "SELECT `type`, COUNT(*) as cnt FROM `{$wpdb->prefix}sonoai_kb_items` GROUP BY `type`", ARRAY_A );
-        $stats = [ 'total' => 0, 'wp' => 0, 'pdf' => 0, 'url' => 0, 'txt' => 0 ];
+        $stats = [ 'total' => 0, 'wp' => 0, 'pdf' => 0, 'url' => 0, 'txt' => 0, 'jsonl' => 0 ];
         
         if ( ! empty( $rows ) ) {
             foreach ( $rows as $r ) {
@@ -132,7 +136,7 @@ class KnowledgeBase {
         $stats     = self::get_kb_stats();
         $tab       = SecurityHelper::get_param( 'kb_tab', 'overview', 'text' );
         $post_type = SecurityHelper::get_param( 'pt', 'post', 'text' );
-        $valid_tabs = [ 'overview', 'wp', 'pdf', 'url', 'txt', 'media' ];
+        $valid_tabs = [ 'overview', 'wp', 'pdf', 'url', 'jsonl', 'txt', 'media' ];
         if ( ! in_array( $tab, $valid_tabs, true ) ) {
             $tab = 'overview';
         }
@@ -160,20 +164,17 @@ class KnowledgeBase {
                         <span class="kb-stat-icon">🗂</span>
                         <span><?php echo esc_html( number_format_i18n( $stats['total'] ) ); ?> <?php esc_html_e( 'Total Items', 'sonoai' ); ?></span>
                     </div>
-                    <?php if ( $stats['wp'] ) : ?>
+                    <?php if ( $stats['jsonl'] ) : ?>
                     <div class="kb-stat-badge">
-                        <span class="kb-stat-icon">📝</span>
-                        <span><?php echo esc_html( number_format_i18n( $stats['wp'] ) ); ?> <?php esc_html_e( 'WP Posts', 'sonoai' ); ?></span>
-                    </div>
-                    <?php endif; ?>
-                    <?php if ( $stats['pdf'] ) : ?>
-                    <div class="kb-stat-badge">
-                        <span class="kb-stat-icon">📄</span>
-                        <span><?php echo esc_html( number_format_i18n( $stats['pdf'] ) ); ?> <?php esc_html_e( 'PDFs', 'sonoai' ); ?></span>
+                        <span class="kb-stat-icon">📦</span>
+                        <span><?php echo esc_html( number_format_i18n( $stats['jsonl'] ) ); ?> <?php esc_html_e( 'JSONL', 'sonoai' ); ?></span>
                     </div>
                     <?php endif; ?>
                     <button type="button" id="kb-redis-sync" class="kb-stat-btn-circle" title="<?php esc_attr_e( 'Manual Redis Sync / Re-index', 'sonoai' ); ?>">
                         <img src="<?php echo esc_url( SONOAI_URL . 'assets/images/sync-icon.png' ); ?>" class="kb-sync-icon" alt="Sync">
+                    </button>
+                    <button type="button" id="kb-reindex-all" class="kb-stat-btn-reindex" title="<?php esc_attr_e( 'Re-embed all items with the currently selected AI model', 'sonoai' ); ?>">
+                        ⚡ <?php echo esc_html( sprintf( __( 'Re-index (%s)', 'sonoai' ), AIProvider::get_embedding_model() ) ); ?>
                     </button>
                     <button type="button" id="kb-theme-toggle" class="kb-theme-btn" title="Toggle dark / light mode">
                         <span class="kb-icon-dark">🌙</span>
@@ -190,6 +191,7 @@ class KnowledgeBase {
                     'wp'       => [ 'icon' => '📝', 'label' => sprintf( __( 'WordPress Posts (%d)', 'sonoai' ), $stats['wp'] ) ],
                     'pdf'      => [ 'icon' => '📄', 'label' => sprintf( __( 'PDF Upload (%d)', 'sonoai' ), $stats['pdf'] ) ],
                     'url'      => [ 'icon' => '🌐', 'label' => sprintf( __( 'Website URL (%d)', 'sonoai' ), $stats['url'] ) ],
+                    'jsonl'    => [ 'icon' => '📦', 'label' => __( 'JSONL Import', 'sonoai' ) . ' (Beta)' ],
                     'txt'      => [ 'icon' => '✏️', 'label' => sprintf( __( 'Custom Text (%d)', 'sonoai' ), $stats['txt'] ) ],
                     'media'    => [ 'icon' => '🖼', 'label' => __( 'Media', 'sonoai' ) ],
                 ];
@@ -223,6 +225,9 @@ class KnowledgeBase {
 
                 <?php elseif ( $tab === 'txt' ) : ?>
                     <?php $this->render_txt_tab(); ?>
+
+                <?php elseif ( $tab === 'jsonl' ) : ?>
+                    <?php $this->render_jsonl_tab(); ?>
 
                 <?php elseif ( $tab === 'media' ) : ?>
                     <?php $this->render_media_tab(); ?>
@@ -300,9 +305,24 @@ class KnowledgeBase {
                 'tab'   => 'txt',
                 'cta'   => __( 'Add Content', 'sonoai' ),
             ],
+            'jsonl' => [
+                'icon'    => '📦',
+                'color'   => '#8b5cf6',
+                'title'   => __( 'JSONL Import', 'sonoai' ),
+                'count'   => $stats['jsonl'],
+                'desc'    => __( 'Upload structured medical datasets where each line is treated as an atomic, unbreakable fact.', 'sonoai' ),
+                'bullets' => [
+                    __( 'Per-line clinical metadata', 'sonoai' ),
+                    __( 'Atomic fact indexing', 'sonoai' ),
+                    __( 'Best for reference tables', 'sonoai' ),
+                ],
+                'use'   => __( 'Best for: measurement ranges, curriculum sign-offs, reference data.', 'sonoai' ),
+                'tab'   => 'jsonl',
+                'cta'   => __( 'Import Dataset', 'sonoai' ),
+            ],
             'media' => [
                 'icon'    => '🖼',
-                'color'   => '#8b5cf6',
+                'color'   => '#6b7280',
                 'title'   => __( 'Media', 'sonoai' ),
                 'count'   => 0,
                 'desc'    => __( 'Connect your WordPress media library to enrich AI responses with images.', 'sonoai' ),
@@ -660,6 +680,66 @@ class KnowledgeBase {
         <?php $this->render_items_table( $items, 'url', [
             'delete' => __( 'Delete', 'sonoai' ),
             'view'   => __( 'View Source', 'sonoai' ),
+        ] ); ?>
+        <?php
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Tab: JSONL Import
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private function render_jsonl_tab(): void {
+        global $wpdb;
+        $items = $wpdb->get_results( "SELECT * FROM `{$wpdb->prefix}sonoai_kb_items` WHERE `type` = 'jsonl' ORDER BY `created_at` DESC" );
+        ?>
+        <div class="kb-card">
+            <h3 class="kb-card-title">📦 <?php esc_html_e( 'Import JSONL Dataset', 'sonoai' ); ?></h3>
+            <p class="kb-section-desc"><?php esc_html_e( 'Upload a dataset where each line is a JSON object. This bypasses standard chunking to preserve your data structures.', 'sonoai' ); ?></p>
+            
+            <div class="kb-info-notice" style="margin-bottom:20px; border-left-color:#3b82f6;">
+                <strong>💡 <?php esc_html_e( 'Format Guide:', 'sonoai' ); ?></strong>
+                <code style="display:block; margin:8px 0; padding:10px; background:#1e293b; color:#cbd5e1; border-radius:6px; font-size:12px;">
+                    {"content": "Medical fact...", "source_name": "RCOG", "source_url": "https://..."}
+                </code>
+            </div>
+
+            <form id="kb-jsonl-form" enctype="multipart/form-data">
+                <div class="kb-training-fields">
+                    <div class="kb-field-row">
+                        <div class="kb-field-group">
+                            <label for="kb-jsonl-mode"><?php esc_html_e( 'Global Mode Override', 'sonoai' ); ?></label>
+                            <select name="mode" id="kb-jsonl-mode" class="kb-select-sm">
+                                <option value="guideline"><?php esc_html_e( 'Guideline', 'sonoai' ); ?></option>
+                                <option value="research"><?php esc_html_e( 'Research', 'sonoai' ); ?></option>
+                            </select>
+                        </div>
+                        <div class="kb-field-group">
+                            <label for="kb-jsonl-topic"><?php esc_html_e( 'Global Topic', 'sonoai' ); ?></label>
+                            <select name="topic_id" id="kb-jsonl-topic" class="kb-select-sm">
+                                <option value=""><?php esc_html_e( '— No Topic —', 'sonoai' ); ?></option>
+                                <?php foreach ( self::get_topics() as $t ) : ?>
+                                    <option value="<?php echo esc_attr( $t->id ); ?>"><?php echo esc_html( $t->name ); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="kb-upload-row" style="margin-top:20px;">
+                    <label class="kb-file-btn" for="kb-jsonl-file">
+                        📂 <?php esc_html_e( 'Choose .jsonl File', 'sonoai' ); ?>
+                    </label>
+                    <input type="file" id="kb-jsonl-file" name="jsonl_file" accept=".jsonl,.txt" style="display:none;">
+                    <span id="kb-jsonl-filename" class="kb-filename-hint"><?php esc_html_e( 'No file chosen', 'sonoai' ); ?></span>
+                    <button type="submit" class="kb-btn-primary" id="kb-jsonl-submit" disabled>
+                        <?php esc_html_e( 'Process & Index', 'sonoai' ); ?>
+                    </button>
+                </div>
+            </form>
+            <p id="kb-jsonl-notice" class="kb-notice" style="display:none;"></p>
+        </div>
+
+        <?php $this->render_items_table( $items, 'jsonl', [
+            'delete' => __( 'Delete Dataset', 'sonoai' ),
         ] ); ?>
         <?php
     }
@@ -1076,6 +1156,10 @@ class KnowledgeBase {
             <div class="kb-filter-metadata">
                 <div class="kb-filter-country-wrap" style="<?php echo ( $mode === 'guideline' ) ? '' : 'display:none;'; ?>">
                     <input type="search" id="kb-global-country-filter" class="kb-filter-input" placeholder="<?php esc_attr_e( 'Search Country...', 'sonoai' ); ?>" value="<?php echo esc_attr( $country ); ?>">
+                    <button type="button" id="kb-trigger-country-filter" class="kb-filter-go-btn" title="<?php esc_attr_e( 'Filter by Country', 'sonoai' ); ?>">🔍</button>
+                    <?php if ( ! empty( $country ) ) : ?>
+                        <a href="<?php echo esc_url( remove_query_arg( 'country' ) ); ?>" class="kb-filter-clear"><?php esc_html_e( 'Clear', 'sonoai' ); ?></a>
+                    <?php endif; ?>
                 </div>
                 
                 <div class="kb-filter-topic-wrap" style="<?php echo ( $mode === 'research' ) ? '' : 'display:none;'; ?>">

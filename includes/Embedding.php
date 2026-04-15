@@ -97,21 +97,60 @@ class Embedding {
         $table        = self::table();
         $knowledge_id = wp_generate_uuid4();
         $provider     = AIProvider::get_name();
+        global $wpdb;
+        $table        = self::table();
+        $knowledge_id = wp_generate_uuid4();
+        $provider     = AIProvider::get_name();
         $model        = AIProvider::get_embedding_model();
-        $chunks       = self::split_into_chunks( $content );
         $modified_gmt = current_time( 'mysql', true );
-        $image_json   = ! empty( $image_urls ) ? wp_json_encode( array_values( $image_urls ) ) : null;
-        $errors       = 0;
         $redis        = RedisManager::instance();
 
         // ── Prevention of Duplicates ──
-        // Before inserting new chunks into MySQL or Redis, clear existing Redis keys for this post.
         if ( $post_id > 0 ) {
             $redis->delete_vectors_by_post( $post_id );
         }
-        // ──────────────────────────────
 
-        foreach ( $chunks as $idx => $chunk_text ) {
+        // ── Resolve Chunks ──
+        $chunks_data = [];
+        if ( $post_type === 'jsonl' ) {
+            $lines = explode( "\n", $content );
+            foreach ( $lines as $line ) {
+                $line = trim( $line );
+                if ( empty( $line ) ) {
+                    continue;
+                }
+                $data = json_decode( $line, true );
+                if ( is_array( $data ) && ! empty( $data['content'] ) ) {
+                    $chunks_data[] = [
+                        'text'   => $data['content'],
+                        'source' => $data['source_name'] ?? $source_name,
+                        'url'    => $data['source_url']  ?? $source_url,
+                        'mode'   => $data['mode']        ?? $mode,
+                        'images' => ! empty( $data['images'] ) ? $data['images'] : $image_urls,
+                    ];
+                }
+            }
+        } else {
+            $chunks = self::split_into_chunks( $content );
+            foreach ( $chunks as $c ) {
+                $chunks_data[] = [
+                    'text'   => $c,
+                    'source' => $source_name,
+                    'url'    => $source_url,
+                    'mode'   => $mode,
+                    'images' => $image_urls,
+                ];
+            }
+        }
+
+        $errors = 0;
+        foreach ( $chunks_data as $idx => $data ) {
+            $chunk_text   = $data['text'];
+            $chunk_source = $data['source'];
+            $chunk_url    = $data['url'];
+            $chunk_mode   = $data['mode'];
+            $chunk_images = $data['images'];
+
             $embedding = AIProvider::generate_embedding( $chunk_text );
 
             // Retry once on transient timeout errors
@@ -133,18 +172,18 @@ class Embedding {
                     'knowledge_id'      => $knowledge_id,
                     'post_id'           => $post_id,
                     'post_type'         => $post_type,
-                    'image_urls'        => $image_json,
+                    'image_urls'        => ! empty( $chunk_images ) ? wp_json_encode( array_values( $chunk_images ) ) : null,
                     'chunk_index'       => $idx,
                     'chunk_text'        => $chunk_text,
                     'embedding'         => wp_json_encode( $embedding ),
                     'provider'          => $provider,
                     'embedding_model'   => $model,
                     'post_modified_gmt' => $modified_gmt,
-                    'mode'              => in_array( $mode, [ 'guideline', 'research' ], true ) ? $mode : 'guideline',
+                    'mode'              => in_array( $chunk_mode, [ 'guideline', 'research' ], true ) ? $chunk_mode : 'guideline',
                     'topic_slug'        => $topic_slug ?: null,
                     'country'           => $country ?: null,
-                    'source_title'      => $source_name ?: null,
-                    'source_url'        => $source_url ?: null,
+                    'source_title'      => $chunk_source ?: null,
+                    'source_url'        => $chunk_url ?: null,
                 ],
                 [ '%s', '%d', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' ]
             );
@@ -153,15 +192,15 @@ class Embedding {
             if ( false !== $result ) {
                 RedisManager::instance()->cache_embedding( $knowledge_id . ':' . $idx, $embedding, [
                     'knowledge_id' => $knowledge_id,
-                    'post_id'    => $post_id,
-                    'post_type'  => $post_type,
-                    'chunk_text' => $chunk_text,
-                    'mode'       => $mode,
-                    'topic_slug' => $topic_slug,
-                    'country'    => $country,
-                    'source_title' => $source_name,
-                    'source_url'  => $source_url,
-                    'image_urls' => $image_urls,
+                    'post_id'      => $post_id,
+                    'post_type'    => $post_type,
+                    'chunk_text'   => $chunk_text,
+                    'mode'         => $chunk_mode,
+                    'topic_slug'   => $topic_slug,
+                    'country'      => $country,
+                    'source_title' => $chunk_source,
+                    'source_url'   => $chunk_url,
+                    'image_urls'   => $chunk_images,
                 ]);
             }
 
@@ -173,12 +212,24 @@ class Embedding {
 
         if ( $post_id > 0 ) {
             // Remove old chunks for this post (different knowledge_id).
+            // Scoped by BOTH provider AND model to ensure model changes fully invalidate old vectors.
             $wpdb->query(
                 $wpdb->prepare(
-                    "DELETE FROM `$table` WHERE post_id = %d AND knowledge_id != %s AND provider = %s",
+                    "DELETE FROM `$table` WHERE post_id = %d AND knowledge_id != %s AND provider = %s AND embedding_model = %s",
                     $post_id,
                     $knowledge_id,
-                    $provider
+                    $provider,
+                    $model
+                )
+            );
+
+            // Also remove any old chunks from a DIFFERENT model entirely
+            // (e.g., switching from text-embedding-ada-002 to text-embedding-3-small)
+            $wpdb->query(
+                $wpdb->prepare(
+                    "DELETE FROM `$table` WHERE post_id = %d AND embedding_model != %s",
+                    $post_id,
+                    $model
                 )
             );
         }
@@ -242,8 +293,8 @@ class Embedding {
         global $wpdb;
         $table = self::table();
 
-        // Fetch embeddings (only provider match to keep vectors comparable).
-        $where_sql = $wpdb->prepare( 'provider = %s', $provider );
+        // Fetch embeddings — filter by provider AND model to ensure dimensional compatibility.
+        $where_sql = $wpdb->prepare( 'provider = %s AND embedding_model = %s', $provider, $model );
         
         if ( ! empty( $post_types ) ) {
             // Sanitize literals for IN clause
@@ -257,7 +308,7 @@ class Embedding {
         }
 
         // Note: Table name is derived from trusted prefix.
-        $rows = $wpdb->get_results( "SELECT id, post_id, post_type, chunk_text, embedding, image_urls, country, topic_slug, source_title, source_url FROM `{$wpdb->prefix}sonoai_embeddings` WHERE $where_sql", ARRAY_A );
+        $rows = $wpdb->get_results( "SELECT knowledge_id, post_id, post_type, chunk_text, embedding, image_urls, country, topic_slug, source_title, source_url FROM `{$wpdb->prefix}sonoai_embeddings` WHERE $where_sql", ARRAY_A );
 
         if ( empty( $rows ) ) {
             return [];
@@ -278,15 +329,16 @@ class Embedding {
             }
 
             $candidate = [
-                'chunk_text'  => $row['chunk_text'],
-                'post_id'     => (int) $row['post_id'],
-                'post_type'   => $row['post_type'],
-                'image_urls'  => $row['image_urls'] ? json_decode( $row['image_urls'], true ) : [],
-                'country'     => $row['country'],
-                'topic_slug'  => $row['topic_slug'],
-                'source_name' => $row['source_title'],
-                'source_url'  => $row['source_url'],
-                'similarity'  => $sim,
+                'knowledge_id' => $row['knowledge_id'],
+                'chunk_text'   => $row['chunk_text'],
+                'post_id'      => (int) $row['post_id'],
+                'post_type'    => $row['post_type'],
+                'image_urls'   => $row['image_urls'] ? json_decode( $row['image_urls'], true ) : [],
+                'country'      => $row['country'],
+                'topic_slug'   => $row['topic_slug'],
+                'source_name'  => $row['source_title'],
+                'source_url'   => $row['source_url'],
+                'similarity'   => $sim,
             ];
 
             if ( count( $top ) < $limit ) {

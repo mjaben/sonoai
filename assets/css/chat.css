@@ -2277,12 +2277,14 @@ body.sonoai-fullscreen #sonoai-app {
 }
 
 .sonoai-optin-chips .sonoai-suggestion {
-    padding: 8px 16px;
-    font-size: 13px;
+    padding: 8px 18px;
+    font-size: 13.5px;
     background: var(--sono-surface-2);
     border: 1px solid var(--sono-border);
+    border-radius: var(--sono-radius-sm, 7px);
     color: var(--sono-text-dim);
     transition: all 0.2s ease;
+    cursor: pointer;
 }
 
 .sonoai-optin-chips .sonoai-suggestion:first-child {

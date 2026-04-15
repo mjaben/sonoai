@@ -635,7 +635,7 @@
                 }
 
                 // Check for "Show Images" opt-in text
-                const offerPhrase = "Would you like to view the clinical presentation/sonogram images for this case?";
+                const offerPhrase = "Would you like to view the associated sonogram images or clinical presentation?";
                 if (fullReply.includes(offerPhrase)) {
                     showImageOptInChips(assistantWrapper);
                 }
@@ -1265,59 +1265,103 @@
         var linkSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';
         text = text.replace(/:::sources\n([\s\S]*?):::/g, function(_, inner) {
             var lines = inner.trim().split('\n').filter(function(l) { return l.trim(); });
-            var h = '<div class="sonoai-sources-container">';
+            var pills = '';
             lines.forEach(function(line) {
-                var parts   = line.split('|').map(function(p) { return p.trim(); });
-                var name    = escapeHtml(parts[0]);
+                var parts = line.split('|').map(function(p) { return p.trim(); });
+                var name    = '';
                 var country = '';
                 var url     = '';
 
-                if (parts.length === 3) {
-                    country = escapeHtml(parts[1]);
+                if (parts.length >= 3) {
+                    // Guideline format: Name | Country | URL
+                    name    = parts[0];
+                    country = parts[1];
                     url     = parts[2];
-                } else {
-                    url     = parts[1] || '';
+                } else if (parts.length === 2) {
+                    // Research format: Name | URL  OR  URL only if part[0] is a URL
+                    if (parts[0].startsWith('http') || parts[0].startsWith('www')) {
+                        url = parts[0];
+                    } else {
+                        name = parts[0];
+                        url  = parts[1];
+                    }
+                } else if (parts.length === 1) {
+                    // Single value — is it a URL or a name?
+                    if (parts[0].startsWith('http') || parts[0].startsWith('www')) {
+                        url = parts[0];
+                    } else {
+                        name = parts[0];
+                    }
                 }
-                
-                var labelHtml = '<strong>Source:</strong> <span>' + name + '</span>';
-                if (country) {
-                    labelHtml += '<span class="sonoai-country-badge">' + country + '</span>';
+
+                // Conditional Display Logic
+                var hasName    = name    && name    !== 'undefined' && name    !== 'N/A' && name    !== 'UNKNOWN';
+                var hasCountry = country && country !== 'undefined' && country !== 'UNKNOWN COUNTRY' && country !== 'N/A';
+                var hasUrl     = url     && (url.startsWith('http') || url.startsWith('www'));
+
+                // Rule: If both empty — hide entirely
+                if (!hasName && !hasUrl) return;
+
+                var nameHtml = hasName ? '<span>' + escapeHtml(name) + '</span>' : '';
+                var labelHtml = '<strong>Source:</strong> ' + (nameHtml || '');
+                if (hasCountry) {
+                    labelHtml += '<span class="sonoai-country-badge">' + escapeHtml(country) + '</span>';
                 }
-                
-                if (url && (url.startsWith('http') || url.startsWith('www'))) {
-                    h += '<a href="' + url + '" target="_blank" class="sonoai-source-pill">' + linkSvg + labelHtml + '</a>';
+
+                if (hasName && hasUrl) {
+                    // Rule 4: Both present — hyperlinked name
+                    pills += '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener" class="sonoai-source-pill">' + linkSvg + labelHtml + '</a>';
+                } else if (hasUrl && !hasName) {
+                    // Rule 3: URL only — clickable link
+                    pills += '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener" class="sonoai-source-pill">' + linkSvg + '<strong>Source:</strong> <span>' + escapeHtml(url) + '</span></a>';
                 } else {
-                    h += '<span class="sonoai-source-pill">' + labelHtml + '</span>';
+                    // Rule 2: Name only — plain text span
+                    pills += '<span class="sonoai-source-pill">' + labelHtml + '</span>';
                 }
             });
-            h += '</div>';
-            return protect(h);
+
+            // Rule: If no valid pills were generated, hide the container entirely
+            if (!pills) return '';
+            return protect('<div class="sonoai-sources-container">' + pills + '</div>');
         });
 
         // 3a(bis). Fallback for bracketed sources [Source: Name | Country | URL]
-        text = text.replace(/\[Source:\s*(.*?)\s*\|?\s*(.*?|)\s*\|?\s*(.*?|)\s*\]/gi, function(_, name, country, url) {
-            var h = '<div class="sonoai-sources-container">';
-            name = name.trim();
-            country = (country || '').trim();
-            url = (url || '').trim();
+        text = text.replace(/\[Source:\s*(.*?)\s*\](?!\s*\n)/gi, function(_, inner) {
+            var parts   = inner.split('|').map(function(p) { return p.trim(); });
+            var name    = '';
+            var country = '';
+            var url     = '';
 
-            if (!url && country.startsWith('http')) {
-                url = country;
-                country = '';
+            if (parts.length >= 3) {
+                name = parts[0]; country = parts[1]; url = parts[2];
+            } else if (parts.length === 2) {
+                name = parts[0]; url = parts[1];
+                if (!url && name.startsWith('http')) { url = name; name = ''; }
+            } else {
+                if (parts[0].startsWith('http')) { url = parts[0]; } else { name = parts[0]; }
             }
 
-            var labelHtml = '<strong>Source:</strong> <span>' + escapeHtml(name) + '</span>';
-            if (country) {
+            var hasName    = name    && name    !== 'undefined';
+            var hasCountry = country && country !== 'UNKNOWN COUNTRY' && country !== 'N/A';
+            var hasUrl     = url     && (url.startsWith('http') || url.startsWith('www'));
+
+            if (!hasName && !hasUrl) return '';
+
+            var nameHtml  = hasName ? '<span>' + escapeHtml(name) + '</span>' : '';
+            var labelHtml = '<strong>Source:</strong> ' + (nameHtml || '');
+            if (hasCountry) {
                 labelHtml += '<span class="sonoai-country-badge">' + escapeHtml(country) + '</span>';
             }
-            
-            if (url && (url.startsWith('http') || url.startsWith('www'))) {
-                h += '<a href="' + url + '" target="_blank" class="sonoai-source-pill">' + linkSvg + labelHtml + '</a>';
+
+            var pill = '';
+            if (hasName && hasUrl) {
+                pill = '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener" class="sonoai-source-pill">' + linkSvg + labelHtml + '</a>';
+            } else if (hasUrl) {
+                pill = '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener" class="sonoai-source-pill">' + linkSvg + '<strong>Source:</strong> <span>' + escapeHtml(url) + '</span></a>';
             } else {
-                h += '<span class="sonoai-source-pill">' + labelHtml + '</span>';
+                pill = '<span class="sonoai-source-pill">' + labelHtml + '</span>';
             }
-            h += '</div>';
-            return protect(h);
+            return protect('<div class="sonoai-sources-container">' + pill + '</div>');
         });
 
         // 3b. Parse :::image | ID | Label ::: fences for clinical citations (Hardened Regex).

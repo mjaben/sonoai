@@ -1,5 +1,0 @@
-[13-Apr-2026 13:41:41 UTC] [SonoAI] Redis: Attempting connection to tcp://redis-18304.c338.eu-west-2-1.ec2.cloud.redislabs.com:18304 (Timeout: 5s)
-[13-Apr-2026 13:41:42 UTC] [SonoAI] Redis: Connection successful.
-[13-Apr-2026 13:43:29 UTC] [SonoAI] Embedding failed for post 0: cURL error 28: SSL connection timeout
-[13-Apr-2026 13:48:53 UTC] [SonoAI] Redis: Attempting connection to tcp://redis-18304.c338.eu-west-2-1.ec2.cloud.redislabs.com:18304 (Timeout: 5s)
-[13-Apr-2026 13:48:55 UTC] [SonoAI] Redis: Connection successful.
