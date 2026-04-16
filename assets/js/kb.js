@@ -747,7 +747,112 @@
         });
     }
 
-    function initTopicsTab() { /* Implementation... */ }
+    /**
+     * Tab: Topics Management
+     */
+    function initTopicsTab() {
+        var modal = document.getElementById('kb-topic-modal');
+        if (!modal) return;
+
+        var form = document.getElementById('kb-topic-form');
+        var addBtn = document.getElementById('kb-btn-add-topic');
+        var cancelBtn = document.getElementById('kb-topic-modal-cancel');
+        var titleEl = document.getElementById('kb-topic-modal-title');
+        var idField = document.getElementById('kb-topic-id');
+        var nameField = document.getElementById('kb-topic-name');
+
+        // Open Modal (Add)
+        if (addBtn) {
+            addBtn.addEventListener('click', function() {
+                idField.value = '';
+                nameField.value = '';
+                titleEl.textContent = 'Add Topic';
+                if (modal.showModal) {
+                    modal.showModal();
+                } else {
+                    openModal(modal);
+                }
+            });
+        }
+
+        // Close Modal
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', function() {
+                if (modal.close) {
+                    modal.close();
+                } else {
+                    closeModal(modal);
+                }
+            });
+        }
+
+        // Edit Button Click (Delegated)
+        $(document).on('click', '.kb-edit-topic-btn', function() {
+            var id = this.dataset.id;
+            var name = this.dataset.name;
+            idField.value = id;
+            nameField.value = name;
+            titleEl.textContent = 'Edit Topic';
+            if (modal.showModal) {
+                modal.showModal();
+            } else {
+                openModal(modal);
+            }
+        });
+
+        // Form Submit (Add/Edit)
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            var id = idField.value;
+            var name = nameField.value;
+            var isEdit = !!id;
+            var action = isEdit ? 'sonoai_kb_edit_topic' : 'sonoai_kb_add_topic';
+            
+            var submitBtn = form.querySelector('button[type="submit"]');
+            var oldText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Processing...';
+
+            var payload = {
+                action: action,
+                security: nonces.topics,
+                topic_id: id,
+                name: name
+            };
+
+            $.post(ajax, payload, function(res) {
+                if (res.success) {
+                    location.reload();
+                } else {
+                    alert(res.data.message || 'Error occurred.');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = oldText;
+                }
+            }).fail(function() {
+                alert('Server error. Please try again.');
+                submitBtn.disabled = false;
+                submitBtn.textContent = oldText;
+            });
+        });
+
+        // Delete Button Click (Delegated)
+        $(document).on('click', '.kb-delete-topic-btn', function() {
+            var id = this.dataset.id;
+            var $row = $(this).closest('tr');
+
+            if (!confirm('Are you sure you want to delete this topic? KB items will be unassigned but NOT deleted.')) {
+                return;
+            }
+
+            $.post(ajax, { action: 'sonoai_kb_delete_topic', security: nonces.topics, topic_id: id }, function(res) {
+                if (res.success) {
+                    $row.fadeOut(300, function() { $(this).remove(); });
+                } else {
+                    alert(res.data.message || 'Deletion failed.');
+                }
+            });
+        });
+    }
     function initViewModal() { /* Implementation... */ }
 
     // Helpers
