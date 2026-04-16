@@ -194,24 +194,14 @@ class QueryLogs {
             </div>
 
             <!-- Panel Wrap -->
-            <div class="kb-panel-wrap" style="border-radius: 12px; margin-top: 20px;">
+            <div class="kb-panel-wrap" style="border-radius: 12px; margin-top: 30px;">
                 <form id="query-logs-filter" method="post">
                     <input type="hidden" name="page" value="sonoai-query-logs" />
                     <?php $table->display(); ?>
                 </form>
             </div>
 
-            <!-- SonoAI Lightbox Modal -->
-            <div id="kb-view-modal" class="kb-modal" style="display:none;">
-                <div class="kb-modal-inner" style="max-width: 600px;">
-                    <div class="kb-modal-header">
-                        <strong><?php esc_html_e( 'Log Details', 'sonoai' ); ?></strong>
-                        <button type="button" class="kb-modal-close" id="sonoai-modal-close">✕</button>
-                    </div>
-                    <div id="kb-modal-body" class="kb-modal-body" style="white-space: pre-wrap;"></div>
-                </div>
-            </div>
-        </div>
+        </div><!-- .kb-wrap -->
         <?php
     }
 }

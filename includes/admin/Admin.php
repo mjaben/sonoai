@@ -70,11 +70,20 @@ class Admin {
     }
 
     public function enqueue_admin_assets( string $hook ): void {
-        // Only enqueue on main SonoAI settings page (not sub-menu pages).
-        if ( 'toplevel_page_sonoai-settings' !== $hook ) {
+        // Enqueue on all SonoAI admin pages.
+        if ( false === strpos( $hook, 'sonoai' ) ) {
             return;
         }
-        wp_enqueue_style( 'sonoai-admin', SONOAI_URL . 'assets/css/admin.css', [], SONOAI_VERSION );
+
+        wp_enqueue_style( 'sonoai-kb', SONOAI_URL . 'assets/css/kb.css', [], SONOAI_VERSION );
+        wp_enqueue_script( 'sonoai-kb', SONOAI_URL . 'assets/js/kb.js', [ 'jquery' ], SONOAI_VERSION, true );
+
+        wp_localize_script( 'sonoai-kb', 'sonoaiKB', [
+            'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+            'nonces'  => [
+                'reindexAll' => wp_create_nonce( 'sonoai_reindex_all' ),
+            ],
+        ] );
     }
 
     public function render_settings_page(): void {
@@ -99,86 +108,104 @@ class Admin {
             "- CONFIRMED REQUEST: When a user requests to 'show' or 'view' images, you are AUTHORIZED to output the :::image|ID|Label::: tags found in the underlying context data.\n\n" .
             "6. SOURCES: You MUST end every single response with the :::sources block. Do NOT include source names or citations in the middle of your response. Use only the :::sources format at the very end.";
         ?>
-        <div class="wrap sonoai-admin-wrap">
-            <div class="sonoai-admin-header">
-                <h1>🔬 SonoAI <span>Settings</span></h1>
-                <p class="sonoai-admin-subtitle">AI-powered chat for the ultrasound & sonography niche.</p>
+        <div class="kb-wrap" id="sonoai-settings-page">
+            
+            <!-- Hero Header -->
+            <div class="kb-header">
+                <div class="kb-header-left">
+                    <div class="kb-header-icon">🔬</div>
+                    <div>
+                        <h1 class="kb-title"><?php esc_html_e( 'SonoAI Settings', 'sonoai' ); ?></h1>
+                        <p class="kb-subtitle"><?php esc_html_e( 'AI-powered chat for the ultrasound & sonography niche.', 'sonoai' ); ?></p>
+                    </div>
+                </div>
+                <div class="kb-header-right">
+                    <button type="button" id="kb-theme-toggle" class="kb-theme-btn" title="Toggle dark / light mode">
+                        <span class="kb-icon-dark">🌙</span>
+                        <span class="kb-icon-light">☀️</span>
+                    </button>
+                </div>
             </div>
 
             <?php if ( isset( $_GET['settings-updated'] ) ) : ?>
-                <div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Settings saved successfully.', 'sonoai' ); ?></p></div>
+                <div class="notice notice-success is-dismissible" style="margin-top:20px;"><p><?php esc_html_e( 'Settings saved successfully.', 'sonoai' ); ?></p></div>
             <?php endif; ?>
 
-            <form method="post" action="options.php">
+            <form method="post" action="options.php" style="margin-top: 30px;">
                 <?php settings_fields( 'sonoai_settings_group' ); ?>
                 <input type="hidden" name="sonoai_settings[_page]" value="main_settings">
 
-                <div class="sonoai-card-grid">
-
-                    <!-- API config moved to SonoAI → API Configuration sub-menu -->
+                <div class="kb-card-grid">
 
                     <!-- System Prompt -->
-                    <div class="sonoai-card">
-                        <h2><?php esc_html_e( 'System Prompt', 'sonoai' ); ?></h2>
-                        <p class="description"><?php esc_html_e( 'The domain-specific context injected before every conversation. Tailor this to your sonography use case.', 'sonoai' ); ?></p>
-                        <textarea name="sonoai_settings[system_prompt]" rows="8" class="large-text"><?php echo esc_textarea( sonoai_option( 'system_prompt', $default_prompt ) ); ?></textarea>
+                    <div class="kb-card kb-card-full">
+                        <div class="kb-tab-header">
+                            <h2><?php esc_html_e( 'System Prompt', 'sonoai' ); ?></h2>
+                        </div>
+                        <p class="kb-desc"><?php esc_html_e( 'The domain-specific context injected before every conversation.', 'sonoai' ); ?></p>
+                        <textarea name="sonoai_settings[system_prompt]" rows="10" class="large-text" style="font-family: monospace; font-size: 13px !important; margin-top: 15px;"><?php echo esc_textarea( sonoai_option( 'system_prompt', $default_prompt ) ); ?></textarea>
                     </div>
 
                     <!-- Knowledge Base -->
-                    <div class="sonoai-card">
-                        <h2><?php esc_html_e( 'Knowledge Base (RAG)', 'sonoai' ); ?></h2>
-                        <table class="form-table">
-                            <tr>
-                                <th><?php esc_html_e( 'RAG Context Results', 'sonoai' ); ?></th>
-                                <td>
-                                    <input type="number" name="sonoai_settings[rag_results]" value="<?php echo esc_attr( $opts['rag_results'] ?? 5 ); ?>" min="1" max="20" class="small-text">
-                                    <p class="description"><?php esc_html_e( 'Number of knowledge chunks to inject per query (1–20).', 'sonoai' ); ?></p>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th><?php esc_html_e( 'Min Similarity Threshold', 'sonoai' ); ?></th>
-                                <td>
-                                    <input type="number" name="sonoai_settings[rag_min_similarity]" value="<?php echo esc_attr( $opts['rag_min_similarity'] ?? 0.70 ); ?>" min="0" max="1" step="0.01" class="small-text">
-                                    <p class="description"><?php esc_html_e( 'Minimum relevance score (0.00 to 1.00). Recommended: 0.70. Lower values include more noise; higher values may cause "Missing Knowledge" fallbacks.', 'sonoai' ); ?></p>
-                                </td>
-                            </tr>
-                        </table>
+                    <div class="kb-card">
+                        <div class="kb-tab-header">
+                            <h2><?php esc_html_e( 'Knowledge Base (RAG)', 'sonoai' ); ?></h2>
+                        </div>
+                        
+                        <div class="kb-form-grid">
+                            <label class="kb-label"><?php esc_html_e( 'RAG Context Results', 'sonoai' ); ?></label>
+                            <div>
+                                <input type="number" name="sonoai_settings[rag_results]" value="<?php echo esc_attr( $opts['rag_results'] ?? 5 ); ?>" min="1" max="20">
+                                <p class="kb-desc"><?php esc_html_e( 'Number of knowledge chunks to inject per query (1–20).', 'sonoai' ); ?></p>
+                            </div>
+                        </div>
+
+                        <div class="kb-form-grid">
+                            <label class="kb-label"><?php esc_html_e( 'Min Similarity Threshold', 'sonoai' ); ?></label>
+                            <div>
+                                <input type="number" name="sonoai_settings[rag_min_similarity]" value="<?php echo esc_attr( $opts['rag_min_similarity'] ?? 0.47 ); ?>" min="0" max="1" step="0.01">
+                                <p class="kb-desc"><?php esc_html_e( 'Minimum relevance score. Recommended: 0.47.', 'sonoai' ); ?></p>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Chat History -->
-                    <div class="sonoai-card">
-                        <h2><?php esc_html_e( 'Chat History', 'sonoai' ); ?></h2>
-                        <table class="form-table">
-                            <tr>
-                                <th><?php esc_html_e( 'History Limit', 'sonoai' ); ?></th>
-                                <td>
-                                    <input type="number" name="sonoai_settings[history_limit]" value="<?php echo esc_attr( $opts['history_limit'] ?? 50 ); ?>" min="1" max="500" class="small-text">
-                                    <p class="description"><?php esc_html_e( 'Maximum number of chat sessions stored per user. Oldest sessions are auto-deleted when the limit is exceeded.', 'sonoai' ); ?></p>
-                                </td>
-                            </tr>
-                        </table>
+                    <div class="kb-card">
+                        <div class="kb-tab-header">
+                            <h2><?php esc_html_e( 'Chat History', 'sonoai' ); ?></h2>
+                        </div>
+                        <div class="kb-form-grid">
+                            <label class="kb-label"><?php esc_html_e( 'History Limit', 'sonoai' ); ?></label>
+                            <div>
+                                <input type="number" name="sonoai_settings[history_limit]" value="<?php echo esc_attr( $opts['history_limit'] ?? 50 ); ?>" min="1" max="500">
+                                <p class="kb-desc"><?php esc_html_e( 'Maximum number of chat sessions stored per user.', 'sonoai' ); ?></p>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Danger Zone -->
-                    <div class="sonoai-card">
-                        <h2><?php esc_html_e( 'Danger Zone', 'sonoai' ); ?></h2>
-                        <table class="form-table">
-                            <tr>
-                                <th><?php esc_html_e( 'Delete Data on Uninstall', 'sonoai' ); ?></th>
-                                <td>
-                                    <label>
-                                        <input type="checkbox" name="sonoai_settings[delete_on_uninstall]" value="1" <?php checked( $opts['delete_on_uninstall'] ?? '0', '1' ); ?>>
-                                        <?php esc_html_e( 'Delete all plugin data (settings, chat history, and embedded vectors) when deleting the plugin.', 'sonoai' ); ?>
-                                    </label>
-                                    <p class="description" style="color:#d63638;"><?php esc_html_e( 'Warning: If this is checked, deleting the plugin from the WordPress admin will permanently erase all SonoAI database tables and settings.', 'sonoai' ); ?></p>
-                                </td>
-                            </tr>
-                        </table>
+                    <div class="kb-card kb-card-full">
+                        <div class="kb-tab-header">
+                            <h2 style="color:#ef4444 !important;"><?php esc_html_e( 'Danger Zone', 'sonoai' ); ?></h2>
+                        </div>
+                        <div class="kb-form-grid">
+                            <label class="kb-label"><?php esc_html_e( 'Delete Data on Uninstall', 'sonoai' ); ?></label>
+                            <div>
+                                <label class="kb-switch">
+                                    <input type="checkbox" name="sonoai_settings[delete_on_uninstall]" value="1" <?php checked( $opts['delete_on_uninstall'] ?? '0', '1' ); ?>>
+                                    <span class="kb-switch-slider"></span>
+                                    <span class="kb-switch-label"><?php esc_html_e( 'Purge all data when plugin is deleted', 'sonoai' ); ?></span>
+                                </label>
+                                <p class="kb-desc" style="color:#ef4444 !important; opacity:0.8;"><?php esc_html_e( 'Warning: Permanently erases settings, history, and vectors.', 'sonoai' ); ?></p>
+                            </div>
+                        </div>
                     </div>
 
-                </div><!-- .sonoai-card-grid -->
+                </div><!-- .kb-card-grid -->
 
-                <?php submit_button( __( 'Save Settings', 'sonoai' ) ); ?>
+                <div style="display: flex; justify-content: flex-end;">
+                    <?php submit_button( __( 'Save All Settings', 'sonoai' ), 'primary kb-btn-primary', 'submit', false ); ?>
+                </div>
             </form>
         </div>
         <?php

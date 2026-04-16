@@ -72,6 +72,7 @@ class KnowledgeBase {
                 'addUrl'     => wp_create_nonce( 'sonoai_kb_add_url' ),
                 'addImg'     => wp_create_nonce( 'sonoai_kb_add_img' ),
                 'addJsonl'   => wp_create_nonce( 'sonoai_kb_add_jsonl' ),
+                'addTxt'     => wp_create_nonce( 'sonoai_kb_add_txt' ),
                 'editTxt'    => wp_create_nonce( 'sonoai_kb_edit_txt' ),
                 'deleteItem' => wp_create_nonce( 'sonoai_kb_delete_item' ),
                 'getPosts'   => wp_create_nonce( 'sonoai_kb_get_posts' ),
@@ -193,6 +194,7 @@ class KnowledgeBase {
                     'url'      => [ 'icon' => '🌐', 'label' => sprintf( __( 'Website URL (%d)', 'sonoai' ), $stats['url'] ) ],
                     'jsonl'    => [ 'icon' => '📦', 'label' => __( 'JSONL Import', 'sonoai' ) . ' (Beta)' ],
                     'txt'      => [ 'icon' => '✏️', 'label' => sprintf( __( 'Custom Text (%d)', 'sonoai' ), $stats['txt'] ) ],
+                    'topics'   => [ 'icon' => '🏷️', 'label' => __( 'Topics', 'sonoai' ) ],
                     'media'    => [ 'icon' => '🖼', 'label' => __( 'Media', 'sonoai' ) ],
                 ];
                 foreach ( $tabs as $slug => $meta ) :
@@ -231,6 +233,9 @@ class KnowledgeBase {
 
                 <?php elseif ( $tab === 'media' ) : ?>
                     <?php $this->render_media_tab(); ?>
+
+                <?php elseif ( $tab === 'topics' ) : ?>
+                    <?php TopicsAdmin::instance()->render( true ); ?>
 
                 <?php endif; ?>
 

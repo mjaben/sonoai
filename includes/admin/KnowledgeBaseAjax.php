@@ -52,9 +52,13 @@ class KnowledgeBaseAjax {
 
     private function check( string $nonce_action ): void {
         if ( ! SecurityHelper::check_admin_caps() ) {
+            error_log( sprintf( '[SonoAI KB] Unauthorized access attempt by user %d for action: %s', get_current_user_id(), $nonce_action ) );
             wp_send_json_error( [ 'message' => __( 'Unauthorized.', 'sonoai' ) ], 403 );
         }
-        check_ajax_referer( $nonce_action, 'security' ); // Correcting the nonce key to match JS (security)
+        if ( ! check_ajax_referer( $nonce_action, 'security', false ) ) {
+            error_log( sprintf( '[SonoAI KB] Nonce verification failed for action: %s. User: %d', $nonce_action, get_current_user_id() ) );
+            wp_send_json_error( [ 'message' => __( 'Forbidden: Security check failed.', 'sonoai' ) ], 403 );
+        }
     }
 
     private function kb_table(): string {
@@ -572,6 +576,7 @@ class KnowledgeBaseAjax {
         ] );
 
         if ( is_wp_error( $result ) ) {
+            error_log( sprintf( '[SonoAI KB] Add Txt failed for user %d: %s', get_current_user_id(), $result->get_error_message() ) );
             wp_send_json_error( [ 'message' => $result->get_error_message() ] );
         }
 

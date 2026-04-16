@@ -104,25 +104,21 @@ class ApiConfig {
     // ── Assets ────────────────────────────────────────────────────────────────
 
     public function enqueue_assets( string $hook ): void {
-        // Use strpos to handle any WordPress hook name variation for sub-menu pages.
         if ( false === strpos( $hook, 'sonoai-api-config' ) ) {
             return;
         }
-        wp_enqueue_style(
-            'sonoai-api-config',
-            SONOAI_URL . 'assets/css/api-config.css',
-            [],
-            SONOAI_VERSION
-        );
-        wp_enqueue_script(
-            'sonoai-api-config',
-            SONOAI_URL . 'assets/js/api-config.js',
-            [ 'jquery' ],
-            SONOAI_VERSION,
-            true
-        );
-        wp_localize_script( 'sonoai-api-config', 'sonoai_vars', [
-            'nonce' => wp_create_nonce( 'sonoai_kb_sync_redis' ),
+
+        wp_enqueue_style( 'sonoai-kb', SONOAI_URL . 'assets/css/kb.css', [], SONOAI_VERSION );
+        wp_enqueue_script( 'sonoai-kb', SONOAI_URL . 'assets/js/kb.js', [ 'jquery' ], SONOAI_VERSION, true );
+
+        wp_localize_script( 'sonoai-kb', 'sonoaiKB', [
+            'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+            'nonces'  => [
+                'syncRedis' => wp_create_nonce( 'sonoai_kb_sync_redis' ),
+            ],
+            // Add provider context for Re-index tooltips
+            'currentProvider' => sonoai_option( 'active_provider', 'openai' ),
+            'currentModel'    => sonoai_option( sonoai_option( 'active_provider', 'openai' ) . '_embedding_model', '' ),
         ] );
     }
 
@@ -208,111 +204,103 @@ class ApiConfig {
             'mistral'   => $opts['mistral_embedding_model'] ?? 'mistral-embed',
         ];
         ?>
-        <div class="sac-wrap" id="sonoai-api-config-page">
+        <div class="kb-wrap" id="kb-api-config-page">
 
             <!-- ── Hero Header ─────────────────────────────────────────── -->
-            <div class="sac-header">
-                <div class="sac-header-left">
-                    <div class="sac-header-icon">⚙</div>
+            <div class="kb-header">
+                <div class="kb-header-left">
+                    <div class="kb-header-icon">⚙️</div>
                     <div>
-                        <h1 class="sac-title"><?php esc_html_e( 'API Configuration', 'sonoai' ); ?></h1>
-                        <p class="sac-subtitle"><?php esc_html_e( 'Configure your AI provider to enable SonoAI features.', 'sonoai' ); ?></p>
+                        <h1 class="kb-title"><?php esc_html_e( 'API Configuration', 'sonoai' ); ?></h1>
+                        <p class="kb-subtitle"><?php esc_html_e( 'Configure your AI provider to enable SonoAI features.', 'sonoai' ); ?></p>
                     </div>
                 </div>
-                <div class="sac-header-right">
-                    <div class="sac-status-badge <?php echo $active_key_set ? 'sac-status-connected' : 'sac-status-missing'; ?>">
-                        <span class="sac-status-dot"></span>
+                <div class="kb-header-right">
+                    <div class="kb-status-badge <?php echo $active_key_set ? 'kb-status-connected' : 'kb-status-missing'; ?>">
+                        <span class="kb-status-dot"></span>
                         <?php echo $active_key_set
                             ? esc_html__( 'Connected', 'sonoai' )
                             : esc_html__( 'Not Configured', 'sonoai' ); ?>
                     </div>
-                    <button type="button" id="sac-theme-toggle" class="sac-theme-btn" title="Toggle dark / light mode">
-                        <span class="sac-icon-dark">🌙</span>
-                        <span class="sac-icon-light">☀️</span>
+                    <button type="button" id="kb-theme-toggle" class="kb-theme-btn" title="Toggle dark / light mode">
+                        <span class="kb-icon-dark">🌙</span>
+                        <span class="kb-icon-light">☀️</span>
                     </button>
                 </div>
             </div>
 
             <?php if ( isset( $_GET['settings-updated'] ) ) : ?>
-                <div class="sac-notice sac-notice-success">
-                    <span>✓</span> <?php esc_html_e( 'API settings saved successfully.', 'sonoai' ); ?>
+                <div class="notice notice-success is-dismissible" style="margin-top:20px;">
+                    <p><?php esc_html_e( 'API settings saved successfully.', 'sonoai' ); ?></p>
                 </div>
             <?php endif; ?>
 
-            <form method="post" action="options.php" id="sac-form">
+            <form method="post" action="options.php" id="kb-api-form" style="margin-top: 30px;">
                 <?php settings_fields( 'sonoai_api_config_group' ); ?>
                 <input type="hidden" name="sonoai_settings[_page]" value="api_config">
 
-                <div class="sac-card">
-
-                    <!-- ── AI Provider ──────────────────────────────────── -->
-                    <div class="sac-field-group">
-                        <label class="sac-label" for="sac-provider-select">
-                            <?php esc_html_e( 'AI Provider', 'sonoai' ); ?>
-                        </label>
-                        <div class="sac-control">
-                            <div class="sac-select-wrap">
-                                <select id="sac-provider-select" name="sonoai_settings[active_provider]" class="sac-select">
-                                    <?php foreach ( $providers as $slug => $meta ) : ?>
-                                        <option value="<?php echo esc_attr( $slug ); ?>"
-                                            <?php selected( $provider, $slug ); ?>
-                                            data-color="<?php echo esc_attr( $meta['color'] ); ?>"
-                                            data-doc="<?php echo esc_url( $meta['doc_url'] ); ?>">
-                                            <?php echo esc_html( $meta['logo'] . '  ' . $meta['label'] ); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <p class="sac-desc"><?php esc_html_e( 'Choose which AI provider to use for chat and embeddings.', 'sonoai' ); ?></p>
-                        </div>
+                <div class="kb-card">
+                    <div class="kb-tab-header">
+                        <h2><?php esc_html_e( 'Provider Settings', 'sonoai' ); ?></h2>
                     </div>
 
-                    <div class="sac-divider"></div>
+                    <!-- ── AI Provider ──────────────────────────────────── -->
+                    <div class="kb-form-grid">
+                        <label class="kb-label" for="kb-provider-select">
+                            <?php esc_html_e( 'AI Provider', 'sonoai' ); ?>
+                        </label>
+                        <div>
+                            <select id="kb-provider-select" name="sonoai_settings[active_provider]">
+                                <?php foreach ( $providers as $slug => $meta ) : ?>
+                                    <option value="<?php echo esc_attr( $slug ); ?>"
+                                        <?php selected( $provider, $slug ); ?>
+                                        data-color="<?php echo esc_attr( $meta['color'] ); ?>"
+                                        data-doc="<?php echo esc_url( $meta['doc_url'] ); ?>">
+                                        <?php echo esc_html( $meta['logo'] . '  ' . $meta['label'] ); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <p class="kb-desc"><?php esc_html_e( 'Choose which AI provider to use for chat and embeddings.', 'sonoai' ); ?></p>
+                        </div>
+                    </div>
 
                     <!-- ── API Keys (one per provider, shown/hidden via JS) ─ -->
                     <?php foreach ( $providers as $slug => $meta ) :
                         $pkey   = $keys[ $slug ];
                         $is_set = ! empty( $pkey );
                         ?>
-                        <div class="sac-field-group sac-key-group"
+                        <div class="kb-form-grid kb-key-group"
                              data-provider="<?php echo esc_attr( $slug ); ?>"
                              style="<?php echo $provider !== $slug ? 'display:none;' : ''; ?>">
-                            <label class="sac-label" for="sac-key-<?php echo esc_attr( $slug ); ?>">
+                            <label class="kb-label" for="kb-key-<?php echo esc_attr( $slug ); ?>">
                                 <?php echo esc_html( $meta['label'] ); ?> <?php esc_html_e( 'API Key', 'sonoai' ); ?>
                                 <?php if ( $is_set ) : ?>
-                                    <span class="sac-badge sac-badge-ok">✓ <?php esc_html_e( 'Key Configured', 'sonoai' ); ?></span>
+                                    <span class="kb-status-badge kb-status-connected" style="zoom: 0.8; margin-left:10px;">✓ <?php esc_html_e( 'Configured', 'sonoai' ); ?></span>
                                 <?php else : ?>
-                                    <span class="sac-badge sac-badge-missing"><?php esc_html_e( 'Not Set', 'sonoai' ); ?></span>
+                                    <span class="kb-status-badge kb-status-missing" style="zoom: 0.8; margin-left:10px;"><?php esc_html_e( 'Not Set', 'sonoai' ); ?></span>
                                 <?php endif; ?>
                             </label>
-                            <div class="sac-control">
-                                <div class="sac-input-wrap">
+                            <div>
+                                <div class="kb-input-wrap">
                                     <input
                                         type="password"
-                                        id="sac-key-<?php echo esc_attr( $slug ); ?>"
+                                        id="kb-key-<?php echo esc_attr( $slug ); ?>"
                                         name="sonoai_settings[<?php echo esc_attr( $slug ); ?>_api_key]"
                                         value=""
+                                        data-key="<?php echo esc_attr( $pkey ); ?>"
                                         placeholder="<?php echo $is_set
                                             ? esc_attr( $mask( $pkey ) )
                                             : esc_attr__( 'Enter API key…', 'sonoai' ); ?>"
                                         autocomplete="new-password"
-                                        class="sac-input"
                                     >
-                                    <button type="button" class="sac-eye-btn" data-target="sac-key-<?php echo esc_attr( $slug ); ?>" title="<?php esc_attr_e( 'Show / hide key', 'sonoai' ); ?>">
-                                        <svg class="sac-eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                            <circle cx="12" cy="12" r="3"/>
-                                        </svg>
-                                        <svg class="sac-eye-off-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;">
-                                            <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/>
-                                            <line x1="1" y1="1" x2="23" y2="23"/>
-                                        </svg>
+                                    <button type="button" class="kb-eye-btn" data-target="kb-key-<?php echo esc_attr( $slug ); ?>" title="<?php esc_attr_e( 'Show / hide key', 'sonoai' ); ?>">
+                                        👁️
                                     </button>
                                 </div>
-                                <p class="sac-desc">
+                                <p class="kb-desc">
                                     <?php esc_html_e( 'Leave blank to keep the existing key. Enter a new key to replace it.', 'sonoai' ); ?>
                                 </p>
-                                <a href="<?php echo esc_url( $meta['doc_url'] ); ?>" target="_blank" rel="noopener" class="sac-key-link">
+                                <a href="<?php echo esc_url( $meta['doc_url'] ); ?>" target="_blank" rel="noopener" class="kb-source-link" style="font-size: 12px; margin-top:8px; display:inline-block;">
                                     <?php /* translators: %s = provider name */ ?>
                                     <?php printf( esc_html__( 'Get your %s API key →', 'sonoai' ), esc_html( $meta['label'] ) ); ?>
                                 </a>
@@ -320,144 +308,125 @@ class ApiConfig {
                         </div>
                     <?php endforeach; ?>
 
-                    <div class="sac-divider"></div>
-
                     <!-- ── Chat Model ──────────────────────────────────── -->
-                    <div class="sac-field-group">
-                        <label class="sac-label" for="sac-chat-model">
+                    <div class="kb-form-grid">
+                        <label class="kb-label" for="kb-chat-model">
                             <?php esc_html_e( 'AI Chat Model', 'sonoai' ); ?>
                         </label>
-                        <div class="sac-control">
+                        <div>
                             <?php foreach ( $chat_models as $p_slug => $models ) : ?>
-                                <div class="sac-model-group sac-chat-model-group"
+                                <div class="kb-model-group kb-chat-model-group"
                                      data-provider="<?php echo esc_attr( $p_slug ); ?>"
                                      style="<?php echo $provider !== $p_slug ? 'display:none;' : ''; ?>">
-                                    <div class="sac-select-wrap">
-                                        <select id="sac-chat-model" name="sonoai_settings[<?php echo esc_attr( $p_slug ); ?>_chat_model]" class="sac-select">
+                                    <select id="kb-chat-model" name="sonoai_settings[<?php echo esc_attr( $p_slug ); ?>_chat_model]">
+                                        <?php foreach ( $models as $m ) : ?>
+                                            <option value="<?php echo esc_attr( $m ); ?>" <?php selected( $saved_chat[ $p_slug ], $m ); ?>>
+                                                <?php echo esc_html( $m ); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                            <?php endforeach; ?>
+                            <p class="kb-desc"><?php esc_html_e( 'Select the chat model to use for AI responses.', 'sonoai' ); ?></p>
+                        </div>
+                    </div>
+
+                    <!-- ── Embedding Model ─────────────────────────────── -->
+                    <div class="kb-form-grid">
+                        <label class="kb-label" for="kb-embed-model">
+                            <?php esc_html_e( 'AI Embedding Model', 'sonoai' ); ?>
+                        </label>
+                        <div>
+                            <?php foreach ( $embed_models as $p_slug => $models ) :
+                                $has_embed = ! empty( $models );
+                                ?>
+                                <div class="kb-model-group kb-embed-model-group"
+                                     data-provider="<?php echo esc_attr( $p_slug ); ?>"
+                                     style="<?php echo $provider !== $p_slug ? 'display:none;' : ''; ?>">
+                                    <?php if ( $has_embed ) : ?>
+                                        <select name="sonoai_settings[<?php echo esc_attr( $p_slug ); ?>_embedding_model]">
                                             <?php foreach ( $models as $m ) : ?>
-                                                <option value="<?php echo esc_attr( $m ); ?>" <?php selected( $saved_chat[ $p_slug ], $m ); ?>>
+                                                <option value="<?php echo esc_attr( $m ); ?>" <?php selected( $saved_embed[ $p_slug ], $m ); ?>>
                                                     <?php echo esc_html( $m ); ?>
                                                 </option>
                                             <?php endforeach; ?>
                                         </select>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
-                            <p class="sac-desc"><?php esc_html_e( 'Select the chat model to use for AI responses.', 'sonoai' ); ?></p>
-                        </div>
-                    </div>
-
-                    <div class="sac-divider"></div>
-
-                    <!-- ── Embedding Model ─────────────────────────────── -->
-                    <div class="sac-field-group">
-                        <label class="sac-label" for="sac-embed-model">
-                            <?php esc_html_e( 'AI Embedding Model', 'sonoai' ); ?>
-                        </label>
-                        <div class="sac-control">
-                            <?php foreach ( $embed_models as $p_slug => $models ) :
-                                $has_embed = ! empty( $models );
-                                ?>
-                                <div class="sac-model-group sac-embed-model-group"
-                                     data-provider="<?php echo esc_attr( $p_slug ); ?>"
-                                     style="<?php echo $provider !== $p_slug ? 'display:none;' : ''; ?>">
-                                    <?php if ( $has_embed ) : ?>
-                                        <div class="sac-select-wrap">
-                                            <select name="sonoai_settings[<?php echo esc_attr( $p_slug ); ?>_embedding_model]" class="sac-select">
-                                                <?php foreach ( $models as $m ) : ?>
-                                                    <option value="<?php echo esc_attr( $m ); ?>" <?php selected( $saved_embed[ $p_slug ], $m ); ?>>
-                                                        <?php echo esc_html( $m ); ?>
-                                                    </option>
-                                                <?php endforeach; ?>
-                                            </select>
-                                        </div>
                                     <?php else : ?>
-                                        <div class="sac-notice-inline">
-                                            <span>ℹ</span>
-                                            <?php esc_html_e( 'Anthropic does not offer a native embedding API. SonoAI will use your OpenAI key for embeddings. Please ensure an OpenAI API key is also configured.', 'sonoai' ); ?>
+                                        <div class="notice notice-info inline" style="margin:0;">
+                                            <p style="font-size:12px;"><?php esc_html_e( 'Anthropic does not offer a native embedding API. SonoAI will use your OpenAI key for embeddings. Please ensure an OpenAI API key is also configured.', 'sonoai' ); ?></p>
                                         </div>
                                     <?php endif; ?>
                                 </div>
                             <?php endforeach; ?>
-                            <p class="sac-desc"><?php esc_html_e( 'Used to generate vector embeddings for the RAG knowledge base.', 'sonoai' ); ?></p>
+                            <p class="kb-desc"><?php esc_html_e( 'Used to generate vector embeddings for the RAG knowledge base.', 'sonoai' ); ?></p>
                         </div>
                     </div>
 
-                    <div class="sac-divider"></div>
-
                     <!-- ── Redis Configuration ─────────────────────────── -->
-                    <div class="sac-field-group">
-                        <label class="sac-label">
+                    <div class="kb-form-grid">
+                        <label class="kb-label">
                             <?php esc_html_e( 'Redis Vector Cache', 'sonoai' ); ?>
                             <?php if ( RedisManager::instance()->is_active() ) : ?>
-                                <span class="sac-badge sac-badge-ok">✓ <?php esc_html_e( 'Active', 'sonoai' ); ?></span>
+                                <span class="kb-status-badge kb-status-connected" style="zoom: 0.8; margin-left:10px;">✓ <?php esc_html_e( 'Active', 'sonoai' ); ?></span>
                             <?php else : ?>
-                                <span class="sac-badge sac-badge-missing"><?php esc_html_e( 'Inactive', 'sonoai' ); ?></span>
+                                <span class="kb-status-badge kb-status-missing" style="zoom: 0.8; margin-left:10px;"><?php esc_html_e( 'Inactive', 'sonoai' ); ?></span>
                             <?php endif; ?>
                         </label>
-                        <div class="sac-control">
-                            <label class="sac-switch-wrap">
+                        <div>
+                            <label class="kb-switch">
                                 <input type="checkbox" name="sonoai_settings[redis_enabled]" value="1" <?php checked( $opts['redis_enabled'] ?? false ); ?>>
-                                <span class="sac-switch-slider"></span>
-                                <span class="sac-switch-label"><?php esc_html_e( 'Enable Redis for High-Performance RAG & Memory', 'sonoai' ); ?></span>
+                                <span class="kb-switch-slider"></span>
+                                <span class="kb-switch-label"><?php esc_html_e( 'Enable Redis for High-Performance RAG & Memory', 'sonoai' ); ?></span>
                             </label>
                             
-                            <div class="sac-redis-details" style="margin-top: 15px; display: <?php echo ( $opts['redis_enabled'] ?? false ) ? 'block' : 'none'; ?>;">
+                            <div class="kb-redis-details" style="display: <?php echo ( $opts['redis_enabled'] ?? false ) ? 'block' : 'none'; ?>;">
                                 <div style="display: flex; gap: 10px; margin-bottom: 10px;">
                                     <div style="flex: 2;">
-                                        <label style="font-size: 11px; text-transform: uppercase; color: #888;"><?php esc_html_e( 'Host', 'sonoai' ); ?></label>
-                                        <input type="text" name="sonoai_settings[redis_host]" value="<?php echo esc_attr( $opts['redis_host'] ?? '127.0.0.1' ); ?>" class="sac-input-sm" placeholder="127.0.0.1">
+                                        <label class="kb-label" style="font-size: 11px;"><?php esc_html_e( 'Host', 'sonoai' ); ?></label>
+                                        <input type="text" name="sonoai_settings[redis_host]" value="<?php echo esc_attr( $opts['redis_host'] ?? '127.0.0.1' ); ?>" placeholder="127.0.0.1">
                                     </div>
                                     <div style="flex: 1;">
-                                        <label style="font-size: 11px; text-transform: uppercase; color: #888;"><?php esc_html_e( 'Port', 'sonoai' ); ?></label>
-                                        <input type="number" name="sonoai_settings[redis_port]" value="<?php echo esc_attr( $opts['redis_port'] ?? 6379 ); ?>" class="sac-input-sm" placeholder="6379">
+                                        <label class="kb-label" style="font-size: 11px;"><?php esc_html_e( 'Port', 'sonoai' ); ?></label>
+                                        <input type="number" name="sonoai_settings[redis_port]" value="<?php echo esc_attr( $opts['redis_port'] ?? 6379 ); ?>" placeholder="6379">
                                     </div>
                                 </div>
-                                <div style="margin-bottom: 10px;">
-                                    <label style="font-size: 11px; text-transform: uppercase; color: #888;"><?php esc_html_e( 'Password (Optional)', 'sonoai' ); ?></label>
-                                    <input type="password" name="sonoai_settings[redis_password]" value="" class="sac-input-sm" placeholder="<?php echo !empty($opts['redis_password']) ? '••••••••' : 'No password'; ?>">
-                                </div>
-                                <div class="sac-notice-inline" style="background: rgba(0,0,0,0.05); margin-bottom: 15px;">
-                                    <span>ℹ</span>
-                                    <?php esc_html_e( 'Use Redis for sub-millisecond retrieval. If disabled, SonoAI will fall back to MySQL vector storage.', 'sonoai' ); ?>
+                                <div style="margin-bottom: 20px;">
+                                    <label class="kb-label" style="font-size: 11px;"><?php esc_html_e( 'Password (Optional)', 'sonoai' ); ?></label>
+                                    <input type="password" name="sonoai_settings[redis_password]" value="" placeholder="<?php echo !empty($opts['redis_password']) ? '••••••••' : 'No password'; ?>">
                                 </div>
 
-                                <div class="sac-redis-actions">
-                                    <button type="button" id="sac-redis-sync-btn" class="sac-btn-secondary" style="background: var(--sac-accent-dim); color: var(--sac-accent); border: 1px solid var(--sac-accent-dim); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 8px;">
-                                        <span class="sac-sync-icon">🔄</span>
-                                        <span class="sac-btn-text"><?php esc_html_e( 'Sync MySQL Vectors to Redis', 'sonoai' ); ?></span>
-                                        <span class="sac-spinner" style="display:none; border: 2px solid rgba(0,0,0,0.1); border-left-color: var(--sac-accent); border-radius: 50%; width: 14px; height: 14px; animation: sac-spin 0.8s linear infinite;"></span>
+                                <div class="kb-redis-actions">
+                                    <button type="button" id="kb-redis-sync-btn" class="kb-btn-secondary" style="background: rgba(37, 99, 235, 0.08); color: #2563eb; border: 1px solid rgba(37, 99, 235, 0.15); font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 8px;">
+                                        <span class="kb-btn-text"><?php esc_html_e( 'Sync MySQL Vectors to Redis', 'sonoai' ); ?></span>
+                                        <span class="kb-spinner" style="display:none; border: 2px solid rgba(37,99,235,0.1); border-left-color: #2563eb; border-radius: 50%; width: 14px; height: 14px; animation: kb-spin 0.8s linear infinite;"></span>
                                     </button>
-                                    <p class="description" style="margin-top: 8px; font-size: 11px;">
-                                        <?php esc_html_e( 'Click this after the first connection to push your existing Knowledge Base vectors into Redis for high-performance retrieval.', 'sonoai' ); ?>
+                                    <p class="kb-desc" style="margin-top: 10px;">
+                                        <?php esc_html_e( 'Sync your existing Knowledge Base vectors into Redis for high-performance retrieval.', 'sonoai' ); ?>
                                     </p>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                </div><!-- .sac-card -->
+                </div><!-- .kb-card -->
 
                 <!-- ── Quick Tips ──────────────────────────────────────── -->
-                <div class="sac-tips-card">
-                    <div class="sac-tips-icon">💡</div>
-                    <div>
-                        <strong><?php esc_html_e( 'Quick Tips', 'sonoai' ); ?></strong>
-                        <ul class="sac-tips-list">
-                            <li><?php esc_html_e( 'Your API key is stored securely in the WordPress database and is only accessible to users with administrator privileges.', 'sonoai' ); ?></li>
-                            <li><?php esc_html_e( 'Pick a chat model that fits your quality, speed, and cost needs.', 'sonoai' ); ?></li>
-                            <li><?php esc_html_e( 'Changes take effect immediately after saving.', 'sonoai' ); ?></li>
-                        </ul>
+                <div class="kb-card kb-card-full" style="background:#f0f9ff; border-left:4px solid #3b82f6; margin-top:20px;">
+                    <div style="display:flex; gap:12px; padding:20px;">
+                        <span style="font-size:20px;">💡</span>
+                        <div>
+                            <strong style="display:block; margin-bottom:5px; color:#1e40af;"><?php esc_html_e( 'Quick Tips', 'sonoai' ); ?></strong>
+                            <ul style="margin:0; padding-left:18px; font-size:12.5px; color:#374151; line-height:1.6;">
+                                <li><?php esc_html_e( 'API keys are stored securely and only accessible to administrators.', 'sonoai' ); ?></li>
+                                <li><?php esc_html_e( 'Each provider has unique chat and embedding model capabilities.', 'sonoai' ); ?></li>
+                                <li><?php esc_html_e( 'Changes take effect immediately across all SonoAI interfaces.', 'sonoai' ); ?></li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
 
-                <!-- ── Save Button ─────────────────────────────────────── -->
-                <div class="sac-footer">
-                    <?php submit_button( __( 'Save Settings', 'sonoai' ), 'primary', 'submit', false, [ 'id' => 'sac-save-btn', 'class' => 'sac-save-btn' ] ); ?>
-                </div>
-
             </form>
-        </div><!-- .sac-wrap -->
+        </div><!-- .kb-wrap -->
         <?php
     }
 }

@@ -273,7 +273,7 @@ class FeedbackAnalytics {
             </div>
 
             <!-- Panel Wrap -->
-            <div class="kb-panel-wrap" style="border-radius: 12px;">
+            <div class="kb-panel-wrap" style="border-radius: 12px; margin-top: 30px;">
                 <div class="kb-list-bar" style="border-bottom: 1px solid var(--kb-border); margin-bottom: 0; padding: 15px 20px;">
                     <h2 class="kb-section-title" style="margin:0; font-size: 1.1em;">📋 <?php esc_html_e( 'Feedback Log', 'sonoai' ); ?></h2>
                 </div>
@@ -283,17 +283,7 @@ class FeedbackAnalytics {
                 </form>
             </div>
 
-            <!-- SonoAI Lightbox Modal -->
-            <div id="kb-view-modal" class="kb-modal" style="display:none;">
-                <div class="kb-modal-inner" style="max-width: 600px;">
-                    <div class="kb-modal-header">
-                        <strong><?php esc_html_e( 'Feedback Comment', 'sonoai' ); ?></strong>
-                        <button type="button" class="kb-modal-close">✕</button>
-                    </div>
-                    <div id="kb-modal-body" class="kb-modal-body" style="white-space: pre-wrap; line-height: 1.6;"></div>
-                </div>
-            </div>
-        </div>
+        </div><!-- .kb-wrap -->
         <?php
     }
 }

@@ -41,6 +41,7 @@
         initTopicsTab();
         initRedisSync();
         initReindexAll();
+        initApiConfig(); // Unified API & Provider logic
     });
 
     /**
@@ -110,21 +111,24 @@
         });
     }
 
-    /**
-     * Manual Redis Sync Button
-     */
     function initRedisSync() {
         var btn = document.getElementById('kb-redis-sync');
+        // Handle both ID styles if necessary, but we are standardizing to kb-redis-sync
+        if (!btn) btn = document.getElementById('kb-redis-sync-btn'); 
         if (!btn) return;
 
         btn.addEventListener('click', function() {
-            if (!confirm('Are you sure you want to manually re-index all Knowledge Base items to Redis? This will clear and rebuild the vector cache.')) {
-                return;
-            }
+            var btnText  = btn.querySelector('.kb-btn-text');
+            var spinner  = btn.querySelector('.kb-spinner');
+            var oldText  = btnText ? btnText.innerText : btn.innerText;
 
-            btn.classList.add('syncing');
+            if (btn.disabled) return;
+            if (!confirm('Are you sure you want to rebuild the Redis index? This will push all current knowledge base items from MySQL into Redis.')) return;
+
             btn.disabled = true;
-
+            if (btnText) btnText.innerText = 'Syncing...';
+            if (spinner) spinner.style.display = 'block';
+            
             showToast('Starting Redis reconstruction...', 'info');
 
             var payload = {
@@ -141,8 +145,61 @@
             }).fail(function() {
                 showToast('Fatal error during synchronization.', 'error');
             }).always(function() {
-                btn.classList.remove('syncing');
                 btn.disabled = false;
+                if (btnText) btnText.innerText = oldText;
+                if (spinner) spinner.style.display = 'none';
+            });
+        });
+
+        // Redis Toggle Visibility
+        var redisToggle = document.querySelector('input[name="sonoai_settings[redis_enabled]"]');
+        var redisDetails = document.querySelector('.kb-redis-details');
+        if (redisToggle && redisDetails) {
+            redisToggle.addEventListener('change', function () {
+                redisDetails.style.display = this.checked ? 'block' : 'none';
+            });
+        }
+    }
+
+    /**
+     * Unified API & Provider switching
+     */
+    function initApiConfig() {
+        var provSel = document.getElementById('kb-provider-select');
+        if (!provSel) return;
+
+        function applyProvider(prov) {
+            document.querySelectorAll('.kb-key-group, .kb-chat-model-group, .kb-embed-model-group').forEach(function (el) {
+                el.style.display = (el.dataset.provider === prov) ? '' : 'none';
+            });
+        }
+
+        applyProvider(provSel.value);
+        provSel.addEventListener('change', function () {
+            applyProvider(this.value);
+        });
+
+        // Eye toggle — reveals the actual stored API key
+        document.querySelectorAll('.kb-eye-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var targetId = this.dataset.target;
+                var input    = document.getElementById(targetId);
+                if (!input) return;
+
+                var isHidden = (input.type === 'password');
+                var actualKey = input.dataset.key || '';
+
+                if (isHidden) {
+                    input.type = 'text';
+                    input.value = actualKey;
+                    input.placeholder = '';
+                    this.innerHTML = '👁️‍🗨️'; // Toggle icon representation
+                } else {
+                    input.type = 'password';
+                    input.value = '';
+                    input.placeholder = '••••••••••••';
+                    this.innerHTML = '👁️'; 
+                }
             });
         });
     }
@@ -678,10 +735,12 @@
                         if (res.success) {
                             location.reload();
                         } else {
+                            console.error('[SonoAI] KB Save Error:', res);
                             alert(res.data && res.data.message ? res.data.message : 'Error: ' + JSON.stringify(res));
                         }
                     },
                     error: function(xhr, status, error) {
+                        console.error('[SonoAI] KB AJAX Failure:', { status: status, error: error, response: xhr.responseText });
                         alert('Server error (' + status + '): ' + error);
                     },
                     complete: function() {
@@ -748,112 +807,147 @@
     }
 
     /**
-     * Tab: Topics Management
+     * Topics Management Tab Logic
      */
     function initTopicsTab() {
-        var modal = document.getElementById('kb-topic-modal');
-        if (!modal) return;
-
-        var form = document.getElementById('kb-topic-form');
         var addBtn = document.getElementById('kb-btn-add-topic');
+        var syncBtn = document.getElementById('kb-btn-sync-topics');
+        var modal = document.getElementById('kb-topic-modal');
+        var form = document.getElementById('kb-topic-form');
         var cancelBtn = document.getElementById('kb-topic-modal-cancel');
         var titleEl = document.getElementById('kb-topic-modal-title');
         var idField = document.getElementById('kb-topic-id');
         var nameField = document.getElementById('kb-topic-name');
 
+        if (!addBtn || !form) return;
+
         // Open Modal (Add)
-        if (addBtn) {
-            addBtn.addEventListener('click', function() {
-                idField.value = '';
-                nameField.value = '';
-                titleEl.textContent = 'Add Topic';
-                if (modal.showModal) {
-                    modal.showModal();
-                } else {
-                    openModal(modal);
-                }
-            });
-        }
+        addBtn.addEventListener('click', function() {
+            idField.value = '';
+            nameField.value = '';
+            titleEl.textContent = 'Add Topic';
+            openModal(modal);
+        });
 
         // Close Modal
         if (cancelBtn) {
             cancelBtn.addEventListener('click', function() {
-                if (modal.close) {
-                    modal.close();
-                } else {
-                    closeModal(modal);
-                }
+                closeModal(modal);
             });
         }
 
-        // Edit Button Click (Delegated)
+        // Edit Topic
         $(document).on('click', '.kb-edit-topic-btn', function() {
-            var id = this.dataset.id;
+            var tid = this.dataset.id;
             var name = this.dataset.name;
-            idField.value = id;
+            idField.value = tid;
             nameField.value = name;
             titleEl.textContent = 'Edit Topic';
-            if (modal.showModal) {
-                modal.showModal();
-            } else {
-                openModal(modal);
-            }
+            openModal(modal);
         });
 
-        // Form Submit (Add/Edit)
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            var id = idField.value;
-            var name = nameField.value;
-            var isEdit = !!id;
-            var action = isEdit ? 'sonoai_kb_edit_topic' : 'sonoai_kb_add_topic';
-            
-            var submitBtn = form.querySelector('button[type="submit"]');
-            var oldText = submitBtn.textContent;
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Processing...';
+        // Delete Topic
+        $(document).on('click', '.kb-delete-topic-btn', function() {
+            var tid = this.dataset.id;
+            if (!confirm('Are you sure you want to delete this topic? Content linked to this topic will be set to "No Topic".')) return;
 
             var payload = {
-                action: action,
+                action: 'sonoai_kb_delete_topic',
                 security: nonces.topics,
-                topic_id: id,
-                name: name
+                topic_id: tid
             };
 
             $.post(ajax, payload, function(res) {
                 if (res.success) {
                     location.reload();
                 } else {
-                    alert(res.data.message || 'Error occurred.');
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = oldText;
+                    showToast(res.data.message || 'Error deleting topic.', 'error');
                 }
-            }).fail(function() {
-                alert('Server error. Please try again.');
-                submitBtn.disabled = false;
-                submitBtn.textContent = oldText;
             });
         });
 
-        // Delete Button Click (Delegated)
-        $(document).on('click', '.kb-delete-topic-btn', function() {
-            var id = this.dataset.id;
-            var $row = $(this).closest('tr');
+        // Form Submit (Add/Edit)
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            var tid = idField.value;
+            var action = tid ? 'sonoai_kb_edit_topic' : 'sonoai_kb_add_topic';
+            
+            var payload = {
+                action: action,
+                security: nonces.topics,
+                topic_id: tid,
+                name: nameField.value.trim()
+            };
 
-            if (!confirm('Are you sure you want to delete this topic? KB items will be unassigned but NOT deleted.')) {
-                return;
-            }
-
-            $.post(ajax, { action: 'sonoai_kb_delete_topic', security: nonces.topics, topic_id: id }, function(res) {
+            $.post(ajax, payload, function(res) {
                 if (res.success) {
-                    $row.fadeOut(300, function() { $(this).remove(); });
+                    location.reload();
                 } else {
-                    alert(res.data.message || 'Deletion failed.');
+                    showToast(res.data.message || 'Error saving topic.', 'error');
                 }
             });
+        });
+
+        // Sync Topics from WP
+        if (syncBtn) {
+            syncBtn.addEventListener('click', function() {
+                if (!confirm('Sync topics from WordPress categories and tags?')) return;
+                
+                syncBtn.disabled = true;
+                showToast('Syncing topics from WordPress...', 'info');
+
+                var payload = {
+                    action: 'sonoai_kb_sync_topics',
+                    security: nonces.topics // We consolidated this to use the manage_topics nonce
+                };
+
+                $.post(ajax, payload, function(res) {
+                    if (res.success) {
+                        showToast(res.data.message || 'Sync successful!', 'success');
+                        setTimeout(function() { location.reload(); }, 1200);
+                    } else {
+                        showToast(res.data.message || 'Sync failed.', 'error');
+                        syncBtn.disabled = false;
+                    }
+                }).fail(function() {
+                    showToast('Fatal error during sync.', 'error');
+                    syncBtn.disabled = false;
+                });
+            });
+        }
+    }
+    /**
+     * Knowledge Base View Modal
+     */
+    function initViewModal() {
+        var modal = document.getElementById('kb-view-modal');
+        var body = document.getElementById('kb-modal-body');
+        var closeBtn = document.querySelector('.kb-modal-close');
+
+        if (!modal || !body) return;
+
+        $(document).on('click', '.kb-view-txt-btn', function() {
+            var content = this.dataset.content;
+            body.innerHTML = content;
+            openModal(modal);
+        });
+
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function() {
+                closeModal(modal);
+            });
+        }
+
+        // Close on escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeModal(modal);
+        });
+
+        // Close on background click
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) closeModal(modal);
         });
     }
-    function initViewModal() { /* Implementation... */ }
 
     // Helpers
     function escHtml(str) {
@@ -879,12 +973,20 @@
 
     function openModal(modal) {
         if (!modal) return;
-        modal.style.display = 'flex';
+        if (modal.tagName.toLowerCase() === 'dialog') {
+            modal.showModal();
+        } else {
+            modal.style.display = 'flex';
+        }
     }
 
     function closeModal(modal) {
         if (!modal) return;
-        modal.style.display = 'none';
+        if (modal.tagName.toLowerCase() === 'dialog') {
+            modal.close();
+        } else {
+            modal.style.display = 'none';
+        }
     }
 
 })(jQuery);

@@ -40,42 +40,46 @@ class TopicsAdmin {
         );
     }
 
-    /**
-     * Render the Topics Management page.
-     */
-    public function render(): void {
+    public function render( bool $is_tab = false ): void {
         if ( ! current_user_can( 'manage_options' ) ) {
             return;
         }
 
         $topics = Topics::get_all();
+        $wrap_class = $is_tab ? '' : 'wrap kb-wrap';
         ?>
-        <div class="wrap kb-wrap">
-            <!-- Header -->
-            <div class="kb-header">
-                <div class="kb-header-left">
-                    <div class="kb-header-icon">🏷️</div>
-                    <div>
-                        <h1 class="kb-title"><?php esc_html_e( 'Topics Management', 'sonoai' ); ?></h1>
-                        <p class="kb-subtitle"><?php esc_html_e( 'Organize and categorize your SonoAI knowledge base content.', 'sonoai' ); ?></p>
+        <div class="<?php echo esc_attr( $wrap_class ); ?>">
+            <?php if ( ! $is_tab ) : ?>
+                <!-- Header -->
+                <div class="kb-header">
+                    <div class="kb-header-left">
+                        <div class="kb-header-icon">🏷️</div>
+                        <div>
+                            <h1 class="kb-title"><?php esc_html_e( 'Topics Management', 'sonoai' ); ?></h1>
+                            <p class="kb-subtitle"><?php esc_html_e( 'Organize and categorize your SonoAI knowledge base content.', 'sonoai' ); ?></p>
+                        </div>
+                    </div>
+                    <div class="kb-header-right">
+                        <button type="button" id="kb-theme-toggle" class="kb-theme-btn" title="Toggle dark / light mode">
+                            <span class="kb-icon-dark">🌙</span>
+                            <span class="kb-icon-light">☀️</span>
+                        </button>
                     </div>
                 </div>
-                <div class="kb-header-right">
-                    <button type="button" id="kb-theme-toggle" class="kb-theme-btn" title="Toggle dark / light mode">
-                        <span class="kb-icon-dark">🌙</span>
-                        <span class="kb-icon-light">☀️</span>
-                    </button>
-                </div>
-            </div>
+            <?php endif; ?>
 
             <!-- Content Area -->
-            <div class="kb-panel-wrap">
+            <div class="kb-panel-wrap" style="<?php echo $is_tab ? 'border:none; background:transparent; padding:0;' : ''; ?>">
                 <div class="kb-tab-header">
                     <div>
                         <h2><?php esc_html_e( 'All Topics', 'sonoai' ); ?></h2>
                     </div>
                     <div>
-                        <button type="button" class="kb-btn kb-btn-primary" id="kb-btn-add-topic">
+                        <button type="button" class="kb-btn kb-btn-secondary" id="kb-btn-sync-topics">
+                            <img src="<?php echo esc_url( SONOAI_URL . 'assets/images/sync-icon.png' ); ?>" class="kb-sync-icon" alt="" style="width:14px; height:14px; vertical-align:middle; margin-right:5px;">
+                            <?php esc_html_e( 'Sync from WordPress', 'sonoai' ); ?>
+                        </button>
+                        <button type="button" class="kb-btn kb-btn-primary" id="kb-btn-add-topic" style="margin-left: 10px;">
                             + <?php esc_html_e( 'Add Topic', 'sonoai' ); ?>
                         </button>
                     </div>
