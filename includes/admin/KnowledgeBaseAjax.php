@@ -818,15 +818,25 @@ class KnowledgeBaseAjax {
         $label = sanitize_title( SecurityHelper::get_param( 'label', 'clinical-image' ) );
         
         // Filter to change the upload directory
-        $upload_dir_filter = function( $dirs ) {
+        $upload_dir_error = null;
+        $upload_dir_filter = function( $dirs ) use ( &$upload_dir_error ) {
             $custom_dir = 'sonoai-Clinical-img-lib/' . date( 'Y' ) . '/' . date( 'm' );
-            $dirs['path']    = $dirs['basedir'] . '/' . $custom_dir;
+            $target_path = $dirs['basedir'] . '/' . $custom_dir;
+            
+            if ( ! file_exists( $target_path ) ) {
+                if ( ! wp_mkdir_p( $target_path ) ) {
+                    $upload_dir_error = sprintf( __( 'Could not create directory: %s. Please check permissions.', 'sonoai' ), $custom_dir );
+                    return $dirs;
+                }
+            }
+
+            if ( ! is_writable( $target_path ) ) {
+                $upload_dir_error = sprintf( __( 'Directory not writable: %s', 'sonoai' ), $custom_dir );
+            }
+
+            $dirs['path']    = $target_path;
             $dirs['url']     = $dirs['baseurl'] . '/' . $custom_dir;
             $dirs['subdir']  = '/' . $custom_dir;
-
-            if ( ! file_exists( $dirs['path'] ) ) {
-                wp_mkdir_p( $dirs['path'] );
-            }
 
             return $dirs;
         };
@@ -834,7 +844,7 @@ class KnowledgeBaseAjax {
         // Filter to rename the file based on the clinical label
         $rename_filter = function( $file ) use ( $label ) {
             $ext  = pathinfo( $file['name'], PATHINFO_EXTENSION );
-            $file['name'] = $label . '.' . $ext;
+            $file['name'] = ( $label ?: 'clinical-image' ) . '.' . $ext;
             return $file;
         };
 
@@ -843,6 +853,14 @@ class KnowledgeBaseAjax {
 
         if ( ! function_exists( 'wp_handle_upload' ) ) {
             require_once ABSPATH . 'wp-admin/includes/file.php';
+        }
+
+        // Check for filter-level errors before proceeding
+        if ( $upload_dir_error ) {
+            remove_filter( 'upload_dir', $upload_dir_filter );
+            remove_filter( 'wp_handle_upload_prefilter', $rename_filter );
+            sonoai_log_error( 'Image Upload Dir Error: ' . $upload_dir_error );
+            wp_send_json_error( [ 'message' => $upload_dir_error ] );
         }
 
         $upload = wp_handle_upload( $_FILES['file'], [ 'test_form' => false ] );
