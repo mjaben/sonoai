@@ -239,6 +239,7 @@ class KnowledgeBaseAjax {
         $knowledge_id = Embedding::insert( (int) $post_id, $type, $plain_text, $image_urls, $mode, $topic_slug, $country, $source_title, $source_url );
         
         if ( is_wp_error( $knowledge_id ) ) {
+            error_log( sprintf( '[SonoAI KB] Embedding::insert failed for type %s, post_id %d: %s', $type, $post_id, $knowledge_id->get_error_message() ) );
             return $knowledge_id;
         }
 
@@ -850,8 +851,11 @@ class KnowledgeBaseAjax {
         remove_filter( 'wp_handle_upload_prefilter', $rename_filter );
 
         if ( isset( $upload['error'] ) ) {
+            error_log( '[SonoAI KB] Image upload failed: ' . $upload['error'] );
             wp_send_json_error( [ 'message' => $upload['error'] ] );
         }
+
+        error_log( sprintf( '[SonoAI KB] Image uploaded successfully. URL: %s, File: %s', $upload['url'], $upload['file'] ) );
 
         wp_send_json_success( [
             'url'  => $upload['url'],

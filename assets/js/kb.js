@@ -539,6 +539,12 @@
                         submitBtn.disabled = false;
                         submitBtn.textContent = 'Submit';
                     }
+                },
+                error: function(xhr, status, error) {
+                    console.error('[SonoAI] PDF Upload Failure:', { status: status, error: error, response: xhr.responseText });
+                    setNotice(notice, 'Fatal error during PDF upload.', 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Submit';
                 }
             });
         });
@@ -668,7 +674,7 @@
 
                     var fd = new FormData();
                     fd.append('action', 'sonoai_kb_upload_img');
-                    fd.append('nonce', nonces.uploadImg);
+                    fd.append('security', nonces.uploadImg);
                     fd.append('file', fileInp.files[0]);
                     fd.append('label', label);
 
@@ -687,6 +693,11 @@
                                 alert(res.data.message || 'Error');
                                 btn.textContent = 'Upload';
                             }
+                        },
+                        error: function(xhr, status, error) {
+                            console.error('[SonoAI] Image Upload Failure:', { status: status, error: error, response: xhr.responseText });
+                            alert('Upload failed: ' + (error || 'Server error'));
+                            btn.textContent = 'Upload';
                         },
                         complete: function() { btn.disabled = false; }
                     });
