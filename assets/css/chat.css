@@ -1486,6 +1486,30 @@ body.sonoai-fullscreen #sonoai-app {
     transition: background var(--sono-t), color var(--sono-t);
     line-height: 1;
     white-space: nowrap;
+    position: relative; /* Anchor for floating label */
+}
+
+#sonoai-app .sonoai-mode-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed !important;
+    pointer-events: none;
+}
+
+#sonoai-app .sonoai-coming-soon-label {
+    position: absolute;
+    top: -8px;
+    right: -4px;
+    background: #4a90e2;
+    color: #fff;
+    font-size: 8px;
+    font-weight: 800;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    pointer-events: none;
+    line-height: 1.2;
 }
 
 #sonoai-app .sonoai-mode-btn.active {

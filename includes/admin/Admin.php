@@ -64,7 +64,9 @@ class Admin {
         $clean['history_limit']       = max( 1, min( 500, absint( $input['history_limit'] ?? 50 ) ) );
         $clean['rag_results']         = max( 1, min( 20, absint( $input['rag_results'] ?? 5 ) ) );
         $clean['rag_min_similarity']  = max( 0, min( 100, (int) ( ( $input['rag_min_similarity'] ?? 0.70 ) * 100 ) ) ) / 100;
-        $clean['delete_on_uninstall'] = ! empty( $input['delete_on_uninstall'] ) ? '1' : '0';
+        $clean['delete_on_uninstall']  = ! empty( $input['delete_on_uninstall'] ) ? '1' : '0';
+        $clean['enable_guideline_mode'] = ! empty( $input['enable_guideline_mode'] ) ? '1' : '0';
+        $clean['enable_research_mode']  = ! empty( $input['enable_research_mode'] ) ? '1' : '0';
 
         return $clean;
     }
@@ -179,6 +181,37 @@ class Admin {
                             <div>
                                 <input type="number" name="sonoai_settings[history_limit]" value="<?php echo esc_attr( $opts['history_limit'] ?? 50 ); ?>" min="1" max="500">
                                 <p class="kb-desc"><?php esc_html_e( 'Maximum number of chat sessions stored per user.', 'sonoai' ); ?></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chat Modes Control -->
+                    <div class="kb-card kb-card-full">
+                        <div class="kb-tab-header">
+                            <h2><?php esc_html_e( 'Chat Modes availability', 'sonoai' ); ?></h2>
+                        </div>
+                        <p class="kb-desc"><?php esc_html_e( 'Control which chat modes are accessible in the UI. If a mode is disabled, it will appear as "Coming Soon".', 'sonoai' ); ?></p>
+                        
+                        <div class="kb-form-grid" style="margin-top: 20px;">
+                            <label class="kb-label"><?php esc_html_e( 'Guideline Mode', 'sonoai' ); ?></label>
+                            <div>
+                                <label class="kb-switch">
+                                    <input type="checkbox" name="sonoai_settings[enable_guideline_mode]" value="1" <?php checked( $opts['enable_guideline_mode'] ?? '1', '1' ); ?>>
+                                    <span class="kb-switch-slider"></span>
+                                    <span class="kb-switch-label"><?php esc_html_e( 'Enable Guideline Mode', 'sonoai' ); ?></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="kb-form-grid">
+                            <label class="kb-label"><?php esc_html_e( 'Research Mode', 'sonoai' ); ?></label>
+                            <div>
+                                <label class="kb-switch">
+                                    <input type="checkbox" name="sonoai_settings[enable_research_mode]" value="1" <?php checked( $opts['enable_research_mode'] ?? '0', '1' ); ?>>
+                                    <span class="kb-switch-slider"></span>
+                                    <span class="kb-switch-label"><?php esc_html_e( 'Enable Research Mode', 'sonoai' ); ?></span>
+                                </label>
+                                <p class="kb-desc"><?php esc_html_e( 'If disabled, this mode will show a "Coming Soon" badge and be non-interactive.', 'sonoai' ); ?></p>
                             </div>
                         </div>
                     </div>

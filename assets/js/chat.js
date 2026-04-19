@@ -67,7 +67,8 @@
         updateModeUI();
         document.querySelectorAll('.sonoai-mode-btn').forEach(function(btn) {
             btn.addEventListener('click', function() {
-                state.mode = btn.dataset.mode || 'research';
+                if (btn.disabled) return; // Ignore disabled modes
+                state.mode = btn.dataset.mode || 'guideline';
                 localStorage.setItem('sonoai_mode', state.mode);
                 updateModeUI();
             });
@@ -260,7 +261,20 @@
 
     function updateModeUI() {
         document.querySelectorAll('.sonoai-mode-btn').forEach(function (btn) {
-            btn.classList.toggle('active', btn.dataset.mode === state.mode);
+            const isActive = btn.dataset.mode === state.mode;
+            btn.classList.toggle('active', isActive);
+            
+            // If the active mode button is disabled (e.g. from admin), 
+            // and we are trying to set it as active, force fallback to an enabled one.
+            if (isActive && btn.disabled) {
+                // Find first non-disabled mode
+                const firstEnabled = document.querySelector('.sonoai-mode-btn:not([disabled])');
+                if (firstEnabled) {
+                    state.mode = firstEnabled.dataset.mode;
+                    localStorage.setItem('sonoai_mode', state.mode);
+                    updateModeUI(); // Recurse once
+                }
+            }
         });
     }
 

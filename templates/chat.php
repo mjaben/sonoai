@@ -9,6 +9,11 @@
 defined( 'ABSPATH' ) || exit;
 $current_user = wp_get_current_user();
 $is_logged_in = is_user_logged_in();
+
+// Fetch mode availability settings
+$opts = get_option( 'sonoai_settings', [] );
+$guideline_enabled = ( $opts['enable_guideline_mode'] ?? '1' ) === '1';
+$research_enabled  = ( $opts['enable_research_mode']  ?? '0' ) === '1';
 ?>
 <div id="sonoai-app" class="sonoai-app <?php echo $is_logged_in ? 'logged-in' : 'guest-mode'; ?>" aria-label="<?php esc_attr_e( 'SonoAI Chat', 'sonoai' ); ?>">
 
@@ -204,8 +209,18 @@ $is_logged_in = is_user_logged_in();
                     </button>
                 </div>
                 <div class="sonoai-mode-toggle">
-                    <button class="sonoai-mode-btn" data-mode="guideline"><?php esc_html_e( 'Guideline Mode', 'sonoai' ); ?></button>
-                    <button class="sonoai-mode-btn" data-mode="research"><?php esc_html_e( 'Research Mode', 'sonoai' ); ?></button>
+                    <button class="sonoai-mode-btn" data-mode="guideline" <?php disabled( ! $guideline_enabled ); ?>>
+                        <?php esc_html_e( 'Guideline Mode', 'sonoai' ); ?>
+                        <?php if ( ! $guideline_enabled ) : ?>
+                            <span class="sonoai-coming-soon-label"><?php esc_html_e( 'Coming Soon', 'sonoai' ); ?></span>
+                        <?php endif; ?>
+                    </button>
+                    <button class="sonoai-mode-btn" data-mode="research" <?php disabled( ! $research_enabled ); ?>>
+                        <?php esc_html_e( 'Research Mode', 'sonoai' ); ?>
+                        <?php if ( ! $research_enabled ) : ?>
+                            <span class="sonoai-coming-soon-label"><?php esc_html_e( 'Coming Soon', 'sonoai' ); ?></span>
+                        <?php endif; ?>
+                    </button>
                 </div>
                 <p class="sonoai-disclaimer">
                     <?php
