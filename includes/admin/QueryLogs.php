@@ -115,7 +115,7 @@ class QueryLogs {
                                 <option value="delete"><?php esc_html_e( 'Delete', 'sonoai' ); ?></option>
                             </select>
                             <button type="submit" class="kb-btn-sm"><?php esc_html_e( 'Apply', 'sonoai' ); ?></button>
-                            <button type="submit" name="action" value="clear_all_logs" class="kb-btn-sm" style="color:#ef4444; border-color:rgba(239,68,68,0.3); background:rgba(239,68,68,0.1);" onclick="return confirm('<?php esc_attr_e( 'Are you sure you want to permanently delete ALL query logs?', 'sonoai' ); ?>');">
+                            <button type="submit" name="action" value="clear_all_logs" class="kb-btn-sm" style="color:#ef4444; border-color:rgba(239,68,68,0.3); background:rgba(239,68,68,0.1); white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px;" onclick="return confirm('<?php esc_attr_e( 'Are you sure you want to permanently delete ALL query logs?', 'sonoai' ); ?>');">
                                 🗑 <?php esc_html_e( 'Clear All', 'sonoai' ); ?>
                             </button>
                         </div>
