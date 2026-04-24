@@ -194,7 +194,6 @@ class KnowledgeBase {
                     'url'      => [ 'icon' => '🌐', 'label' => sprintf( __( 'Website URL (%d)', 'sonoai' ), $stats['url'] ) ],
                     'jsonl'    => [ 'icon' => '📦', 'label' => __( 'JSONL Import', 'sonoai' ) . ' (Beta)' ],
                     'txt'      => [ 'icon' => '✏️', 'label' => sprintf( __( 'Custom Text (%d)', 'sonoai' ), $stats['txt'] ) ],
-                    'topics'   => [ 'icon' => '🏷️', 'label' => __( 'Topics', 'sonoai' ) ],
                     'media'    => [ 'icon' => '🖼', 'label' => __( 'Media', 'sonoai' ) ],
                 ];
                 foreach ( $tabs as $slug => $meta ) :
@@ -233,9 +232,6 @@ class KnowledgeBase {
 
                 <?php elseif ( $tab === 'media' ) : ?>
                     <?php $this->render_media_tab(); ?>
-
-                <?php elseif ( $tab === 'topics' ) : ?>
-                    <?php TopicsAdmin::instance()->render( true ); ?>
 
                 <?php endif; ?>
 
