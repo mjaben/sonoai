@@ -381,7 +381,7 @@
                     + '<td class="kb-col-date">' + escHtml(p.kb_added) + '</td>'
                     + '<td>' + badgeHtml + '</td>'
                     + '<td>' + escHtml(p.mode) + '</td>'
-                    + '<td>' + (p.raw_mode === 'guideline' ? escHtml(p.country) : escHtml(p.topic_name)) + '</td>'
+                    + '<td>' + escHtml(p.topic_name) + (p.raw_mode === 'guideline' ? '<br><small class="kb-text-muted">Country: ' + escHtml(p.country) + '</small>' : '') + '</td>'
                     + '<td>' + (p.ai_model !== '—' ? '<span class="kb-badge-model">' + escHtml(p.ai_model) + '</span>' : '—') + '</td>'
                     + '<td>' + btnsHtml + '</td>'
                     + '</tr>';
@@ -978,7 +978,7 @@
     function toggleMetadataFields(prefix) {
         var mode = (document.getElementById('kb-' + prefix + '-mode') || {}).value;
         var isRes = (mode === 'research');
-        $('.kb-field-topic', '#kb-' + prefix + '-form').toggle(isRes);
+        $('.kb-field-topic', '#kb-' + prefix + '-form').show();
         $('.kb-field-country', '#kb-' + prefix + '-form').toggle(!isRes);
     }
 

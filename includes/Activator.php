@@ -159,11 +159,18 @@ class Activator {
             `user_id`      BIGINT UNSIGNED NOT NULL DEFAULT 0,
             `query_text`   LONGTEXT        NOT NULL,
             `response`     LONGTEXT        NOT NULL,
+            `mode`         VARCHAR(20)     NOT NULL DEFAULT 'guideline',
             `created_at`   DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (`id`),
             KEY `idx_user_id` (`user_id`)
         ) $charset_collate;";
         dbDelta( $sql_logs );
+
+        // Add mode column to query logs if missing (v1.3.0)
+        $log_cols = $wpdb->get_col( "DESCRIBE `$logs_table`", 0 );
+        if ( ! empty( $log_cols ) && ! in_array( 'mode', $log_cols, true ) ) {
+            $wpdb->query( "ALTER TABLE `$logs_table` ADD COLUMN `mode` VARCHAR(20) NOT NULL DEFAULT 'guideline' AFTER `response`" );
+        }
 
         // ── KB Topics table ───────────────────────────────────────────────────
         $topics_table = $wpdb->prefix . 'sonoai_kb_topics';

@@ -97,10 +97,6 @@ class Embedding {
         $table        = self::table();
         $knowledge_id = wp_generate_uuid4();
         $provider     = AIProvider::get_name();
-        global $wpdb;
-        $table        = self::table();
-        $knowledge_id = wp_generate_uuid4();
-        $provider     = AIProvider::get_name();
         $model        = AIProvider::get_embedding_model();
         $modified_gmt = current_time( 'mysql', true );
         $redis        = RedisManager::instance();
@@ -151,13 +147,30 @@ class Embedding {
             $chunk_mode   = $data['mode'];
             $chunk_images = $data['images'];
 
-            $embedding = AIProvider::generate_embedding( $chunk_text );
+            $meta_parts = [];
+            if ( ! empty( $topic_slug ) ) {
+                $meta_parts[] = 'Topic: ' . ucwords( str_replace( '-', ' ', $topic_slug ) );
+            }
+            if ( ! empty( $country ) ) {
+                $meta_parts[] = 'Country: ' . $country;
+            }
+            if ( ! empty( $chunk_mode ) ) {
+                $meta_parts[] = 'Mode: ' . ucfirst( $chunk_mode );
+            }
+            if ( ! empty( $chunk_source ) ) {
+                $meta_parts[] = 'Source: ' . $chunk_source;
+            }
+            $meta_prefix = ! empty( $meta_parts ) ? implode( ', ', $meta_parts ) . ". \n" : "";
+            
+            $embedding_text = $meta_prefix . $chunk_text;
+
+            $embedding = AIProvider::generate_embedding( $embedding_text );
 
             // Retry once on transient timeout errors
             if ( is_wp_error( $embedding ) && ( str_contains( $embedding->get_error_message(), 'timeout' ) || str_contains( $embedding->get_error_message(), 'timed out' ) ) ) {
                 error_log( '[SonoAI] Embedding timeout for chunk ' . $idx . '. Retrying in 2s...' );
                 sleep( 2 ); 
-                $embedding = AIProvider::generate_embedding( $chunk_text );
+                $embedding = AIProvider::generate_embedding( $embedding_text );
             }
 
             if ( is_wp_error( $embedding ) ) {

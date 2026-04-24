@@ -992,7 +992,10 @@ class KnowledgeBase {
                             <span class="kb-content-preview"><?php echo esc_html( $preview ); ?></span>
                             <div style="font-size: 0.85em; color: #666; margin-top: 4px;">
                                 <strong><?php esc_html_e( 'Mode:', 'sonoai' ); ?></strong> <?php echo esc_html( $mode_label ); ?> |
-                                <strong><?php esc_html_e( ( $item->mode ?? 'guideline' ) === 'research' ? 'Topic:' : 'Country:', 'sonoai' ); ?></strong> <?php echo esc_html( ( $item->mode ?? 'guideline' ) === 'research' ? $topic_name : ( $item->country ?: '—' ) ); ?>
+                                <strong><?php esc_html_e( 'Topic:', 'sonoai' ); ?></strong> <?php echo esc_html( $topic_name ); ?>
+                                <?php if ( ( $item->mode ?? 'guideline' ) === 'guideline' ) : ?>
+                                    | <strong><?php esc_html_e( 'Country:', 'sonoai' ); ?></strong> <?php echo esc_html( $item->country ?: '—' ); ?>
+                                <?php endif; ?>
                             </div>
                         </td>
                         <td class="kb-col-model">
@@ -1108,7 +1111,10 @@ class KnowledgeBase {
                             <?php endif; ?>
                             <div style="font-size: 0.85em; color: #666; margin-top: 4px;">
                                 <strong><?php esc_html_e( 'Mode:', 'sonoai' ); ?></strong> <?php echo esc_html( $mode_label ); ?> |
-                                <strong><?php esc_html_e( ( $item->mode ?? 'guideline' ) === 'research' ? 'Topic:' : 'Country:', 'sonoai' ); ?></strong> <?php echo esc_html( ( $item->mode ?? 'guideline' ) === 'research' ? $topic_name : ( $item->country ?: '—' ) ); ?>
+                                <strong><?php esc_html_e( 'Topic:', 'sonoai' ); ?></strong> <?php echo esc_html( $topic_name ); ?>
+                                <?php if ( ( $item->mode ?? 'guideline' ) === 'guideline' ) : ?>
+                                    | <strong><?php esc_html_e( 'Country:', 'sonoai' ); ?></strong> <?php echo esc_html( $item->country ?: '—' ); ?>
+                                <?php endif; ?>
                             </div>
                         </td>
                         <td class="kb-col-model">
@@ -1167,7 +1173,7 @@ class KnowledgeBase {
                     <?php endif; ?>
                 </div>
                 
-                <div class="kb-filter-topic-wrap" style="<?php echo ( $mode === 'research' ) ? '' : 'display:none;'; ?>">
+                <div class="kb-filter-topic-wrap">
                     <select id="kb-global-topic-filter" class="kb-filter-select">
                         <option value=""><?php esc_html_e( 'All Topics', 'sonoai' ); ?></option>
                         <?php foreach ( self::get_topics() as $t ) : ?>
