@@ -280,7 +280,7 @@ class Chat {
      * @param string $response
      * @return bool
      */
-    public static function log_unanswered_query( int $user_id, string $query, string $response ): bool {
+    public static function log_unanswered_query( int $user_id, string $query, string $response, string $mode = 'guideline' ): bool {
         global $wpdb;
         $table = $wpdb->prefix . 'sonoai_query_logs';
 
@@ -290,8 +290,9 @@ class Chat {
                 'user_id'    => $user_id,
                 'query_text' => wp_kses_post( $query ),
                 'response'   => wp_kses_post( $response ),
+                'mode'       => in_array( $mode, [ 'guideline', 'research' ], true ) ? $mode : 'guideline',
             ],
-            [ '%d', '%s', '%s' ]
+            [ '%d', '%s', '%s', '%s' ]
         );
     }
 

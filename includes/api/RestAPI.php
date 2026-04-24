@@ -214,7 +214,7 @@ class RestAPI {
                 RedisManager::instance()->store_memory( $session_uuid, [ 'role' => 'assistant', 'content' => $reply ] );
                 
                 if ( str_contains( $reply, 'I cannot answer this question because I have not yet been trained' ) || str_contains( $reply, 'I cannot answer questions or discuss topics outside of this medical domain' ) ) {
-                    Chat::log_unanswered_query( $user_id, $message, $reply );
+                    Chat::log_unanswered_query( $user_id, $message, $reply, $mode );
                 }
 
                 echo "event: meta_end\ndata: " . wp_json_encode( [ 'context_images' => $context_imgs ] ) . "\n\n";
@@ -233,7 +233,7 @@ class RestAPI {
         RedisManager::instance()->store_memory( $session_uuid, [ 'role' => 'assistant', 'content' => $reply ] );
 
         if ( str_contains( $reply, 'I cannot answer this question because I have not yet been trained' ) || str_contains( $reply, 'I cannot answer questions or discuss topics outside of this medical domain' ) ) {
-            Chat::log_unanswered_query( $user_id, $message, $reply );
+            Chat::log_unanswered_query( $user_id, $message, $reply, $mode );
         }
 
         return new \WP_REST_Response( [

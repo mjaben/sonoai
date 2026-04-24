@@ -786,16 +786,30 @@ class KnowledgeBase {
 
         // Check if we're editing an existing item.
         $edit_id      = SecurityHelper::get_param( 'edit_item' );
+        $add_query_log_id = SecurityHelper::get_param( 'add_query_log' );
         $editing_item = null;
+        $prefill_mode = 'guideline';
+        $prefill_content = '';
+
         if ( $edit_id ) {
             $editing_item = $wpdb->get_row( $wpdb->prepare(
                 "SELECT * FROM `{$wpdb->prefix}sonoai_kb_items` WHERE `knowledge_id` = %s AND `type` = 'txt'",
                 $edit_id
             ) );
+        } elseif ( $add_query_log_id ) {
+            $log_item = $wpdb->get_row( $wpdb->prepare(
+                "SELECT * FROM `{$wpdb->prefix}sonoai_query_logs` WHERE `id` = %d",
+                $add_query_log_id
+            ) );
+            if ( $log_item ) {
+                $prefill_content = "Query: " . $log_item->query_text . "\n\nAnswer: ";
+                $prefill_mode = $log_item->mode ?: 'guideline';
+            }
         }
 
-        $editor_content = $editing_item ? ( $editing_item->raw_content ?? '' ) : '';
+        $editor_content = $editing_item ? ( $editing_item->raw_content ?? '' ) : $prefill_content;
         $form_action    = $editing_item ? 'edit' : 'add';
+        $show_form      = $editing_item || $add_query_log_id;
         ?>
         <div class="kb-tab-action-bar">
             <button type="button" id="kb-txt-toggle-btn" class="kb-btn-primary">
@@ -803,12 +817,12 @@ class KnowledgeBase {
             </button>
         </div>
 
-        <div id="kb-txt-form-collapse" style="<?php echo $editing_item ? 'display:block;' : 'display:none;'; ?>">
+        <div id="kb-txt-form-collapse" style="<?php echo $show_form ? 'display:block;' : 'display:none;'; ?>">
             <div class="kb-card" id="kb-txt-form-wrap">
                 <h3 class="kb-card-title">
                     ✏️ <?php echo $editing_item
                         ? esc_html__( 'Edit Custom Text', 'sonoai' )
-                        : esc_html__( 'Add Custom Text', 'sonoai' ); ?>
+                        : ( $add_query_log_id ? esc_html__( 'Train AI on Query', 'sonoai' ) : esc_html__( 'Add Custom Text', 'sonoai' ) ); ?>
                 </h3>
                 <?php if ( $editing_item ) : ?>
                     <a href="<?php echo esc_url( add_query_arg( [ 'page' => 'sonoai-kb', 'kb_tab' => 'txt' ], admin_url( 'admin.php' ) ) ); ?>"
@@ -821,8 +835,8 @@ class KnowledgeBase {
                             <div class="kb-field-group">
                                 <label for="kb-txt-mode"><?php esc_html_e( 'Training Mode', 'sonoai' ); ?></label>
                                 <select name="mode" id="kb-txt-mode" class="kb-select-sm" required>
-                                    <option value="guideline" <?php selected( $editing_item->mode ?? 'guideline', 'guideline' ); ?>><?php esc_html_e( 'Guideline', 'sonoai' ); ?></option>
-                                    <option value="research" <?php selected( $editing_item->mode ?? 'guideline', 'research' ); ?>><?php esc_html_e( 'Research', 'sonoai' ); ?></option>
+                                    <option value="guideline" <?php selected( $editing_item->mode ?? $prefill_mode, 'guideline' ); ?>><?php esc_html_e( 'Guideline', 'sonoai' ); ?></option>
+                                    <option value="research" <?php selected( $editing_item->mode ?? $prefill_mode, 'research' ); ?>><?php esc_html_e( 'Research', 'sonoai' ); ?></option>
                                 </select>
                             </div>
                             <div class="kb-field-group kb-field-topic">
@@ -1019,15 +1033,15 @@ class KnowledgeBase {
         </table>
 
         <!-- View modal for full content -->
-        <div id="kb-view-modal" class="kb-modal" style="display:none;">
-            <div class="kb-modal-inner">
+        <dialog id="kb-view-modal" class="kb-modal" style="display:none;">
+            <div class="kb-modal-content">
                 <div class="kb-modal-header">
                     <strong><?php esc_html_e( 'Full Content', 'sonoai' ); ?></strong>
-                    <button type="button" class="kb-modal-close">✕</button>
+                    <button type="button" class="kb-modal-close" style="background:none;border:none;font-size:20px;cursor:pointer;">✕</button>
                 </div>
-                <div id="kb-modal-body" class="kb-modal-body"></div>
+                <div id="kb-modal-body" class="kb-modal-body" style="white-space: pre-wrap; margin-top:15px; line-height:1.5;"></div>
             </div>
-        </div>
+        </dialog>
         <?php
     }
 
