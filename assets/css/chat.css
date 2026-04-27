@@ -1856,6 +1856,12 @@ body.sonoai-fullscreen #sonoai-app {
     .sonoai-action-row {
         gap: 4px;
     }
+
+    .sonoai-saved-panel {
+        left: 0;
+        width: min(82vw, 260px);
+        z-index: 101;
+    }
 }
 
 @media (max-width: 480px) {
