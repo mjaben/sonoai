@@ -89,9 +89,11 @@ class ApiConfig {
 
         // Redis settings.
         $clean['redis_enabled']  = ! empty( $input['redis_enabled'] );
-        $clean['redis_host']     = sanitize_text_field( $input['redis_host']     ?? '127.0.0.1' );
-        $clean['redis_port']     = intval( $input['redis_port']     ?? 6379 );
-        if ( ! empty( $input['redis_password'] ) ) {
+        $clean['redis_host']     = ! empty( trim( $input['redis_host'] ?? '' ) ) ? sanitize_text_field( $input['redis_host'] ) : '127.0.0.1';
+        $port_val                = intval( $input['redis_port'] ?? 0 );
+        $clean['redis_port']     = $port_val > 0 ? $port_val : 6379;
+        
+        if ( isset( $input['redis_password'] ) ) {
             $clean['redis_password'] = sanitize_text_field( $input['redis_password'] );
         }
 
