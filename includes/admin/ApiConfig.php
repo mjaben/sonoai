@@ -425,6 +425,10 @@ class ApiConfig {
                     </div>
                 </div>
 
+                <div class="kb-form-footer" style="margin-top: 20px;">
+                    <?php submit_button( __( 'Save Configuration', 'sonoai' ), 'primary', 'submit', false ); ?>
+                </div>
+
             </form>
         </div><!-- .kb-wrap -->
         <?php
