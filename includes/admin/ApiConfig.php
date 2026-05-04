@@ -380,6 +380,12 @@ class ApiConfig {
                                 <span class="kb-switch-slider"></span>
                                 <span class="kb-switch-label"><?php esc_html_e( 'Enable Redis for High-Performance RAG & Memory', 'sonoai' ); ?></span>
                             </label>
+
+                            <?php if ( ! RedisManager::instance()->is_active() && ! empty( $opts['redis_enabled'] ) && ! empty( RedisManager::$last_error ) ) : ?>
+                                <div class="notice notice-error inline" style="margin: 10px 0; padding: 10px; border-left-color: #d63638; background: #fff8f8;">
+                                    <p style="margin: 0; font-size: 12px; color: #b32d2e;"><strong>Connection Failed:</strong> <?php echo esc_html( RedisManager::$last_error ); ?></p>
+                                </div>
+                            <?php endif; ?>
                             
                             <div class="kb-redis-details" style="display: <?php echo ( $opts['redis_enabled'] ?? false ) ? 'block' : 'none'; ?>;">
                                 <div style="display: flex; gap: 10px; margin-bottom: 10px;">

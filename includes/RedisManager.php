@@ -21,6 +21,7 @@ class RedisManager {
     private static ?RedisClient $client = null;
     private static ?RedisManager $instance = null;
     private static bool $skip_redis = false;
+    public static ?string $last_error = null;
 
     public static function instance(): RedisManager {
         if ( null === self::$instance ) {
@@ -120,6 +121,7 @@ class RedisManager {
         }
 
         if ( ! class_exists( 'Predis\Client' ) ) {
+            self::$last_error = 'Predis library missing (run composer install or upload vendor folder)';
             error_log( '[SonoAI] Redis Error: Predis\Client class not found. Ensure the vendor folder was uploaded correctly.' );
             return null;
         }
@@ -131,6 +133,7 @@ class RedisManager {
             self::$client->connect();
             error_log( '[SonoAI] Redis: Connection successful.' );
         } catch ( \Exception $e ) {
+            self::$last_error = $e->getMessage();
             error_log( '[SonoAI] Redis connection failed: ' . $e->getMessage() );
             self::$client = null;
             self::$skip_redis = true; 
