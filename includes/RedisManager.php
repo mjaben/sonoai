@@ -65,6 +65,20 @@ class RedisManager {
     }
 
     /**
+     * Write a log message to a custom Redis log file in the uploads directory.
+     */
+    public static function write_log( string $message ): void {
+        $upload_dir = wp_upload_dir();
+        $dir        = trailingslashit( $upload_dir['basedir'] ) . 'sonoai';
+        if ( ! file_exists( $dir ) ) {
+            wp_mkdir_p( $dir );
+        }
+        $log_file = $dir . '/redis_debug.log';
+        $time     = current_time( 'mysql' );
+        file_put_contents( $log_file, "[{$time}] {$message}" . PHP_EOL, FILE_APPEND );
+    }
+
+    /**
      * Get the Predis client instance.
      */
     public function get_client(): ?RedisClient {
@@ -82,7 +96,7 @@ class RedisManager {
             // Only log this once to avoid spamming, but we need to know if it's the reason
             static $logged_disabled = false;
             if ( ! $logged_disabled ) {
-                error_log( '[SonoAI] Redis: Connection skipped (disabled in settings and SONOAI_REDIS_FORCE not defined).' );
+                self::write_log( 'Connection skipped (disabled in settings).' );
                 $logged_disabled = true;
             }
             return null;
@@ -122,19 +136,19 @@ class RedisManager {
 
         if ( ! class_exists( 'Predis\Client' ) ) {
             self::$last_error = 'Predis library missing (run composer install or upload vendor folder)';
-            error_log( '[SonoAI] Redis Error: Predis\Client class not found. Ensure the vendor folder was uploaded correctly.' );
+            self::write_log( 'Error: Predis\Client class not found.' );
             return null;
         }
 
         try {
-            error_log( sprintf( '[SonoAI] Redis: Attempting connection to %s://%s:%d (Timeout: 5s)', $scheme, $host, $port ) );
+            self::write_log( sprintf( 'Attempting connection to %s://%s:%d (Timeout: 5s)', $scheme, $host, $port ) );
             self::$client = new RedisClient( $connection_params, $client_options );
             // Test connection
             self::$client->connect();
-            error_log( '[SonoAI] Redis: Connection successful.' );
+            self::write_log( 'Connection successful.' );
         } catch ( \Exception $e ) {
             self::$last_error = $e->getMessage();
-            error_log( '[SonoAI] Redis connection failed: ' . $e->getMessage() );
+            self::write_log( 'Connection failed: ' . $e->getMessage() );
             self::$client = null;
             self::$skip_redis = true; 
         }
