@@ -199,6 +199,32 @@ class KnowledgeBaseAjax {
             wp_send_json_error( [ 'message' => __( 'Failed to update metadata.', 'sonoai' ) ] );
         }
 
+        // Sync changes to Redis
+        if ( class_exists('SonoAI\RedisManager') ) {
+            $redis = \SonoAI\RedisManager::instance();
+            $redis->delete_vectors_by_post( $post_id );
+            
+            $rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM `$emb_table` WHERE post_id = %d", $post_id ), ARRAY_A );
+            foreach ( $rows as $row ) {
+                $vector = json_decode( $row['embedding'], true );
+                if ( is_array($vector) ) {
+                    $meta = [
+                        'knowledge_id' => $row['knowledge_id'],
+                        'post_id'      => (int) $row['post_id'],
+                        'post_type'    => $row['post_type'],
+                        'chunk_text'   => $row['chunk_text'],
+                        'mode'         => $row['mode'],
+                        'topic_slug'   => $row['topic_slug'],
+                        'country'      => $row['country'],
+                        'source_title' => $row['source_title'],
+                        'source_url'   => $row['source_url'],
+                        'image_urls'   => ! empty( $row['image_urls'] ) ? json_decode( $row['image_urls'], true ) : [],
+                    ];
+                    $redis->cache_embedding( $row['knowledge_id'] . ':' . $row['chunk_index'], $vector, $meta );
+                }
+            }
+        }
+
         wp_send_json_success( [ 'message' => __( 'Metadata updated successfully.', 'sonoai' ) ] );
     }
 
@@ -395,6 +421,17 @@ class KnowledgeBaseAjax {
         $table_kb  = $this->kb_table();
         $table_emb = $this->emb_table();
 
+        // Get old knowledge IDs to delete from Redis
+        $old_ids = $wpdb->get_col( $wpdb->prepare(
+            "SELECT DISTINCT knowledge_id FROM `$table_emb` WHERE type = 'wp' AND post_id = %d",
+            $post_id
+        ) );
+        if ( ! empty( $old_ids ) && class_exists('SonoAI\RedisManager') ) {
+            foreach ( $old_ids as $id ) {
+                \SonoAI\RedisManager::instance()->delete_vectors_by_id( $id );
+            }
+        }
+
         $wpdb->delete( $table_kb, [ 'type' => 'wp', 'post_id' => $post_id ], [ '%s', '%d' ] );
         $wpdb->query( $wpdb->prepare(
             "DELETE FROM `$table_emb` WHERE type = 'wp' AND post_id = %d",
@@ -435,6 +472,9 @@ class KnowledgeBaseAjax {
         ) );
 
         if ( $kb_item ) {
+            if ( class_exists('SonoAI\RedisManager') ) {
+                \SonoAI\RedisManager::instance()->delete_vectors_by_id( $kb_item->knowledge_id );
+            }
             $wpdb->delete( $this->kb_table(), [ 'knowledge_id' => $kb_item->knowledge_id ], [ '%s' ] );
         }
         $wpdb->query( $wpdb->prepare(
@@ -604,7 +644,10 @@ class KnowledgeBaseAjax {
         $table_emb = $this->emb_table();
         $table_kb  = $this->kb_table();
 
-        // Delete old embeddings for this knowledge_id.
+        // Delete old embeddings for this knowledge_id from Redis and MySQL.
+        if ( class_exists('SonoAI\RedisManager') ) {
+            \SonoAI\RedisManager::instance()->delete_vectors_by_id( $knowledge_id );
+        }
         $wpdb->delete( $table_emb, [ 'knowledge_id' => $knowledge_id ], [ '%s' ] );
         $wpdb->delete( $table_kb,  [ 'knowledge_id' => $knowledge_id ], [ '%s' ] );
 
