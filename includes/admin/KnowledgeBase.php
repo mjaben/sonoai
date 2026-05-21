@@ -60,7 +60,7 @@ class KnowledgeBase {
             'sonoai-kb',
             SONOAI_URL . 'assets/js/kb.js',
             [ 'jquery' ],
-            SONOAI_VERSION,
+            filemtime( SONOAI_DIR . 'assets/js/kb.js' ),
             true
         );
         wp_localize_script( 'sonoai-kb', 'sonoaiKB', [
