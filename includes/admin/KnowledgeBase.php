@@ -529,12 +529,9 @@ class KnowledgeBase {
             $params[] = '%' . $wpdb->esc_like( $country ) . '%';
         }
 
-        $query = "SELECT * FROM `{$wpdb->prefix}sonoai_kb_items` $where ORDER BY `created_at` DESC";
-        if ( ! empty( $params ) ) {
-            $query = $wpdb->prepare( $query, $params );
-        }
-
-        $items = $wpdb->get_results( $query );
+        $total_items = 0;
+        $paged       = 1;
+        $items       = $this->get_paginated_items( $where, $params, $total_items, $paged );
         ?>
         <div class="kb-card">
             <h3 class="kb-card-title">📄 <?php esc_html_e( 'Upload PDF', 'sonoai' ); ?></h3>
@@ -591,6 +588,7 @@ class KnowledgeBase {
             'delete' => __( 'Delete', 'sonoai' ),
             'view'   => __( 'View PDF', 'sonoai' ),
         ] ); ?>
+        <?php $this->render_pagination( $total_items, 20, $paged ); ?>
         <?php
     }
 
@@ -622,12 +620,9 @@ class KnowledgeBase {
             $params[] = '%' . $wpdb->esc_like( $country ) . '%';
         }
 
-        $query = "SELECT * FROM `{$wpdb->prefix}sonoai_kb_items` $where ORDER BY `created_at` DESC";
-        if ( ! empty( $params ) ) {
-            $query = $wpdb->prepare( $query, $params );
-        }
-
-        $items = $wpdb->get_results( $query );
+        $total_items = 0;
+        $paged       = 1;
+        $items       = $this->get_paginated_items( $where, $params, $total_items, $paged );
         ?>
         <div class="kb-card">
             <h3 class="kb-card-title">🌐 <?php esc_html_e( 'Enter Website URL', 'sonoai' ); ?></h3>
@@ -680,8 +675,9 @@ class KnowledgeBase {
 
         <?php $this->render_items_table( $items, 'url', [
             'delete' => __( 'Delete', 'sonoai' ),
-            'view'   => __( 'View Source', 'sonoai' ),
+            'view'   => __( 'Visit Link', 'sonoai' ),
         ] ); ?>
+        <?php $this->render_pagination( $total_items, 20, $paged ); ?>
         <?php
     }
 
@@ -691,7 +687,9 @@ class KnowledgeBase {
 
     private function render_jsonl_tab(): void {
         global $wpdb;
-        $items = $wpdb->get_results( "SELECT * FROM `{$wpdb->prefix}sonoai_kb_items` WHERE `type` = 'jsonl' ORDER BY `created_at` DESC" );
+        $total_items = 0;
+        $paged       = 1;
+        $items       = $this->get_paginated_items( "WHERE `type` = 'jsonl'", [], $total_items, $paged );
         ?>
         <div class="kb-card">
             <h3 class="kb-card-title">📦 <?php esc_html_e( 'Import JSONL Dataset', 'sonoai' ); ?></h3>
@@ -740,8 +738,9 @@ class KnowledgeBase {
         </div>
 
         <?php $this->render_items_table( $items, 'jsonl', [
-            'delete' => __( 'Delete Dataset', 'sonoai' ),
+            'delete' => __( 'Delete', 'sonoai' ),
         ] ); ?>
+        <?php $this->render_pagination( $total_items, 20, $paged ); ?>
         <?php
     }
 
@@ -773,12 +772,9 @@ class KnowledgeBase {
             $params[] = '%' . $wpdb->esc_like( $country ) . '%';
         }
 
-        $query = "SELECT * FROM `{$wpdb->prefix}sonoai_kb_items` $where ORDER BY `created_at` DESC";
-        if ( ! empty( $params ) ) {
-            $query = $wpdb->prepare( $query, $params );
-        }
-
-        $items = $wpdb->get_results( $query );
+        $total_items = 0;
+        $paged       = 1;
+        $items       = $this->get_paginated_items( $where, $params, $total_items, $paged );
 
         // Check if we're editing an existing item.
         $edit_id      = SecurityHelper::get_param( 'edit_item' );
@@ -1027,6 +1023,7 @@ class KnowledgeBase {
                 <?php endif; ?>
             </tbody>
         </table>
+        <?php $this->render_pagination( $total_items, 20, $paged ); ?>
 
         <!-- View modal for full content -->
         <dialog id="kb-view-modal" class="kb-modal" style="display:none;">
@@ -1148,6 +1145,40 @@ class KnowledgeBase {
             </tbody>
         </table>
         <?php
+    }
+
+    private function get_paginated_items( string $where, array $params, &$total_items, &$paged, int $per_page = 20 ): array {
+        global $wpdb;
+        $paged = max( 1, SecurityHelper::get_param( 'paged', 1, 'int' ) );
+        $offset = ( $paged - 1 ) * $per_page;
+
+        $count_query = "SELECT COUNT(*) FROM `{$wpdb->prefix}sonoai_kb_items` $where";
+        if ( ! empty( $params ) ) {
+            $count_query = $wpdb->prepare( $count_query, $params );
+        }
+        $total_items = (int) $wpdb->get_var( $count_query );
+
+        $query = "SELECT * FROM `{$wpdb->prefix}sonoai_kb_items` $where ORDER BY `created_at` DESC LIMIT %d OFFSET %d";
+        $params[] = $per_page;
+        $params[] = $offset;
+        
+        return $wpdb->get_results( $wpdb->prepare( $query, $params ) );
+    }
+
+    private function render_pagination( int $total_items, int $per_page, int $paged ): void {
+        $total_pages = (int) ceil( $total_items / $per_page );
+        if ( $total_pages > 1 ) {
+            echo '<div class="kb-pagination" style="margin-top: 15px; text-align: right;">';
+            echo paginate_links( [
+                'base'      => add_query_arg( 'paged', '%#%' ),
+                'format'    => '',
+                'prev_text' => __( '&laquo; Prev', 'sonoai' ),
+                'next_text' => __( 'Next &raquo;', 'sonoai' ),
+                'total'     => $total_pages,
+                'current'   => $paged,
+            ] );
+            echo '</div>';
+        }
     }
 
     /**

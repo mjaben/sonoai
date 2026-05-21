@@ -822,7 +822,8 @@
     justify-content: flex-end;
 }
 
-.kb-wrap .kb-page-btn {
+.kb-wrap .kb-page-btn,
+.kb-wrap .kb-pagination .page-numbers {
     background: #fff !important;
     border: 1px solid #d1d5db !important;
     border-radius: 5px !important;
@@ -835,10 +836,14 @@
     height: auto !important;
     min-height: 0 !important;
     transition: background 0.15s, border-color 0.15s !important;
+    text-decoration: none !important;
+    display: inline-block;
 }
 
 .kb-wrap .kb-page-btn:hover,
-.kb-wrap .kb-page-btn.active {
+.kb-wrap .kb-page-btn.active,
+.kb-wrap .kb-pagination .page-numbers:hover,
+.kb-wrap .kb-pagination .page-numbers.current {
     background: #1e40af !important;
     border-color: #1e40af !important;
     color: #fff !important;
