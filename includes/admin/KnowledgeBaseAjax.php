@@ -918,16 +918,14 @@ class KnowledgeBaseAjax {
             require_once SONOAI_DIR . 'includes/RedisMigration.php';
         }
 
-        $result = RedisMigration::rebuild_index();
+        $offset     = SecurityHelper::get_param( 'offset', 0, 'int' );
+        $is_first   = SecurityHelper::get_param( 'is_first', 'false', 'text' ) === 'true';
+        $batch_size = 50;
+
+        $result = RedisMigration::sync_batch($offset, $batch_size, $is_first);
 
         if ( $result['success'] ) {
-            wp_send_json_success( [
-                'message' => sprintf( 
-                    __( 'Redis index rebuilt successfully! Indexed %d chunks with %d errors.', 'sonoai' ), 
-                    $result['indexed'], 
-                    $result['errors'] 
-                )
-            ] );
+            wp_send_json_success( $result );
         } else {
             $msg = $result['message'] ?? __( 'Unknown error during Redis migration.', 'sonoai' );
             sonoai_log_error( 'Manual Redis Sync Failed: ' . $msg );

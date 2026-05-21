@@ -118,37 +118,80 @@
         if (!btn) return;
 
         btn.addEventListener('click', function() {
-            var btnText  = btn.querySelector('.kb-btn-text');
-            var spinner  = btn.querySelector('.kb-spinner');
-            var oldText  = btnText ? btnText.innerText : btn.innerText;
-
             if (btn.disabled) return;
             if (!confirm('Are you sure you want to rebuild the Redis index? This will push all current knowledge base items from MySQL into Redis.')) return;
 
             btn.disabled = true;
-            if (btnText) btnText.innerText = 'Syncing...';
-            if (spinner) spinner.style.display = 'block';
+
+            // Create popup overlay
+            var overlay = document.createElement('div');
+            overlay.className = 'kb-redis-popup-overlay';
+            overlay.innerHTML = `
+                <div class="kb-redis-popup">
+                    <h3 style="margin-top:0;">Syncing to Redis</h3>
+                    <div class="kb-redis-progress-bar-container">
+                        <div class="kb-redis-progress-bar" style="width: 0%;"></div>
+                    </div>
+                    <div class="kb-redis-progress-text">0% Completed</div>
+                    <div class="kb-redis-current-item">Preparing to sync...</div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            var progressBar = overlay.querySelector('.kb-redis-progress-bar');
+            var progressText = overlay.querySelector('.kb-redis-progress-text');
+            var currentItemText = overlay.querySelector('.kb-redis-current-item');
             
-            showToast('Starting Redis reconstruction...', 'info');
+            var totalIndexed = 0;
+            var totalErrors = 0;
 
-            var payload = {
-                action: 'sonoai_kb_sync_redis',
-                security: nonces.syncRedis
-            };
+            function processBatch(offset, isFirst) {
+                $.post(ajax, {
+                    action: 'sonoai_kb_sync_redis',
+                    security: nonces.syncRedis,
+                    offset: offset,
+                    is_first: isFirst ? 'true' : 'false'
+                }, function(res) {
+                    if (res.success) {
+                        var data = res.data;
+                        totalIndexed += data.indexed || 0;
+                        totalErrors += data.errors || 0;
+                        var total = data.total || 1;
+                        var next_offset = data.next_offset || offset;
+                        
+                        var percentage = Math.min(100, Math.round((next_offset / total) * 100));
+                        if (data.done) percentage = 100;
+                        
+                        progressBar.style.width = percentage + '%';
+                        progressText.innerText = percentage + '% Completed';
+                        if (data.current_item) {
+                            currentItemText.innerText = 'Syncing: ' + data.current_item;
+                        } else {
+                            currentItemText.innerText = 'Syncing...';
+                        }
 
-            $.post(ajax, payload, function(res) {
-                if (res.success) {
-                    showToast(res.data.message || 'Sync successful!', 'success');
-                } else {
-                    showToast(res.data.message || 'Sync failed.', 'error');
-                }
-            }).fail(function() {
-                showToast('Fatal error during synchronization.', 'error');
-            }).always(function() {
-                btn.disabled = false;
-                if (btnText) btnText.innerText = oldText;
-                if (spinner) spinner.style.display = 'none';
-            });
+                        if (data.done) {
+                            setTimeout(function() {
+                                alert('Sync to Redis has been completed.');
+                                overlay.remove();
+                                btn.disabled = false;
+                            }, 500);
+                        } else {
+                            processBatch(data.next_offset, false);
+                        }
+                    } else {
+                        alert('Sync failed: ' + (res.data && res.data.message ? res.data.message : 'Unknown error'));
+                        overlay.remove();
+                        btn.disabled = false;
+                    }
+                }).fail(function() {
+                    alert('Fatal error during synchronization.');
+                    overlay.remove();
+                    btn.disabled = false;
+                });
+            }
+
+            processBatch(0, true);
         });
 
         // Redis Toggle Visibility
