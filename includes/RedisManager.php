@@ -37,7 +37,7 @@ class RedisManager {
     /**
      * Ensure the RediSearch VSS index exists.
      */
-    private function ensure_index(): void {
+    public function ensure_index(): void {
         $client = $this->get_client();
         if ( ! $client ) return;
 

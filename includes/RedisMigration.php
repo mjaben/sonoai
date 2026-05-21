@@ -159,8 +159,8 @@ class RedisMigration {
                 // Might not exist, that's fine
             }
             
-            // Re-instantiating RedisManager will trigger ensure_index()
-            RedisManager::instance();
+            // Recreate the index immediately after dropping it
+            RedisManager::instance()->ensure_index();
         }
 
         $total_records = (int) $wpdb->get_var( "SELECT COUNT(*) FROM `$table`" );
