@@ -918,6 +918,25 @@ class KnowledgeBaseAjax {
             require_once SONOAI_DIR . 'includes/RedisMigration.php';
         }
 
+        if ( ! isset( $_REQUEST['offset'] ) ) {
+            // Fallback for cached JS that doesn't send offset
+            $result = RedisMigration::rebuild_index();
+            if ( $result['success'] ) {
+                wp_send_json_success( [
+                    'message' => sprintf( 
+                        __( 'Redis index rebuilt successfully! Indexed %d chunks with %d errors.', 'sonoai' ), 
+                        $result['indexed'], 
+                        $result['errors'] 
+                    )
+                ] );
+            } else {
+                $msg = $result['message'] ?? __( 'Unknown error during Redis migration.', 'sonoai' );
+                sonoai_log_error( 'Manual Redis Sync Failed: ' . $msg );
+                wp_send_json_error( [ 'message' => $msg ] );
+            }
+            return;
+        }
+
         $offset     = SecurityHelper::get_param( 'offset', 0, 'int' );
         $is_first   = SecurityHelper::get_param( 'is_first', 'false', 'text' ) === 'true';
         $batch_size = 50;
