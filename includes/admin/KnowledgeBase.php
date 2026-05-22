@@ -1168,7 +1168,7 @@ class KnowledgeBase {
     private function render_pagination( int $total_items, int $per_page, int $paged ): void {
         $total_pages = (int) ceil( $total_items / $per_page );
         if ( $total_pages > 1 ) {
-            echo '<div class="kb-pagination" style="margin-top: 15px; text-align: right;">';
+            echo '<div class="kb-pagination">';
             echo paginate_links( [
                 'base'      => add_query_arg( 'paged', '%#%' ),
                 'format'    => '',
