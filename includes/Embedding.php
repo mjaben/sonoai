@@ -41,27 +41,45 @@ class Embedding {
         $text = trim( $text );
         if ( empty( $text ) ) return [];
 
-        // ── Structural Chunking ──
-        // Instead of characters, we split by logical medical document blocks.
-        // Look for: Procedure:, Required For:, Skills Required:, SITM:, or generic Level/Level Headers
-        $split_pattern = "/(?=(?:Procedure:|SITM:|Required\sFor:|Skills\sRequired:|Level\s\d+|Introduction|Assessment|Mandatory\sUltrasound))/i";
-        $raw_parts      = preg_split( $split_pattern, $text );
-
-        if ( ! $raw_parts ) return [ $text ];
-
-        $chunks       = [];
+        $chunks        = [];
         $current_chunk = '';
 
-        foreach ( $raw_parts as $part ) {
-            $part = trim( $part );
-            if ( empty( $part ) ) continue;
+        // Split text into paragraphs
+        $paragraphs = preg_split('/\\n\\s*\\n|\\n/', $text);
 
-            // If adding this part exceeds size, push current and start new
-            if ( mb_strlen( $current_chunk . $part ) > $size && ! empty( $current_chunk ) ) {
-                $chunks[]      = $current_chunk;
-                $current_chunk = mb_substr( $current_chunk, -$overlap ) . $part;
+        foreach ( $paragraphs as $p ) {
+            $p = trim( $p );
+            if ( empty( $p ) ) continue;
+
+            if ( mb_strlen( $p ) > $size ) {
+                // If a single paragraph is too large, split it by length
+                $length = mb_strlen( $p );
+                for ( $i = 0; $i < $length; $i += ( $size - $overlap ) ) {
+                    $slice = mb_substr( $p, $i, $size );
+                    if ( mb_strlen( $current_chunk . "\n" . $slice ) > $size && ! empty( $current_chunk ) ) {
+                        $chunks[] = $current_chunk;
+                        $overlap_text = mb_strlen( $current_chunk ) > $overlap ? mb_substr( $current_chunk, -$overlap ) : $current_chunk;
+                        $last_space = mb_strpos( $overlap_text, ' ' );
+                        if ( $last_space !== false && $last_space < mb_strlen( $overlap_text ) - 1 ) {
+                            $overlap_text = mb_substr( $overlap_text, $last_space + 1 );
+                        }
+                        $current_chunk = $overlap_text . "\n" . $slice;
+                    } else {
+                        $current_chunk .= ( empty( $current_chunk ) ? '' : "\n" ) . $slice;
+                    }
+                }
             } else {
-                $current_chunk .= ( empty( $current_chunk ) ? '' : "\n\n" ) . $part;
+                if ( mb_strlen( $current_chunk . "\n" . $p ) > $size && ! empty( $current_chunk ) ) {
+                    $chunks[] = $current_chunk;
+                    $overlap_text = mb_strlen( $current_chunk ) > $overlap ? mb_substr( $current_chunk, -$overlap ) : $current_chunk;
+                    $last_space = mb_strpos( $overlap_text, ' ' );
+                    if ( $last_space !== false && $last_space < mb_strlen( $overlap_text ) - 1 ) {
+                        $overlap_text = mb_substr( $overlap_text, $last_space + 1 );
+                    }
+                    $current_chunk = "..." . $overlap_text . "\n" . $p;
+                } else {
+                    $current_chunk .= ( empty( $current_chunk ) ? '' : "\n" ) . $p;
+                }
             }
         }
 
