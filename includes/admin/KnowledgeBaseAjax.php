@@ -42,6 +42,8 @@ class KnowledgeBaseAjax {
             'sonoai_kb_delete_img_file',
             'sonoai_kb_sync_redis',
             'sonoai_kb_reindex_all',
+            'sonoai_kb_reindex_items',
+            'sonoai_kb_resync_items',
         ];
         foreach ( $actions as $action ) {
             add_action( "wp_ajax_{$action}", [ $this, str_replace( 'sonoai_kb_', 'handle_', $action ) ] );
@@ -347,6 +349,7 @@ class KnowledgeBaseAjax {
                 p.post_title as title, 
                 p.post_modified_gmt as last_modified,
                 kb.created_at as kb_added,
+                kb.knowledge_id as knowledge_id,
                 kb.provider as provider,
                 kb.embedding_model as model,
                 kb.mode as mode,
@@ -381,6 +384,7 @@ class KnowledgeBaseAjax {
                         'last_modified' => date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $p->last_modified . ' UTC' ) ),
                         'kb_added'      => $p->kb_added ? date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $p->kb_added . ' UTC' ) ) : '—',
                         'kb_status'     => $p_status,
+                        'knowledge_id'  => $p->knowledge_id ? $p->knowledge_id : '',
                         'mode'          => $p->mode ? ucfirst( $p->mode ) : '—',
                         'topic_name'    => $p->topic_name ? $p->topic_name : '—',
                         'topic_id'      => $p->topic_id ? (int) $p->topic_id : 0,
@@ -1309,5 +1313,273 @@ class KnowledgeBaseAjax {
         wp_send_json_success( [
             'message' => sprintf( __( 'Successfully imported %d clinical facts from %s', 'sonoai' ), $inserted_chunks, $filename )
         ] );
+    }
+
+    /**
+     * Re-index a selected list of KB items (single or bulk).
+     */
+    public function handle_reindex_items(): void {
+        $this->check( 'sonoai_kb_reindex_items' );
+
+        try {
+            $start_time = microtime( true );
+
+            // Execution time limit calculations (Layer 1 timeout protection)
+            $time_limit = ini_get( 'max_execution_time' );
+            $time_limit = $time_limit ? (int) $time_limit - 5 : 25;
+            $time_limit = min( $time_limit, 40 ); // Strictly cap at 40s to prevent Cloudflare timeout
+
+            global $wpdb;
+            $kb_table  = $this->kb_table();
+            $emb_table = $this->emb_table();
+
+            $provider        = sonoai_option( 'active_provider', 'openai' );
+            $embedding_model = AIProvider::get_embedding_model();
+
+            $ids_param  = SecurityHelper::get_param( 'ids', [] );
+            if ( is_string( $ids_param ) ) {
+                $ids = array_filter( array_map( 'trim', explode( ',', $ids_param ) ) );
+            } else {
+                $ids = array_filter( array_map( 'sanitize_text_field', (array) $ids_param ) );
+            }
+
+            if ( empty( $ids ) ) {
+                wp_send_json_error( [ 'message' => __( 'No items selected.', 'sonoai' ) ] );
+            }
+
+            $offset     = SecurityHelper::get_param( 'offset', 0, 'int' );
+            $batch_size = SecurityHelper::get_param( 'batch_size', 5, 'int' );
+            $total      = count( $ids );
+
+            // Purge MySQL orphaned embeddings at start
+            if ( $offset === 0 ) {
+                $wpdb->query( "
+                    DELETE FROM `{$emb_table}` 
+                    WHERE `knowledge_id` NOT IN (
+                        SELECT DISTINCT `knowledge_id` FROM `{$kb_table}`
+                    )
+                " );
+            }
+
+            // Slice selected IDs for current batch
+            $batch_ids = array_slice( $ids, $offset, $batch_size );
+            if ( empty( $batch_ids ) ) {
+                wp_send_json_success( [
+                    'updated' => 0,
+                    'errors'  => 0,
+                    'done'    => true,
+                    'total'   => $total
+                ] );
+            }
+
+            // Fetch the items
+            $placeholders = implode( ',', array_fill( 0, count( $batch_ids ), '%s' ) );
+            $items = $wpdb->get_results(
+                $wpdb->prepare(
+                    "SELECT * FROM `{$kb_table}` WHERE `knowledge_id` IN ($placeholders)",
+                    ...$batch_ids
+                ),
+                ARRAY_A
+            );
+
+            $updated = 0;
+            $errors  = 0;
+            $current_item = '';
+            $processed = 0;
+
+            foreach ( $items as $item ) {
+                // Time budget check (Layer 1)
+                if ( $processed > 0 && ( microtime( true ) - $start_time ) > $time_limit ) {
+                    break;
+                }
+
+                $old_knowledge_id = $item['knowledge_id'];
+                $post_id          = (int) $item['post_id'];
+                $type             = $item['type'];
+                $mode             = $item['mode']         ?? 'guideline';
+                $country          = $item['country']      ?? '';
+                $source_title     = $item['source_title'] ?? '';
+                $source_url       = $item['source_url']   ?? '';
+                $topic_id         = ! empty( $item['topic_id'] ) ? (int) $item['topic_id'] : null;
+                $image_urls       = ! empty( $item['image_urls'] ) ? json_decode( $item['image_urls'], true ) : [];
+                $raw_content      = $item['raw_content']  ?? '';
+
+                $current_item = $source_title ?: sprintf( '%s #%d', ucfirst( $type ), $post_id );
+                $plain_text = ! empty( $raw_content ) ? sonoai_clean_content( $raw_content ) : '';
+
+                if ( empty( $plain_text ) ) {
+                    $errors++;
+                    $processed++;
+                    continue;
+                }
+
+                // Generate new UUID and Embed
+                $new_knowledge_id = wp_generate_uuid4();
+                $topic_row = $topic_id ? $wpdb->get_row( $wpdb->prepare( "SELECT slug FROM {$wpdb->prefix}sonoai_sonoai_kb_topics WHERE id = %d", $topic_id ) ) : null;
+                $topic_slug = $topic_row ? $topic_row->slug : '';
+
+                if ( ! class_exists( 'SonoAI\\Embedding' ) ) {
+                    require_once SONOAI_DIR . 'includes/Embedding.php';
+                }
+
+                // Call Embedding::insert with Layer 2 protection inside it
+                $insert_res = Embedding::insert(
+                    $post_id,
+                    $type,
+                    $plain_text,
+                    is_array( $image_urls ) ? $image_urls : [],
+                    $mode,
+                    $topic_slug,
+                    $country,
+                    $source_title,
+                    $source_url,
+                    $new_knowledge_id
+                );
+
+                if ( is_wp_error( $insert_res ) ) {
+                    sonoai_log_error( '[SonoAI] Re-index failed for selected item ' . $old_knowledge_id . ': ' . $insert_res->get_error_message() );
+                    $errors++;
+                    $processed++;
+                    continue;
+                }
+
+                // Clean up old embeddings in MySQL & Redis
+                if ( $old_knowledge_id !== $new_knowledge_id ) {
+                    $wpdb->delete( $emb_table, [ 'knowledge_id' => $old_knowledge_id ], [ '%s' ] );
+                    RedisManager::instance()->delete_vectors_by_id( $old_knowledge_id );
+                }
+
+                // Update the kb_items row
+                $wpdb->update(
+                    $kb_table,
+                    [
+                        'knowledge_id'    => $new_knowledge_id,
+                        'provider'        => $provider,
+                        'embedding_model' => $embedding_model,
+                    ],
+                    [ 'knowledge_id' => $old_knowledge_id ],
+                    [ '%s', '%s', '%s' ],
+                    [ '%s' ]
+                );
+
+                $updated++;
+                $processed++;
+            }
+
+            $next_offset = $offset + $processed;
+            $done = $next_offset >= $total;
+
+            // Trigger full index rebuild on completion
+            if ( $done ) {
+                if ( ! class_exists( 'SonoAI\\RedisMigration' ) ) {
+                    require_once SONOAI_DIR . 'includes/RedisMigration.php';
+                }
+                RedisMigration::rebuild_index();
+            }
+
+            wp_send_json_success( [
+                'updated'      => $updated,
+                'errors'       => $errors,
+                'next_offset'  => $next_offset,
+                'total'        => $total,
+                'done'         => $done,
+                'current_item' => $current_item,
+                'message'      => $done ? sprintf(
+                    __( 'Selected items successfully re-indexed! %d items updated to %s / %s.', 'sonoai' ),
+                    $total, $provider, $embedding_model
+                ) : ''
+            ] );
+
+        } catch ( \Throwable $t ) {
+            sonoai_log_error( '[SonoAI Selected Reindex] Fatal Error during batch reindexing: ' . $t->getMessage() );
+            wp_send_json_error( [ 'message' => $t->getMessage() ] );
+        }
+    }
+
+    /**
+     * Re-sync selected items from MySQL straight to Redis (extremely fast, zero API cost).
+     */
+    public function handle_resync_items(): void {
+        $this->check( 'sonoai_kb_resync_items' );
+
+        try {
+            global $wpdb;
+            $emb_table = $this->emb_table();
+
+            $ids_param  = SecurityHelper::get_param( 'ids', [] );
+            if ( is_string( $ids_param ) ) {
+                $ids = array_filter( array_map( 'trim', explode( ',', $ids_param ) ) );
+            } else {
+                $ids = array_filter( array_map( 'sanitize_text_field', (array) $ids_param ) );
+            }
+
+            if ( empty( $ids ) ) {
+                wp_send_json_error( [ 'message' => __( 'No items selected.', 'sonoai' ) ] );
+            }
+
+            $redis = RedisManager::instance();
+            if ( ! $redis->is_active() ) {
+                wp_send_json_error( [ 'message' => __( 'Redis is not active or enabled.', 'sonoai' ) ] );
+            }
+
+            $synced = 0;
+            $errors = 0;
+
+            foreach ( $ids as $id ) {
+                // 1. Delete existing vectors for this ID in Redis
+                $redis->delete_vectors_by_id( $id );
+
+                // 2. Fetch all embedding rows from MySQL
+                $rows = $wpdb->get_results(
+                    $wpdb->prepare( "SELECT * FROM `{$emb_table}` WHERE `knowledge_id` = %s", $id ),
+                    ARRAY_A
+                );
+
+                if ( empty( $rows ) ) {
+                    $errors++;
+                    continue;
+                }
+
+                foreach ( $rows as $row ) {
+                    $vector = json_decode( $row['embedding'], true );
+                    $images = ! empty( $row['image_urls'] ) ? json_decode( $row['image_urls'], true ) : [];
+
+                    if ( ! is_array( $vector ) ) {
+                        $errors++;
+                        continue;
+                    }
+
+                    $redis->cache_embedding(
+                        $row['knowledge_id'] . ':' . $row['chunk_index'],
+                        $vector,
+                        [
+                            'knowledge_id' => $row['knowledge_id'],
+                            'post_id'      => (int) $row['post_id'],
+                            'post_type'    => $row['post_type'],
+                            'chunk_text'   => $row['chunk_text'],
+                            'mode'         => $row['mode'],
+                            'topic_slug'   => $row['topic_slug'],
+                            'country'      => $row['country'],
+                            'source_title' => $row['source_title'],
+                            'source_url'   => $row['source_url'],
+                            'image_urls'   => $images,
+                        ]
+                    );
+                }
+
+                $synced++;
+            }
+
+            wp_send_json_success( [
+                'message' => sprintf(
+                    __( 'Successfully re-synced %d items (%d errors) directly to Redis!', 'sonoai' ),
+                    $synced, $errors
+                )
+            ] );
+
+        } catch ( \Throwable $t ) {
+            sonoai_log_error( '[SonoAI Selected Resync] Fatal Error: ' . $t->getMessage() );
+            wp_send_json_error( [ 'message' => $t->getMessage() ] );
+        }
     }
 }

@@ -41,6 +41,7 @@
         initTopicsTab();
         initRedisSync();
         initReindexAll();
+        initSelectiveActions();
         initApiConfig(); // Unified API & Provider logic
 
         // Inline Source Expansion for mobile
@@ -490,11 +491,15 @@
                 if (p.kb_status === 'added') {
                     badgeHtml = '<span class="kb-badge-added">Added</span>';
                     btnsHtml  = '<button type="button" class="kb-add-btn kb-quick-edit-btn" data-post-id="' + p.id + '" data-mode="' + p.raw_mode + '" data-topic="' + p.topic_id + '">Quick Edit</button>'
+                              + '<button type="button" class="kb-reindex-item-btn" data-knowledge-id="' + p.knowledge_id + '" style="margin-left:4px;background:#eab308;color:white;border:none;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;">🔄 Re-index</button>'
+                              + '<button type="button" class="kb-resync-item-btn" data-knowledge-id="' + p.knowledge_id + '" style="margin-left:4px;background:#22c55e;color:white;border:none;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;">⚡ Re-sync</button>'
                               + '<button type="button" class="kb-add-btn kb-remove-btn" data-post-id="' + p.id + '">Remove</button>';
                 } else if (p.kb_status === 'update') {
                     badgeHtml = '<span class="kb-badge-update">Requires Update</span>';
                     btnsHtml  = '<button type="button" class="kb-add-btn kb-update-btn" data-post-id="' + p.id + '">Update</button>'
                               + '<button type="button" class="kb-add-btn kb-quick-edit-btn" data-post-id="' + p.id + '" data-mode="' + p.raw_mode + '" data-topic="' + p.topic_id + '">Quick Edit</button>'
+                              + '<button type="button" class="kb-reindex-item-btn" data-knowledge-id="' + p.knowledge_id + '" style="margin-left:4px;background:#eab308;color:white;border:none;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;">🔄 Re-index</button>'
+                              + '<button type="button" class="kb-resync-item-btn" data-knowledge-id="' + p.knowledge_id + '" style="margin-left:4px;background:#22c55e;color:white;border:none;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;">⚡ Re-sync</button>'
                               + '<button type="button" class="kb-add-btn kb-remove-btn" data-post-id="' + p.id + '">Remove</button>';
                 } else {
                     badgeHtml = '<span class="kb-badge-not-added">Not Added</span>';
@@ -502,7 +507,7 @@
                 }
 
                 html += '<tr data-post-id="' + p.id + '">'
-                    + '<td><input type="checkbox" class="kb-wp-row-cb" value="' + p.id + '"></td>'
+                    + '<td><input type="checkbox" class="kb-wp-row-cb" value="' + p.id + '" data-knowledge-id="' + p.knowledge_id + '"></td>'
                     + '<td><a href="' + (p.edit_url || '#') + '" target="_blank">' + escHtml(p.title) + '</a></td>'
                     + '<td class="kb-col-date">' + escHtml(p.last_modified) + '</td>'
                     + '<td class="kb-col-date">' + escHtml(p.kb_added) + '</td>'
@@ -1085,6 +1090,340 @@
         modal.addEventListener('click', function(e) {
             if (e.target === modal) closeModal(modal);
         });
+    }
+
+    function initSelectiveActions() {
+        // 1. Select All Checkbox logic for Custom Text / PDFs / URLs / JSONLs
+        $(document).on('change', '.kb-select-all-cb', function() {
+            var isChecked = this.checked;
+            var table = $(this).closest('table');
+            table.find('tbody input[type="checkbox"]').prop('checked', isChecked);
+        });
+
+        // 2. Click Handler for single Re-index button
+        $(document).on('click', '.kb-reindex-item-btn', function() {
+            var kid = this.dataset.knowledgeId;
+            if (!kid) {
+                alert('This item has not been added to the Knowledge Base yet.');
+                return;
+            }
+            if (confirm('Are you sure you want to re-index this item? Old vectors will be replaced using the current model.')) {
+                runProgressiveReindex([kid]);
+            }
+        });
+
+        // 3. Click Handler for single Re-sync button
+        $(document).on('click', '.kb-resync-item-btn', function() {
+            var kid = this.dataset.knowledgeId;
+            if (!kid) {
+                alert('This item has not been added to the Knowledge Base yet.');
+                return;
+            }
+            var btn = $(this);
+            var originalText = btn.html();
+            btn.prop('disabled', true).text('⚡ Syncing...');
+            $.post(ajax, {
+                action: 'sonoai_kb_resync_items',
+                security: nonces.resyncItems,
+                ids: [kid]
+            }, function(res) {
+                btn.prop('disabled', false).html(originalText);
+                if (res.success) {
+                    showToast(res.data.message || 'Sync successful!', 'success');
+                } else {
+                    showToast(res.data.message || 'Sync failed.', 'error');
+                }
+            }).fail(function() {
+                btn.prop('disabled', false).html(originalText);
+                showToast('Fatal error during resync.', 'error');
+            });
+        });
+
+        // 4. Bulk action apply for General KB tables (Custom Text / PDF / URL / JSONL)
+        $(document).on('click', '.kb-list-bar .kb-bulk button', function() {
+            var bulkContainer = $(this).closest('.kb-bulk');
+            var select = bulkContainer.find('select');
+            var action = select.val();
+            if (!action) {
+                alert('Please select a bulk action.');
+                return;
+            }
+
+            var table = $(this).closest('.kb-list-bar').next('table');
+            if (!table.length) {
+                table = $(this).closest('.kb-tab-content, .kb-wrap').find('table');
+            }
+            
+            var checkedCbs = table.find('tbody input[type="checkbox"]:checked');
+            if (checkedCbs.length === 0) {
+                alert('Please select at least one item.');
+                return;
+            }
+
+            var kids = [];
+            checkedCbs.each(function() {
+                var val = $(this).val();
+                if (val) kids.push(val);
+            });
+
+            if (kids.length === 0) {
+                alert('No valid Knowledge Base items found in selection.');
+                return;
+            }
+
+            if (action === 'delete') {
+                if (!confirm('Are you sure you want to delete ' + kids.length + ' items?')) return;
+                var processedCount = 0;
+                var currentBtn = $(this);
+                var originalText = currentBtn.html();
+                currentBtn.prop('disabled', true).text('Deleting...');
+                
+                function deleteNext(idx) {
+                    if (idx >= kids.length) {
+                        showToast('Successfully deleted ' + processedCount + ' items!', 'success');
+                        setTimeout(function() { location.reload(); }, 1200);
+                        return;
+                    }
+                    $.post(ajax, {
+                        action: 'sonoai_kb_delete_item',
+                        security: nonces.deleteItem,
+                        knowledge_id: kids[idx]
+                    }, function(res) {
+                        if (res.success) processedCount++;
+                        deleteNext(idx + 1);
+                    }).fail(function() {
+                        deleteNext(idx + 1);
+                    });
+                }
+                deleteNext(0);
+            } else if (action === 'reindex') {
+                if (confirm('Are you sure you want to re-index the ' + kids.length + ' selected items?')) {
+                    runProgressiveReindex(kids);
+                }
+            } else if (action === 'resync') {
+                if (confirm('Are you sure you want to re-sync the ' + kids.length + ' selected items directly to Redis?')) {
+                    var currentBtn = $(this);
+                    var originalText = currentBtn.html();
+                    currentBtn.prop('disabled', true).text('Syncing...');
+                    $.post(ajax, {
+                        action: 'sonoai_kb_resync_items',
+                        security: nonces.resyncItems,
+                        ids: kids
+                    }, function(res) {
+                        currentBtn.prop('disabled', false).html(originalText);
+                        if (res.success) {
+                            showToast(res.data.message || 'Sync successful!', 'success');
+                        } else {
+                            showToast(res.data.message || 'Sync failed.', 'error');
+                        }
+                    }).fail(function() {
+                        currentBtn.prop('disabled', false).html(originalText);
+                        showToast('Fatal error during resync.', 'error');
+                    });
+                }
+            }
+        });
+
+        // 5. Bulk action apply for WordPress posts table
+        $(document).on('click', '#kb-wp-bulk-apply', function() {
+            var action = $('#kb-wp-bulk-action').val();
+            if (!action) {
+                alert('Please select a bulk action.');
+                return;
+            }
+
+            var checkedCbs = $('#kb-wp-tbody input[type="checkbox"]:checked');
+            if (checkedCbs.length === 0) {
+                alert('Please select at least one post.');
+                return;
+            }
+
+            var postIds = [];
+            var kids = [];
+            checkedCbs.each(function() {
+                postIds.push($(this).val());
+                var kid = $(this).data('knowledge-id');
+                if (kid) kids.push(kid);
+            });
+
+            if (action === 'add') {
+                var mVal = (document.getElementById('kb-wp-mode') || {}).value;
+                var tVal = (document.getElementById('kb-wp-topic') || {}).value;
+                
+                var currentBtn = $(this);
+                var originalText = currentBtn.html();
+                currentBtn.prop('disabled', true).text('Processing...');
+                
+                var successCount = 0;
+                function addNext(idx) {
+                    if (idx >= postIds.length) {
+                        showToast('Successfully added ' + successCount + ' posts!', 'success');
+                        setTimeout(function() { location.reload(); }, 1200);
+                        return;
+                    }
+                    var payload = {
+                        action: 'sonoai_kb_add_post',
+                        security: nonces.addPost,
+                        post_id: postIds[idx]
+                    };
+                    if (mVal) payload.mode = mVal;
+                    if (tVal) payload.topic_id = tVal;
+
+                    $.post(ajax, payload, function(res) {
+                        if (res.success) successCount++;
+                        addNext(idx + 1);
+                    }).fail(function() {
+                        addNext(idx + 1);
+                    });
+                }
+                addNext(0);
+            } else if (action === 'remove') {
+                if (!confirm('Are you sure you want to remove the ' + postIds.length + ' selected posts from the Knowledge Base?')) return;
+                var currentBtn = $(this);
+                var originalText = currentBtn.html();
+                currentBtn.prop('disabled', true).text('Processing...');
+                
+                var successCount = 0;
+                function removeNext(idx) {
+                    if (idx >= postIds.length) {
+                        showToast('Successfully removed ' + successCount + ' posts!', 'success');
+                        setTimeout(function() { location.reload(); }, 1200);
+                        return;
+                    }
+                    $.post(ajax, {
+                        action: 'sonoai_kb_remove_post',
+                        security: nonces.removePost,
+                        post_id: postIds[idx]
+                    }, function(res) {
+                        if (res.success) successCount++;
+                        removeNext(idx + 1);
+                    }).fail(function() {
+                        removeNext(idx + 1);
+                    });
+                }
+                removeNext(0);
+            } else if (action === 'reindex') {
+                if (kids.length === 0) {
+                    alert('None of the selected posts are currently added to the Knowledge Base. Add them first.');
+                    return;
+                }
+                if (confirm('Are you sure you want to re-index the ' + kids.length + ' selected posts?')) {
+                    runProgressiveReindex(kids);
+                }
+            } else if (action === 'resync') {
+                if (kids.length === 0) {
+                    alert('None of the selected posts are currently added to the Knowledge Base.');
+                    return;
+                }
+                if (confirm('Are you sure you want to re-sync the ' + kids.length + ' selected posts directly to Redis?')) {
+                    var currentBtn = $(this);
+                    var originalText = currentBtn.html();
+                    currentBtn.prop('disabled', true).text('Syncing...');
+                    $.post(ajax, {
+                        action: 'sonoai_kb_resync_items',
+                        security: nonces.resyncItems,
+                        ids: kids
+                    }, function(res) {
+                        currentBtn.prop('disabled', false).html(originalText);
+                        if (res.success) {
+                            showToast(res.data.message || 'Sync successful!', 'success');
+                        } else {
+                            showToast(res.data.message || 'Sync failed.', 'error');
+                        }
+                    }).fail(function() {
+                        currentBtn.prop('disabled', false).html(originalText);
+                        showToast('Fatal error during resync.', 'error');
+                    });
+                }
+            }
+        });
+    }
+
+    /**
+     * Progressive Batch Re-indexing to guarantee zero timeouts
+     */
+    function runProgressiveReindex(ids) {
+        var overlay = document.createElement('div');
+        overlay.className = 'kb-redis-popup-overlay';
+        overlay.innerHTML = `
+            <div class="kb-redis-popup">
+                <h3 style="margin-top:0;">Re-indexing Selected Items</h3>
+                <div class="kb-redis-progress-bar-container">
+                    <div class="kb-redis-progress-bar" style="width: 0%;"></div>
+                </div>
+                <div class="kb-redis-progress-text">0% Completed</div>
+                <div class="kb-redis-current-item">Preparing...</div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        var progressBar = overlay.querySelector('.kb-redis-progress-bar');
+        if (progressBar) {
+            progressBar.style.background = 'var(--kb-primary, #2563eb)';
+        }
+        var progressText = overlay.querySelector('.kb-redis-progress-text');
+        var currentItemText = overlay.querySelector('.kb-redis-current-item');
+
+        var totalUpdated = 0;
+        var totalErrors = 0;
+
+        function processBatch(offset) {
+            $.post(ajax, {
+                action: 'sonoai_kb_reindex_items',
+                security: nonces.reindexItems,
+                ids: ids,
+                offset: offset,
+                batch_size: 3 // Small batch to prevent timeouts
+            }, function(res) {
+                if (res.success) {
+                    var data = res.data;
+                    totalUpdated += data.updated || 0;
+                    totalErrors += data.errors || 0;
+                    var total = data.total || 1;
+                    var next_offset = data.next_offset || offset;
+
+                    var percentage = Math.min(100, Math.round((next_offset / total) * 100));
+                    if (data.done) percentage = 100;
+
+                    if (progressBar) progressBar.style.width = percentage + '%';
+                    if (progressText) progressText.innerText = percentage + '% Completed';
+                    if (currentItemText) {
+                        if (data.current_item) {
+                            currentItemText.innerText = 'Re-embedding: ' + data.current_item;
+                        } else {
+                            currentItemText.innerText = 'Re-embedding...';
+                        }
+                    }
+
+                    if (data.done) {
+                        setTimeout(function() {
+                            alert(data.message || 'Re-indexing completed successfully.');
+                            overlay.remove();
+                            location.reload();
+                        }, 500);
+                    } else {
+                        processBatch(data.next_offset);
+                    }
+                } else {
+                    alert('Re-index failed: ' + (res.data && res.data.message ? res.data.message : 'Unknown error'));
+                    overlay.remove();
+                }
+            }).fail(function(xhr) {
+                var errorMsg = 'Fatal error during re-indexing.';
+                if (xhr.responseText) {
+                    try {
+                        var json = JSON.parse(xhr.responseText);
+                        if (json && json.data && json.data.message) {
+                            errorMsg += '\nDetails: ' + json.data.message;
+                        }
+                    } catch(e) {}
+                }
+                alert(errorMsg);
+                overlay.remove();
+            });
+        }
+
+        processBatch(0);
     }
 
     // Helpers

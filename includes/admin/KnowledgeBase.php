@@ -82,6 +82,8 @@ class KnowledgeBase {
                 'uploadImg'  => wp_create_nonce( 'sonoai_kb_upload_img' ),
                 'syncRedis'  => wp_create_nonce( 'sonoai_kb_sync_redis' ),
                 'reindexAll' => wp_create_nonce( 'sonoai_kb_reindex_all' ),
+                'reindexItems' => wp_create_nonce( 'sonoai_kb_reindex_items' ),
+                'resyncItems' => wp_create_nonce( 'sonoai_kb_resync_items' ),
             ],
             'postTypes'  => self::get_eligible_post_types(),
             'providerLabel' => sonoai_option( 'active_provider', 'openai' ),
@@ -423,6 +425,8 @@ class KnowledgeBase {
                     <option value=""><?php esc_html_e( '— Bulk Action —', 'sonoai' ); ?></option>
                     <option value="add"><?php esc_html_e( 'Add to KB', 'sonoai' ); ?></option>
                     <option value="remove"><?php esc_html_e( 'Remove from KB', 'sonoai' ); ?></option>
+                    <option value="reindex"><?php esc_html_e( '🔄 Re-index', 'sonoai' ); ?></option>
+                    <option value="resync"><?php esc_html_e( '⚡ Re-sync', 'sonoai' ); ?></option>
                 </select>
                 <button type="button" id="kb-wp-bulk-apply" class="kb-btn-sm" style="margin-left: 8px;"><?php esc_html_e( 'Apply', 'sonoai' ); ?></button>
             </div>
@@ -943,6 +947,8 @@ class KnowledgeBase {
             <div class="kb-bulk">
                 <select class="kb-select-sm">
                     <option value=""><?php esc_html_e( '— Bulk Action —', 'sonoai' ); ?></option>
+                    <option value="reindex"><?php esc_html_e( '🔄 Re-index', 'sonoai' ); ?></option>
+                    <option value="resync"><?php esc_html_e( '⚡ Re-sync', 'sonoai' ); ?></option>
                     <option value="delete"><?php esc_html_e( 'Delete', 'sonoai' ); ?></option>
                 </select>
                 <button type="button" class="kb-btn-sm"><?php esc_html_e( 'Apply', 'sonoai' ); ?></button>
@@ -965,7 +971,7 @@ class KnowledgeBase {
         <table class="kb-table">
             <thead>
                 <tr>
-                    <th class="kb-col-cb"><input type="checkbox"></th>
+                    <th class="kb-col-cb"><input type="checkbox" class="kb-select-all-cb"></th>
                     <th><?php esc_html_e( 'Content', 'sonoai' ); ?></th>
                     <th><?php esc_html_e( 'AI Model', 'sonoai' ); ?></th>
                     <th><?php esc_html_e( 'Action', 'sonoai' ); ?></th>
@@ -1012,6 +1018,14 @@ class KnowledgeBase {
                             <button type="button" class="kb-action-link kb-view-txt-btn"
                                     data-content="<?php echo esc_attr( $item->raw_content ?? '' ); ?>">
                                 👁 <?php esc_html_e( 'View', 'sonoai' ); ?>
+                            </button>
+                            <button type="button" class="kb-action-link kb-reindex-item-btn"
+                                    data-knowledge-id="<?php echo esc_attr( $item->knowledge_id ); ?>">
+                                🔄 <?php esc_html_e( 'Re-index', 'sonoai' ); ?>
+                            </button>
+                            <button type="button" class="kb-action-link kb-resync-item-btn"
+                                    data-knowledge-id="<?php echo esc_attr( $item->knowledge_id ); ?>">
+                                ⚡ <?php esc_html_e( 'Re-sync', 'sonoai' ); ?>
                             </button>
                             <button type="button" class="kb-action-link kb-delete-btn"
                                     data-knowledge-id="<?php echo esc_attr( $item->knowledge_id ); ?>">
@@ -1069,6 +1083,8 @@ class KnowledgeBase {
             <div class="kb-bulk">
                 <select class="kb-select-sm">
                     <option value=""><?php esc_html_e( '— Bulk Action —', 'sonoai' ); ?></option>
+                    <option value="reindex"><?php esc_html_e( '🔄 Re-index', 'sonoai' ); ?></option>
+                    <option value="resync"><?php esc_html_e( '⚡ Re-sync', 'sonoai' ); ?></option>
                     <option value="delete"><?php esc_html_e( 'Delete', 'sonoai' ); ?></option>
                 </select>
                 <button type="button" class="kb-btn-sm"><?php esc_html_e( 'Apply', 'sonoai' ); ?></button>
@@ -1086,7 +1102,7 @@ class KnowledgeBase {
         <table class="kb-table">
             <thead>
                 <tr>
-                    <th class="kb-col-cb"><input type="checkbox"></th>
+                    <th class="kb-col-cb"><input type="checkbox" class="kb-select-all-cb"></th>
                     <th><?php echo $type === 'pdf' ? esc_html__( 'File', 'sonoai' ) : esc_html__( 'URL', 'sonoai' ); ?></th>
                     <th><?php esc_html_e( 'AI Model', 'sonoai' ); ?></th>
                     <th><?php esc_html_e( 'Action', 'sonoai' ); ?></th>
@@ -1149,6 +1165,14 @@ class KnowledgeBase {
                                 <a href="<?php echo esc_url( $item->source_url ); ?>" target="_blank" rel="noopener"
                                    class="kb-action-link" title="<?php echo esc_attr( $item->source_title ?: $item->source_url ); ?>">👁 <?php echo esc_html( $actions['view'] ); ?></a>
                             <?php endif; ?>
+                            <button type="button" class="kb-action-link kb-reindex-item-btn"
+                                    data-knowledge-id="<?php echo esc_attr( $item->knowledge_id ); ?>">
+                                🔄 <?php esc_html_e( 'Re-index', 'sonoai' ); ?>
+                            </button>
+                            <button type="button" class="kb-action-link kb-resync-item-btn"
+                                    data-knowledge-id="<?php echo esc_attr( $item->knowledge_id ); ?>">
+                                ⚡ <?php esc_html_e( 'Re-sync', 'sonoai' ); ?>
+                            </button>
                             <?php if ( $has_delete ) : ?>
                                 <button type="button" class="kb-action-link kb-delete-btn"
                                         data-knowledge-id="<?php echo esc_attr( $item->knowledge_id ); ?>">
