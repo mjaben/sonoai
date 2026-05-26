@@ -1024,6 +1024,8 @@ class KnowledgeBaseAjax {
             if ( $time_limit < 10 ) {
                 $time_limit = 25; // Guarantee at least a reasonable window
             }
+            // Enforce a strict ceiling of 40 seconds to prevent Cloudflare 100s HTTP 524 timeouts
+            $time_limit = min( $time_limit, 40 );
 
             global $wpdb;
             $kb_table  = $this->kb_table();
