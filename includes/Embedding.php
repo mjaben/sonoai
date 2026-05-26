@@ -159,6 +159,12 @@ class Embedding {
 
         $errors = 0;
         foreach ( $chunks_data as $idx => $data ) {
+            // Prevent Cloudflare 100s HTTP 524 timeouts by breaking chunk loop if request exceeds 38 seconds
+            if ( isset( $_SERVER['REQUEST_TIME_FLOAT'] ) && ( microtime( true ) - $_SERVER['REQUEST_TIME_FLOAT'] ) > 38 ) {
+                sonoai_log_error( '[SonoAI] Document chunk embedding exceeded safety time limit. Truncating chunks to prevent Cloudflare timeout.' );
+                break;
+            }
+
             $chunk_text   = $data['text'];
             $chunk_source = $data['source'];
             $chunk_url    = $data['url'];
