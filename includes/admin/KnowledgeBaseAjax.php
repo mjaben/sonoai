@@ -1011,6 +1011,20 @@ class KnowledgeBaseAjax {
                 wp_send_json_error( [ 'message' => __( 'AI API key is not configured.', 'sonoai' ) ] );
             }
 
+            // Attempt to increase time limit if allowed by the host
+            @set_time_limit( 120 );
+
+            $start_time = microtime( true );
+            $max_time   = (int) ini_get( 'max_execution_time' );
+            if ( $max_time <= 0 ) {
+                $max_time = 30; // Default fallback
+            }
+            // Safety limit is 5 seconds less than max execution time
+            $time_limit = $max_time - 5;
+            if ( $time_limit < 10 ) {
+                $time_limit = 25; // Guarantee at least a reasonable window
+            }
+
             global $wpdb;
             $kb_table  = $this->kb_table();
             $emb_table = $this->emb_table();
@@ -1047,8 +1061,15 @@ class KnowledgeBaseAjax {
             $updated = 0;
             $errors  = 0;
             $current_item = '';
+            $processed = 0;
 
             foreach ( $items as $item ) {
+                // Break early if we've processed at least one item and are running low on execution time budget
+                if ( $processed > 0 && ( microtime( true ) - $start_time ) > $time_limit ) {
+                    sonoai_log_error( '[SonoAI Reindex] Batch execution time budget exceeded. Stopping early at offset ' . ( $offset + $processed ) . ' to prevent PHP timeout.' );
+                    break;
+                }
+
                 $old_knowledge_id = $item['knowledge_id'];
                 $post_id          = (int) $item['post_id'];
                 $type             = $item['type'];
@@ -1074,6 +1095,7 @@ class KnowledgeBaseAjax {
                 if ( empty( trim( $plain_text ) ) ) {
                     sonoai_log_error( "[SonoAI] Re-index skipped (no content) for knowledge_id: {$old_knowledge_id}" );
                     $errors++;
+                    $processed++;
                     continue;
                 }
 
@@ -1094,6 +1116,7 @@ class KnowledgeBaseAjax {
                 if ( is_wp_error( $new_knowledge_id ) ) {
                     sonoai_log_error( '[SonoAI] Re-index failed for knowledge_id ' . $old_knowledge_id . ': ' . $new_knowledge_id->get_error_message() );
                     $errors++;
+                    $processed++;
                     continue;
                 }
 
@@ -1123,9 +1146,10 @@ class KnowledgeBaseAjax {
                 }
 
                 $updated++;
+                $processed++;
             }
 
-            $next_offset = $offset + count( $items );
+            $next_offset = $offset + $processed;
             $done = $next_offset >= $total;
 
             // Rebuild Redis VSS index from MySQL to guarantee all new vectors are indexed
