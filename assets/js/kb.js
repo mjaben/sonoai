@@ -277,31 +277,89 @@
             }
 
             btn.disabled = true;
-            btn.textContent = '⏳ Re-indexing…';
-            showToast('Re-indexing all items with ' + model + '. Please wait…', 'info');
 
-            var payload = {
-                action:   'sonoai_kb_reindex_all',
-                security: nonces.reindexAll
-            };
+            // Create progress popup overlay (reusing styling classes from redis popup)
+            var overlay = document.createElement('div');
+            overlay.className = 'kb-redis-popup-overlay';
+            overlay.innerHTML = `
+                <div class="kb-redis-popup">
+                    <h3 style="margin-top:0;">Re-indexing Knowledge Base</h3>
+                    <div class="kb-redis-progress-bar-container">
+                        <div class="kb-redis-progress-bar" style="width: 0%;"></div>
+                    </div>
+                    <div class="kb-redis-progress-text">0% Completed</div>
+                    <div class="kb-redis-current-item">Preparing to re-index...</div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
 
-            $.post(ajax, payload, function(res) {
-                if (res.success) {
-                    showToast(res.data.message || 'Re-index complete!', 'success');
-                    // Refresh the visible list so the AI Model column updates
-                    setTimeout(function() {
-                        if (typeof loadPosts === 'function') loadPosts(1, '');
-                        if (typeof loadCustomItems === 'function') loadCustomItems();
-                    }, 600);
-                } else {
-                    showToast(res.data.message || 'Re-index failed.', 'error');
-                }
-            }).fail(function() {
-                showToast('Fatal error during re-index.', 'error');
-            }).always(function() {
-                btn.disabled = false;
-                btn.innerHTML = '&#9889; Re-index (' + (KB.currentModel || '') + ')';
-            });
+            var progressBar = overlay.querySelector('.kb-redis-progress-bar');
+            if (progressBar) {
+                // Style with standard theme blue/green primary
+                progressBar.style.background = 'var(--kb-primary, #2563eb)';
+            }
+            var progressText = overlay.querySelector('.kb-redis-progress-text');
+            var currentItemText = overlay.querySelector('.kb-redis-current-item');
+
+            var totalUpdated = 0;
+            var totalErrors = 0;
+
+            function processReindex(offset) {
+                $.post(ajax, {
+                    action: 'sonoai_kb_reindex_all',
+                    security: nonces.reindexAll,
+                    offset: offset,
+                    batch_size: 5 // Process 5 items per batch
+                }, function(res) {
+                    if (res.success) {
+                        var data = res.data;
+                        totalUpdated += data.updated || 0;
+                        totalErrors += data.errors || 0;
+                        var total = data.total || 1;
+                        var next_offset = data.next_offset || offset;
+
+                        var percentage = Math.min(100, Math.round((next_offset / total) * 100));
+                        if (data.done) percentage = 100;
+
+                        if (progressBar) progressBar.style.width = percentage + '%';
+                        if (progressText) progressText.innerText = percentage + '% Completed';
+                        if (currentItemText) {
+                            if (data.current_item) {
+                                currentItemText.innerText = 'Re-embedding: ' + data.current_item;
+                            } else {
+                                currentItemText.innerText = 'Re-embedding...';
+                            }
+                        }
+
+                        if (data.done) {
+                            setTimeout(function() {
+                                alert(data.message || 'Re-indexing completed successfully.');
+                                overlay.remove();
+                                btn.disabled = false;
+                                btn.innerHTML = '&#9889; Re-index (' + (KB.currentModel || '') + ')';
+                                
+                                // Refresh the visible lists
+                                if (typeof loadPosts === 'function') loadPosts(1, '');
+                                if (typeof loadCustomItems === 'function') loadCustomItems();
+                            }, 500);
+                        } else {
+                            processReindex(data.next_offset);
+                        }
+                    } else {
+                        alert('Re-index failed: ' + (res.data && res.data.message ? res.data.message : 'Unknown error'));
+                        overlay.remove();
+                        btn.disabled = false;
+                        btn.innerHTML = '&#9889; Re-index (' + (KB.currentModel || '') + ')';
+                    }
+                }).fail(function() {
+                    alert('Fatal error during re-indexing.');
+                    overlay.remove();
+                    btn.disabled = false;
+                    btn.innerHTML = '&#9889; Re-index (' + (KB.currentModel || '') + ')';
+                });
+            }
+
+            processReindex(0);
         });
     }
     function showToast(msg, type) {

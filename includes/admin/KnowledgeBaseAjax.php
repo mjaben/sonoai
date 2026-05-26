@@ -997,9 +997,9 @@ class KnowledgeBaseAjax {
 
     /**
      * Re-index all Knowledge Base items with the currently configured embedding model.
+     * Supports batch processing with offset and batch_size to prevent timeouts.
      *
      * Safe pattern: embed FIRST → verify success → THEN delete old data.
-     * This prevents data loss if the API call fails mid-reindex.
      *
      * @return void
      */
@@ -1017,18 +1017,35 @@ class KnowledgeBaseAjax {
         $provider        = sonoai_option( 'active_provider', 'openai' );
         $embedding_model = AIProvider::get_embedding_model();
 
-        // Fetch all stored KB items
+        $offset     = SecurityHelper::get_param( 'offset', 0, 'int' );
+        $batch_size = SecurityHelper::get_param( 'batch_size', 5, 'int' );
+
+        // Count total items
+        $total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM `{$kb_table}`" );
+
+        if ( $total === 0 ) {
+            wp_send_json_success( [
+                'message' => __( 'No items to re-index.', 'sonoai' ),
+                'updated' => 0,
+                'errors'  => 0,
+                'done'    => true,
+                'total'   => 0
+            ] );
+        }
+
+        // Fetch batch
         $items = $wpdb->get_results(
-            "SELECT * FROM `{$kb_table}` ORDER BY created_at ASC",
+            $wpdb->prepare(
+                "SELECT * FROM `{$kb_table}` ORDER BY created_at ASC LIMIT %d OFFSET %d",
+                $batch_size,
+                $offset
+            ),
             ARRAY_A
         );
 
-        if ( empty( $items ) ) {
-            wp_send_json_success( [ 'message' => __( 'No items to re-index.', 'sonoai' ), 'updated' => 0, 'errors' => 0 ] );
-        }
-
         $updated = 0;
         $errors  = 0;
+        $current_item = '';
 
         foreach ( $items as $item ) {
             $old_knowledge_id = $item['knowledge_id'];
@@ -1042,8 +1059,9 @@ class KnowledgeBaseAjax {
             $image_urls       = ! empty( $item['image_urls'] ) ? json_decode( $item['image_urls'], true ) : [];
             $raw_content      = $item['raw_content']  ?? '';
 
+            $current_item = $source_title ?: sprintf( '%s #%d', ucfirst( $type ), $post_id );
+
             // ── Resolve plain text ──────────────────────────────────────────
-            // Priority: raw_content (txt/html) → WP post content → skip
             $plain_text = ! empty( $raw_content ) ? sonoai_clean_content( $raw_content ) : '';
             if ( empty( trim( $plain_text ) ) && $post_id > 0 ) {
                 $wp_post = get_post( $post_id );
@@ -1066,7 +1084,6 @@ class KnowledgeBaseAjax {
             }
 
             // ── SAFE PATTERN: Embed FIRST, delete old data only on success ──
-            // Step 1: Generate the new embedding (but don't delete anything yet)
             $new_knowledge_id = Embedding::insert(
                 $post_id, $type, $plain_text,
                 is_array( $image_urls ) ? $image_urls : [],
@@ -1074,7 +1091,6 @@ class KnowledgeBaseAjax {
             );
 
             if ( is_wp_error( $new_knowledge_id ) ) {
-                // NEW embedding failed — old data is still intact, nothing was lost
                 error_log( '[SonoAI] Re-index failed for knowledge_id ' . $old_knowledge_id . ': ' . $new_knowledge_id->get_error_message() );
                 $errors++;
                 continue;
@@ -1102,8 +1118,11 @@ class KnowledgeBaseAjax {
             $updated++;
         }
 
+        $next_offset = $offset + count( $items );
+        $done = $next_offset >= $total;
+
         // Rebuild Redis VSS index from MySQL to guarantee all new vectors are indexed
-        if ( $updated > 0 ) {
+        if ( $done ) {
             if ( ! class_exists( 'SonoAI\\RedisMigration' ) ) {
                 require_once SONOAI_DIR . 'includes/RedisMigration.php';
             }
@@ -1111,12 +1130,16 @@ class KnowledgeBaseAjax {
         }
 
         wp_send_json_success( [
-            'message' => sprintf(
-                __( 'Re-index complete! %d items updated to %s / %s. %d errors.', 'sonoai' ),
-                $updated, $provider, $embedding_model, $errors
-            ),
-            'updated' => $updated,
-            'errors'  => $errors,
+            'updated'      => $updated,
+            'errors'       => $errors,
+            'next_offset'  => $next_offset,
+            'total'        => $total,
+            'done'         => $done,
+            'current_item' => $current_item,
+            'message'      => $done ? sprintf(
+                __( 'Re-index complete! %d items updated to %s / %s.', 'sonoai' ),
+                $next_offset, $provider, $embedding_model
+            ) : ''
         ] );
     }
 
