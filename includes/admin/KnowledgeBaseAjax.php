@@ -1173,14 +1173,6 @@ class KnowledgeBaseAjax {
             $next_offset = $offset + $processed;
             $done = $next_offset >= $total;
 
-            // Rebuild Redis VSS index from MySQL to guarantee all new vectors are indexed
-            if ( $done ) {
-                if ( ! class_exists( 'SonoAI\\RedisMigration' ) ) {
-                    require_once SONOAI_DIR . 'includes/RedisMigration.php';
-                }
-                RedisMigration::rebuild_index();
-            }
-
             wp_send_json_success( [
                 'updated'      => $updated,
                 'errors'       => $errors,
@@ -1418,8 +1410,7 @@ class KnowledgeBaseAjax {
                 }
 
                 // Generate new UUID and Embed
-                $new_knowledge_id = wp_generate_uuid4();
-                $topic_row = $topic_id ? $wpdb->get_row( $wpdb->prepare( "SELECT slug FROM {$wpdb->prefix}sonoai_sonoai_kb_topics WHERE id = %d", $topic_id ) ) : null;
+                $topic_row = $topic_id ? $wpdb->get_row( $wpdb->prepare( "SELECT slug FROM {$wpdb->prefix}sonoai_kb_topics WHERE id = %d", $topic_id ) ) : null;
                 $topic_slug = $topic_row ? $topic_row->slug : '';
 
                 if ( ! class_exists( 'SonoAI\\Embedding' ) ) {
@@ -1427,7 +1418,7 @@ class KnowledgeBaseAjax {
                 }
 
                 // Call Embedding::insert with Layer 2 protection inside it
-                $insert_res = Embedding::insert(
+                $new_knowledge_id = Embedding::insert(
                     $post_id,
                     $type,
                     $plain_text,
@@ -1436,12 +1427,11 @@ class KnowledgeBaseAjax {
                     $topic_slug,
                     $country,
                     $source_title,
-                    $source_url,
-                    $new_knowledge_id
+                    $source_url
                 );
 
-                if ( is_wp_error( $insert_res ) ) {
-                    sonoai_log_error( '[SonoAI] Re-index failed for selected item ' . $old_knowledge_id . ': ' . $insert_res->get_error_message() );
+                if ( is_wp_error( $new_knowledge_id ) ) {
+                    sonoai_log_error( '[SonoAI] Re-index failed for selected item ' . $old_knowledge_id . ': ' . $new_knowledge_id->get_error_message() );
                     $errors++;
                     $processed++;
                     continue;
@@ -1472,14 +1462,6 @@ class KnowledgeBaseAjax {
 
             $next_offset = $offset + $processed;
             $done = $next_offset >= $total;
-
-            // Trigger full index rebuild on completion
-            if ( $done ) {
-                if ( ! class_exists( 'SonoAI\\RedisMigration' ) ) {
-                    require_once SONOAI_DIR . 'includes/RedisMigration.php';
-                }
-                RedisMigration::rebuild_index();
-            }
 
             wp_send_json_success( [
                 'updated'      => $updated,
