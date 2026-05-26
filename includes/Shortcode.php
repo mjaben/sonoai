@@ -48,6 +48,31 @@ class Shortcode {
             'index.php?pagename=$matches[1]&sonoai_uuid=$matches[2]',
             'top'
         );
+
+        // Matches root/UUID-v4 (for front page or direct root chat)
+        $chat_page_id = $this->get_chat_page_id();
+        if ( $chat_page_id > 0 ) {
+            add_rewrite_rule(
+                '^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/?$',
+                'index.php?page_id=' . $chat_page_id . '&sonoai_uuid=$matches[1]',
+                'top'
+            );
+        }
+    }
+
+    /** Find the first page ID containing the [sonoai_chat] shortcode. */
+    private function get_chat_page_id(): int {
+        global $wpdb;
+        $page_id = (int) get_option( 'page_on_front' );
+        if ( $page_id > 0 ) {
+            return $page_id;
+        }
+
+        // Fallback: search for first page with the shortcode
+        $post_id = $wpdb->get_var(
+            "SELECT ID FROM {$wpdb->posts} WHERE post_status = 'publish' AND post_type = 'page' AND post_content LIKE '%[sonoai_chat]%' LIMIT 1"
+        );
+        return $post_id ? (int) $post_id : 0;
     }
 
     /** Register our custom query variable. */
