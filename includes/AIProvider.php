@@ -168,9 +168,15 @@ class AIProvider {
             return $response;
         }
 
-        $body = json_decode( wp_remote_retrieve_body( $response ), true );
-        if ( ! isset( $body['data'][0]['embedding'] ) ) {
-            $err = $body['error']['message'] ?? 'Unknown OpenAI error';
+        $body_raw = wp_remote_retrieve_body( $response );
+        $body = json_decode( $body_raw, true );
+        if ( ! is_array( $body ) || ! isset( $body['data'][0]['embedding'] ) ) {
+            $err = '';
+            if ( is_array( $body ) && isset( $body['error']['message'] ) ) {
+                $err = $body['error']['message'];
+            } else {
+                $err = 'Unknown OpenAI error. Raw response: ' . substr( trim( strip_tags( $body_raw ) ), 0, 300 );
+            }
             return new \WP_Error( 'openai_embed_error', $err );
         }
 
@@ -198,9 +204,15 @@ class AIProvider {
             return $response;
         }
 
-        $body = json_decode( wp_remote_retrieve_body( $response ), true );
-        if ( ! isset( $body['choices'][0]['message']['content'] ) ) {
-            $err = $body['error']['message'] ?? 'Unknown OpenAI error';
+        $body_raw = wp_remote_retrieve_body( $response );
+        $body = json_decode( $body_raw, true );
+        if ( ! is_array( $body ) || ! isset( $body['choices'][0]['message']['content'] ) ) {
+            $err = '';
+            if ( is_array( $body ) && isset( $body['error']['message'] ) ) {
+                $err = $body['error']['message'];
+            } else {
+                $err = 'Unknown OpenAI error. Raw response: ' . substr( trim( strip_tags( $body_raw ) ), 0, 300 );
+            }
             return new \WP_Error( 'openai_chat_error', $err );
         }
 
@@ -258,9 +270,15 @@ class AIProvider {
             return $response;
         }
 
-        $body = json_decode( wp_remote_retrieve_body( $response ), true );
-        if ( ! isset( $body['embedding']['values'] ) ) {
-            $err = $body['error']['message'] ?? 'Unknown Gemini error';
+        $body_raw = wp_remote_retrieve_body( $response );
+        $body = json_decode( $body_raw, true );
+        if ( ! is_array( $body ) || ! isset( $body['embedding']['values'] ) ) {
+            $err = '';
+            if ( is_array( $body ) && isset( $body['error']['message'] ) ) {
+                $err = $body['error']['message'];
+            } else {
+                $err = 'Unknown Gemini error. Raw response: ' . substr( trim( strip_tags( $body_raw ) ), 0, 300 );
+            }
             return new \WP_Error( 'gemini_embed_error', $err );
         }
 
@@ -311,9 +329,15 @@ class AIProvider {
             return $response;
         }
 
-        $data = json_decode( wp_remote_retrieve_body( $response ), true );
-        if ( ! isset( $data['candidates'][0]['content']['parts'][0]['text'] ) ) {
-            $err = $data['error']['message'] ?? 'Unknown Gemini error';
+        $body_raw = wp_remote_retrieve_body( $response );
+        $data = json_decode( $body_raw, true );
+        if ( ! is_array( $data ) || ! isset( $data['candidates'][0]['content']['parts'][0]['text'] ) ) {
+            $err = '';
+            if ( is_array( $data ) && isset( $data['error']['message'] ) ) {
+                $err = $data['error']['message'];
+            } else {
+                $err = 'Unknown Gemini error. Raw response: ' . substr( trim( strip_tags( $body_raw ) ), 0, 300 );
+            }
             return new \WP_Error( 'gemini_chat_error', $err );
         }
 
@@ -384,9 +408,15 @@ class AIProvider {
 
         if ( is_wp_error( $response ) ) return $response;
 
-        $body = json_decode( wp_remote_retrieve_body( $response ), true );
-        if ( ! isset( $body['data'][0]['embedding'] ) ) {
-            $err = $body['message'] ?? 'Unknown Mistral error';
+        $body_raw = wp_remote_retrieve_body( $response );
+        $body = json_decode( $body_raw, true );
+        if ( ! is_array( $body ) || ! isset( $body['data'][0]['embedding'] ) ) {
+            $err = '';
+            if ( is_array( $body ) && isset( $body['message'] ) ) {
+                $err = $body['message'];
+            } else {
+                $err = 'Unknown Mistral error. Raw response: ' . substr( trim( strip_tags( $body_raw ) ), 0, 300 );
+            }
             return new \WP_Error( 'mistral_embed_error', $err );
         }
 
@@ -411,9 +441,15 @@ class AIProvider {
 
         if ( is_wp_error( $response ) ) return $response;
 
-        $body = json_decode( wp_remote_retrieve_body( $response ), true );
-        if ( ! isset( $body['choices'][0]['message']['content'] ) ) {
-            $err = $body['message'] ?? 'Unknown Mistral error';
+        $body_raw = wp_remote_retrieve_body( $response );
+        $body = json_decode( $body_raw, true );
+        if ( ! is_array( $body ) || ! isset( $body['choices'][0]['message']['content'] ) ) {
+            $err = '';
+            if ( is_array( $body ) && isset( $body['message'] ) ) {
+                $err = $body['message'];
+            } else {
+                $err = 'Unknown Mistral error. Raw response: ' . substr( trim( strip_tags( $body_raw ) ), 0, 300 );
+            }
             return new \WP_Error( 'mistral_chat_error', $err );
         }
 
@@ -487,9 +523,15 @@ class AIProvider {
 
         if ( is_wp_error( $response ) ) return $response;
 
-        $body = json_decode( wp_remote_retrieve_body( $response ), true );
-        if ( ! isset( $body['content'][0]['text'] ) ) {
-            $err = $body['error']['message'] ?? 'Unknown Anthropic error';
+        $body_raw = wp_remote_retrieve_body( $response );
+        $body = json_decode( $body_raw, true );
+        if ( ! is_array( $body ) || ! isset( $body['content'][0]['text'] ) ) {
+            $err = '';
+            if ( is_array( $body ) && isset( $body['error']['message'] ) ) {
+                $err = $body['error']['message'];
+            } else {
+                $err = 'Unknown Anthropic error. Raw response: ' . substr( trim( strip_tags( $body_raw ) ), 0, 300 );
+            }
             return new \WP_Error( 'anthropic_chat_error', $err );
         }
 
