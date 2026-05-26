@@ -1004,149 +1004,154 @@ class KnowledgeBaseAjax {
      * @return void
      */
     public function handle_reindex_all(): void {
-        $this->check( 'sonoai_kb_reindex_all' );
+        try {
+            $this->check( 'sonoai_kb_reindex_all' );
 
-        if ( ! AIProvider::has_api_key() ) {
-            wp_send_json_error( [ 'message' => __( 'AI API key is not configured.', 'sonoai' ) ] );
-        }
+            if ( ! AIProvider::has_api_key() ) {
+                wp_send_json_error( [ 'message' => __( 'AI API key is not configured.', 'sonoai' ) ] );
+            }
 
-        global $wpdb;
-        $kb_table  = $this->kb_table();
-        $emb_table = $this->emb_table();
+            global $wpdb;
+            $kb_table  = $this->kb_table();
+            $emb_table = $this->emb_table();
 
-        $provider        = sonoai_option( 'active_provider', 'openai' );
-        $embedding_model = AIProvider::get_embedding_model();
+            $provider        = sonoai_option( 'active_provider', 'openai' );
+            $embedding_model = AIProvider::get_embedding_model();
 
-        $offset     = SecurityHelper::get_param( 'offset', 0, 'int' );
-        $batch_size = SecurityHelper::get_param( 'batch_size', 5, 'int' );
+            $offset     = SecurityHelper::get_param( 'offset', 0, 'int' );
+            $batch_size = SecurityHelper::get_param( 'batch_size', 5, 'int' );
 
-        // Count total items
-        $total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM `{$kb_table}`" );
+            // Count total items
+            $total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM `{$kb_table}`" );
 
-        if ( $total === 0 ) {
+            if ( $total === 0 ) {
+                wp_send_json_success( [
+                    'message' => __( 'No items to re-index.', 'sonoai' ),
+                    'updated' => 0,
+                    'errors'  => 0,
+                    'done'    => true,
+                    'total'   => 0
+                ] );
+            }
+
+            // Fetch batch
+            $items = $wpdb->get_results(
+                $wpdb->prepare(
+                    "SELECT * FROM `{$kb_table}` ORDER BY created_at ASC LIMIT %d OFFSET %d",
+                    $batch_size,
+                    $offset
+                ),
+                ARRAY_A
+            );
+
+            $updated = 0;
+            $errors  = 0;
+            $current_item = '';
+
+            foreach ( $items as $item ) {
+                $old_knowledge_id = $item['knowledge_id'];
+                $post_id          = (int) $item['post_id'];
+                $type             = $item['type'];
+                $mode             = $item['mode']         ?? 'guideline';
+                $country          = $item['country']      ?? '';
+                $source_title     = $item['source_title'] ?? '';
+                $source_url       = $item['source_url']   ?? '';
+                $topic_id         = ! empty( $item['topic_id'] ) ? (int) $item['topic_id'] : null;
+                $image_urls       = ! empty( $item['image_urls'] ) ? json_decode( $item['image_urls'], true ) : [];
+                $raw_content      = $item['raw_content']  ?? '';
+
+                $current_item = $source_title ?: sprintf( '%s #%d', ucfirst( $type ), $post_id );
+
+                // ── Resolve plain text ──────────────────────────────────────────
+                $plain_text = ! empty( $raw_content ) ? sonoai_clean_content( $raw_content ) : '';
+                if ( empty( trim( $plain_text ) ) && $post_id > 0 ) {
+                    $wp_post = get_post( $post_id );
+                    if ( $wp_post ) {
+                        $plain_text = sonoai_clean_content( $wp_post->post_content );
+                    }
+                }
+
+                if ( empty( trim( $plain_text ) ) ) {
+                    sonoai_log_error( "[SonoAI] Re-index skipped (no content) for knowledge_id: {$old_knowledge_id}" );
+                    $errors++;
+                    continue;
+                }
+
+                // ── Get topic slug ──────────────────────────────────────────────
+                $topic_slug = '';
+                if ( $topic_id ) {
+                    $topic = $wpdb->get_row( $wpdb->prepare( "SELECT slug FROM `{$wpdb->prefix}sonoai_kb_topics` WHERE id = %d", $topic_id ) );
+                    if ( $topic ) $topic_slug = $topic->slug;
+                }
+
+                // ── SAFE PATTERN: Embed FIRST, delete old data only on success ──
+                $new_knowledge_id = Embedding::insert(
+                    $post_id, $type, $plain_text,
+                    is_array( $image_urls ) ? $image_urls : [],
+                    $mode, $topic_slug, $country, $source_title, $source_url
+                );
+
+                if ( is_wp_error( $new_knowledge_id ) ) {
+                    sonoai_log_error( '[SonoAI] Re-index failed for knowledge_id ' . $old_knowledge_id . ': ' . $new_knowledge_id->get_error_message() );
+                    $errors++;
+                    continue;
+                }
+
+                // Step 2: New embedding succeeded — NOW safely remove old data
+                if ( $old_knowledge_id !== $new_knowledge_id ) {
+                    $del_res = $wpdb->delete( $emb_table, [ 'knowledge_id' => $old_knowledge_id ], [ '%s' ] );
+                    if ( false === $del_res ) {
+                        sonoai_log_error( '[SonoAI] Re-index DB delete failed for old_knowledge_id ' . $old_knowledge_id . ': ' . $wpdb->last_error );
+                    }
+                    RedisManager::instance()->delete_vectors_by_id( $old_knowledge_id );
+                }
+
+                // Step 3: Update the kb_items row with the new model metadata
+                $up_res = $wpdb->update(
+                    $kb_table,
+                    [
+                        'knowledge_id'    => $new_knowledge_id,
+                        'provider'        => $provider,
+                        'embedding_model' => $embedding_model,
+                    ],
+                    [ 'knowledge_id' => $old_knowledge_id ],
+                    [ '%s', '%s', '%s' ],
+                    [ '%s' ]
+                );
+                if ( false === $up_res ) {
+                    sonoai_log_error( '[SonoAI] Re-index DB update failed for knowledge_id ' . $old_knowledge_id . ' to ' . $new_knowledge_id . ': ' . $wpdb->last_error );
+                }
+
+                $updated++;
+            }
+
+            $next_offset = $offset + count( $items );
+            $done = $next_offset >= $total;
+
+            // Rebuild Redis VSS index from MySQL to guarantee all new vectors are indexed
+            if ( $done ) {
+                if ( ! class_exists( 'SonoAI\\RedisMigration' ) ) {
+                    require_once SONOAI_DIR . 'includes/RedisMigration.php';
+                }
+                RedisMigration::rebuild_index();
+            }
+
             wp_send_json_success( [
-                'message' => __( 'No items to re-index.', 'sonoai' ),
-                'updated' => 0,
-                'errors'  => 0,
-                'done'    => true,
-                'total'   => 0
+                'updated'      => $updated,
+                'errors'       => $errors,
+                'next_offset'  => $next_offset,
+                'total'        => $total,
+                'done'         => $done,
+                'current_item' => $current_item,
+                'message'      => $done ? sprintf(
+                    __( 'Re-index complete! %d items updated to %s / %s.', 'sonoai' ),
+                    $next_offset, $provider, $embedding_model
+                ) : ''
             ] );
+        } catch ( \Throwable $t ) {
+            sonoai_log_error( '[SonoAI Reindex All] Fatal Error during batch re-indexing: ' . $t->getMessage() . ' in ' . $t->getFile() . ':' . $t->getLine() );
+            wp_send_json_error( [ 'message' => $t->getMessage() ] );
         }
-
-        // Fetch batch
-        $items = $wpdb->get_results(
-            $wpdb->prepare(
-                "SELECT * FROM `{$kb_table}` ORDER BY created_at ASC LIMIT %d OFFSET %d",
-                $batch_size,
-                $offset
-            ),
-            ARRAY_A
-        );
-
-        $updated = 0;
-        $errors  = 0;
-        $current_item = '';
-
-        foreach ( $items as $item ) {
-            $old_knowledge_id = $item['knowledge_id'];
-            $post_id          = (int) $item['post_id'];
-            $type             = $item['type'];
-            $mode             = $item['mode']         ?? 'guideline';
-            $country          = $item['country']      ?? '';
-            $source_title     = $item['source_title'] ?? '';
-            $source_url       = $item['source_url']   ?? '';
-            $topic_id         = ! empty( $item['topic_id'] ) ? (int) $item['topic_id'] : null;
-            $image_urls       = ! empty( $item['image_urls'] ) ? json_decode( $item['image_urls'], true ) : [];
-            $raw_content      = $item['raw_content']  ?? '';
-
-            $current_item = $source_title ?: sprintf( '%s #%d', ucfirst( $type ), $post_id );
-
-            // ── Resolve plain text ──────────────────────────────────────────
-            $plain_text = ! empty( $raw_content ) ? sonoai_clean_content( $raw_content ) : '';
-            if ( empty( trim( $plain_text ) ) && $post_id > 0 ) {
-                $wp_post = get_post( $post_id );
-                if ( $wp_post ) {
-                    $plain_text = sonoai_clean_content( $wp_post->post_content );
-                }
-            }
-
-            if ( empty( trim( $plain_text ) ) ) {
-                sonoai_log_error( "[SonoAI] Re-index skipped (no content) for knowledge_id: {$old_knowledge_id}" );
-                $errors++;
-                continue;
-            }
-
-            // ── Get topic slug ──────────────────────────────────────────────
-            $topic_slug = '';
-            if ( $topic_id ) {
-                $topic = $wpdb->get_row( $wpdb->prepare( "SELECT slug FROM `{$wpdb->prefix}sonoai_kb_topics` WHERE id = %d", $topic_id ) );
-                if ( $topic ) $topic_slug = $topic->slug;
-            }
-
-            // ── SAFE PATTERN: Embed FIRST, delete old data only on success ──
-            $new_knowledge_id = Embedding::insert(
-                $post_id, $type, $plain_text,
-                is_array( $image_urls ) ? $image_urls : [],
-                $mode, $topic_slug, $country, $source_title, $source_url
-            );
-
-            if ( is_wp_error( $new_knowledge_id ) ) {
-                sonoai_log_error( '[SonoAI] Re-index failed for knowledge_id ' . $old_knowledge_id . ': ' . $new_knowledge_id->get_error_message() );
-                $errors++;
-                continue;
-            }
-
-            // Step 2: New embedding succeeded — NOW safely remove old data
-            if ( $old_knowledge_id !== $new_knowledge_id ) {
-                $del_res = $wpdb->delete( $emb_table, [ 'knowledge_id' => $old_knowledge_id ], [ '%s' ] );
-                if ( false === $del_res ) {
-                    sonoai_log_error( '[SonoAI] Re-index DB delete failed for old_knowledge_id ' . $old_knowledge_id . ': ' . $wpdb->last_error );
-                }
-                RedisManager::instance()->delete_vectors_by_id( $old_knowledge_id );
-            }
-
-            // Step 3: Update the kb_items row with the new model metadata
-            $up_res = $wpdb->update(
-                $kb_table,
-                [
-                    'knowledge_id'    => $new_knowledge_id,
-                    'provider'        => $provider,
-                    'embedding_model' => $embedding_model,
-                ],
-                [ 'knowledge_id' => $old_knowledge_id ],
-                [ '%s', '%s', '%s' ],
-                [ '%s' ]
-            );
-            if ( false === $up_res ) {
-                sonoai_log_error( '[SonoAI] Re-index DB update failed for knowledge_id ' . $old_knowledge_id . ' to ' . $new_knowledge_id . ': ' . $wpdb->last_error );
-            }
-
-            $updated++;
-        }
-
-        $next_offset = $offset + count( $items );
-        $done = $next_offset >= $total;
-
-        // Rebuild Redis VSS index from MySQL to guarantee all new vectors are indexed
-        if ( $done ) {
-            if ( ! class_exists( 'SonoAI\\RedisMigration' ) ) {
-                require_once SONOAI_DIR . 'includes/RedisMigration.php';
-            }
-            RedisMigration::rebuild_index();
-        }
-
-        wp_send_json_success( [
-            'updated'      => $updated,
-            'errors'       => $errors,
-            'next_offset'  => $next_offset,
-            'total'        => $total,
-            'done'         => $done,
-            'current_item' => $current_item,
-            'message'      => $done ? sprintf(
-                __( 'Re-index complete! %d items updated to %s / %s.', 'sonoai' ),
-                $next_offset, $provider, $embedding_model
-            ) : ''
-        ] );
     }
 
     /**

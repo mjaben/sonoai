@@ -351,8 +351,18 @@
                         btn.disabled = false;
                         btn.innerHTML = '&#9889; Re-index (' + (KB.currentModel || '') + ')';
                     }
-                }).fail(function() {
-                    alert('Fatal error during re-indexing.');
+                }).fail(function(xhr) {
+                    var errorMsg = 'Fatal error during re-indexing.';
+                    if (xhr.responseText) {
+                        try {
+                            var json = JSON.parse(xhr.responseText);
+                            if (json && json.data && json.data.message) {
+                                errorMsg += '\nDetails: ' + json.data.message;
+                            }
+                        } catch(e) {}
+                    }
+                    errorMsg += '\n\nPlease check wp-content/plugins/sonoai/sonoai-errors.log for complete traceback details.';
+                    alert(errorMsg);
                     overlay.remove();
                     btn.disabled = false;
                     btn.innerHTML = '&#9889; Re-index (' + (KB.currentModel || '') + ')';
