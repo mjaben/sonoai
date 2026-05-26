@@ -1098,12 +1098,15 @@ class KnowledgeBaseAjax {
 
             // Step 2: New embedding succeeded — NOW safely remove old data
             if ( $old_knowledge_id !== $new_knowledge_id ) {
-                $wpdb->delete( $emb_table, [ 'knowledge_id' => $old_knowledge_id ], [ '%s' ] );
+                $del_res = $wpdb->delete( $emb_table, [ 'knowledge_id' => $old_knowledge_id ], [ '%s' ] );
+                if ( false === $del_res ) {
+                    sonoai_log_error( '[SonoAI] Re-index DB delete failed for old_knowledge_id ' . $old_knowledge_id . ': ' . $wpdb->last_error );
+                }
                 RedisManager::instance()->delete_vectors_by_id( $old_knowledge_id );
             }
 
             // Step 3: Update the kb_items row with the new model metadata
-            $wpdb->update(
+            $up_res = $wpdb->update(
                 $kb_table,
                 [
                     'knowledge_id'    => $new_knowledge_id,
@@ -1114,6 +1117,9 @@ class KnowledgeBaseAjax {
                 [ '%s', '%s', '%s' ],
                 [ '%s' ]
             );
+            if ( false === $up_res ) {
+                sonoai_log_error( '[SonoAI] Re-index DB update failed for knowledge_id ' . $old_knowledge_id . ' to ' . $new_knowledge_id . ': ' . $wpdb->last_error );
+            }
 
             $updated++;
         }

@@ -32,6 +32,7 @@ class RedisMigration {
         // Clear existing VSS keys to avoid duplicates/stale data
         $client = RedisManager::instance()->get_client();
         if ( ! $client ) {
+            sonoai_log_error( 'Redis Migration Rebuild Failed: Redis is not active.' );
             return [ 'success' => false, 'message' => 'Redis not active.' ];
         }
 
@@ -103,6 +104,7 @@ class RedisMigration {
                     );
                     $total_indexed++;
                 } catch ( \Exception $e ) {
+                    sonoai_log_error( '[SonoAI RedisMigration] Rebuild index row failed for knowledge ID ' . $row['knowledge_id'] . ': ' . $e->getMessage() );
                     $errors++;
                 }
             }
@@ -133,6 +135,7 @@ class RedisMigration {
 
         $client = RedisManager::instance()->get_client();
         if ( ! $client ) {
+            sonoai_log_error( 'Redis Migration Batch Failed: Redis is not active.' );
             return [ 'success' => false, 'message' => 'Redis not active.' ];
         }
 
@@ -216,6 +219,7 @@ class RedisMigration {
                 $total_indexed++;
                 $current_item = !empty($row['source_title']) ? $row['source_title'] : 'Knowledge Chunk #' . $row['knowledge_id'];
             } catch ( \Exception $e ) {
+                sonoai_log_error( '[SonoAI RedisMigration] Sync batch row failed for knowledge ID ' . $row['knowledge_id'] . ': ' . $e->getMessage() );
                 $errors++;
             }
         }
