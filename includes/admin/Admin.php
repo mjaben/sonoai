@@ -72,13 +72,13 @@ class Admin {
     }
 
     public function enqueue_admin_assets( string $hook ): void {
-        // Enqueue on all SonoAI admin pages.
-        if ( false === strpos( $hook, 'sonoai' ) ) {
+        // Enqueue only on the main settings page.
+        if ( false === strpos( $hook, 'sonoai-settings' ) ) {
             return;
         }
 
-        wp_enqueue_style( 'sonoai-kb', SONOAI_URL . 'assets/css/kb.css', [], SONOAI_VERSION );
-        wp_enqueue_script( 'sonoai-kb', SONOAI_URL . 'assets/js/kb.js', [ 'jquery' ], SONOAI_VERSION, true );
+        wp_enqueue_style( 'sonoai-kb', SONOAI_URL . 'assets/css/kb.css', [], time() );
+        wp_enqueue_script( 'sonoai-kb', SONOAI_URL . 'assets/js/kb.js', [ 'jquery' ], time(), true );
 
         wp_localize_script( 'sonoai-kb', 'sonoaiKB', [
             'ajaxUrl' => admin_url( 'admin-ajax.php' ),

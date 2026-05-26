@@ -54,13 +54,13 @@ class KnowledgeBase {
             'sonoai-kb',
             SONOAI_URL . 'assets/css/kb.css',
             [],
-            SONOAI_VERSION
+            time()
         );
         wp_enqueue_script(
             'sonoai-kb',
             SONOAI_URL . 'assets/js/kb.js',
             [ 'jquery' ],
-            filemtime( SONOAI_DIR . 'assets/js/kb.js' ),
+            time(),
             true
         );
         wp_localize_script( 'sonoai-kb', 'sonoaiKB', [
