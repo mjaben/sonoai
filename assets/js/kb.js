@@ -506,8 +506,10 @@
                     btnsHtml  = '<button type="button" class="kb-add-btn" data-post-id="' + p.id + '"><span class="kb-btn-text">Add to KB</span><span class="kb-spinner" style="display:none"></span></button>';
                 }
 
+                var itemNoHtml = p.sequence_no ? '<strong>#' + p.sequence_no + '</strong><br><small style="opacity:0.6;font-size:10px;">ID: ' + p.kb_item_id + '</small>' : '—';
                 html += '<tr data-post-id="' + p.id + '">'
                     + '<td><input type="checkbox" class="kb-wp-row-cb" value="' + p.id + '" data-knowledge-id="' + p.knowledge_id + '"></td>'
+                    + '<td>' + itemNoHtml + '</td>'
                     + '<td><a href="' + (p.edit_url || '#') + '" target="_blank">' + escHtml(p.title) + '</a></td>'
                     + '<td class="kb-col-date">' + escHtml(p.last_modified) + '</td>'
                     + '<td class="kb-col-date">' + escHtml(p.kb_added) + '</td>'

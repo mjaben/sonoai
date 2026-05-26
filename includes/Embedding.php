@@ -158,11 +158,25 @@ class Embedding {
         }
 
         $errors = 0;
+        $insert_start = isset( $_SERVER['REQUEST_TIME_FLOAT'] ) ? $_SERVER['REQUEST_TIME_FLOAT'] : microtime( true );
+        $max_exec = (int) ini_get( 'max_execution_time' );
+        $safety_ceiling = $max_exec ? $max_exec - 5 : 25;
+        $safety_ceiling = min( $safety_ceiling, 25 ); // Clamp at 25s to stay well below server timeouts
+        $safety_ceiling = max( $safety_ceiling, 10 ); // Guarantee a minimum execution window
+
         foreach ( $chunks_data as $idx => $data ) {
-            // Prevent Cloudflare 100s HTTP 524 timeouts by breaking chunk loop if request exceeds 38 seconds
-            if ( isset( $_SERVER['REQUEST_TIME_FLOAT'] ) && ( microtime( true ) - $_SERVER['REQUEST_TIME_FLOAT'] ) > 38 ) {
-                sonoai_log_error( '[SonoAI] Document chunk embedding exceeded safety time limit. Truncating chunks to prevent Cloudflare timeout.' );
-                break;
+            // Prevent execution timeouts by breaking chunk loop early
+            if ( ( microtime( true ) - $insert_start ) > $safety_ceiling ) {
+                sonoai_log_error( '[SonoAI] Document chunk embedding exceeded safety time limit of ' . $safety_ceiling . 's. Skipping and cleaning up partial embeddings.' );
+                
+                // Clean up newly created partial embeddings to prevent orphans
+                $wpdb->delete( $table, [ 'knowledge_id' => $knowledge_id ], [ '%s' ] );
+                $redis->delete_vectors_by_id( $knowledge_id );
+                
+                return new \WP_Error( 
+                    'embedding_timeout', 
+                    sprintf( __( 'Embedding timed out after %ds. Document may be too large; consider splitting it into smaller items.', 'sonoai' ), $safety_ceiling ) 
+                );
             }
 
             $chunk_text   = $data['text'];

@@ -450,6 +450,7 @@ class KnowledgeBase {
                 <thead>
                     <tr>
                         <th class="kb-col-cb"><input type="checkbox" id="kb-wp-check-all"></th>
+                        <th><?php esc_html_e( 'KB Item #', 'sonoai' ); ?></th>
                         <th><?php esc_html_e( 'Title', 'sonoai' ); ?></th>
                         <th><?php esc_html_e( 'Last Modified', 'sonoai' ); ?></th>
                         <th><?php esc_html_e( 'Added to KB', 'sonoai' ); ?></th>
@@ -462,7 +463,7 @@ class KnowledgeBase {
                 </thead>
                 <tbody id="kb-wp-tbody">
                     <tr class="kb-loading-row">
-                        <td colspan="9"><span class="kb-spinner"></span> <?php esc_html_e( 'Loading posts…', 'sonoai' ); ?></td>
+                        <td colspan="10"><span class="kb-spinner"></span> <?php esc_html_e( 'Loading posts…', 'sonoai' ); ?></td>
                     </tr>
                 </tbody>
             </table>
@@ -972,6 +973,7 @@ class KnowledgeBase {
             <thead>
                 <tr>
                     <th class="kb-col-cb"><input type="checkbox" class="kb-select-all-cb"></th>
+                    <th><?php esc_html_e( 'KB Item #', 'sonoai' ); ?></th>
                     <th><?php esc_html_e( 'Content', 'sonoai' ); ?></th>
                     <th><?php esc_html_e( 'AI Model', 'sonoai' ); ?></th>
                     <th><?php esc_html_e( 'Action', 'sonoai' ); ?></th>
@@ -979,7 +981,7 @@ class KnowledgeBase {
             </thead>
             <tbody>
                 <?php if ( empty( $items ) ) : ?>
-                    <tr><td colspan="4" class="kb-empty"><?php esc_html_e( 'No items found.', 'sonoai' ); ?></td></tr>
+                    <tr><td colspan="5" class="kb-empty"><?php esc_html_e( 'No items found.', 'sonoai' ); ?></td></tr>
                 <?php else : ?>
                     <?php
                     $topic_map = [];
@@ -1000,6 +1002,7 @@ class KnowledgeBase {
                     ?>
                     <tr data-knowledge-id="<?php echo esc_attr( $item->knowledge_id ); ?>">
                         <td><input type="checkbox" value="<?php echo esc_attr( $item->knowledge_id ); ?>"></td>
+                        <td><strong>#<?php echo esc_html( $item->sequence_no ); ?></strong><br><small style="opacity:0.6;font-size:10px;">ID: <?php echo esc_html( $item->id ); ?></small></td>
                         <td class="kb-col-content">
                             <span class="kb-content-preview"><?php echo esc_html( $preview ); ?></span>
                             <div style="font-size: 0.85em; color: #666; margin-top: 4px;">
@@ -1103,6 +1106,7 @@ class KnowledgeBase {
             <thead>
                 <tr>
                     <th class="kb-col-cb"><input type="checkbox" class="kb-select-all-cb"></th>
+                    <th><?php esc_html_e( 'KB Item #', 'sonoai' ); ?></th>
                     <th><?php echo $type === 'pdf' ? esc_html__( 'File', 'sonoai' ) : esc_html__( 'URL', 'sonoai' ); ?></th>
                     <th><?php esc_html_e( 'AI Model', 'sonoai' ); ?></th>
                     <th><?php esc_html_e( 'Action', 'sonoai' ); ?></th>
@@ -1110,7 +1114,7 @@ class KnowledgeBase {
             </thead>
             <tbody>
                 <?php if ( empty( $items ) ) : ?>
-                    <tr><td colspan="4" class="kb-empty"><?php esc_html_e( 'No items found.', 'sonoai' ); ?></td></tr>
+                    <tr><td colspan="5" class="kb-empty"><?php esc_html_e( 'No items found.', 'sonoai' ); ?></td></tr>
                 <?php else : ?>
                     <?php
                     $topic_map = [];
@@ -1124,6 +1128,7 @@ class KnowledgeBase {
                     ?>
                     <tr data-knowledge-id="<?php echo esc_attr( $item->knowledge_id ); ?>">
                         <td><input type="checkbox" value="<?php echo esc_attr( $item->knowledge_id ); ?>"></td>
+                        <td><strong>#<?php echo esc_html( $item->sequence_no ); ?></strong><br><small style="opacity:0.6;font-size:10px;">ID: <?php echo esc_html( $item->id ); ?></small></td>
                         <td class="kb-col-source">
                             <?php 
                             $full_source = $item->source_title ?: ( $item->source_url ?: '—' );
@@ -1199,7 +1204,7 @@ class KnowledgeBase {
         }
         $total_items = (int) $wpdb->get_var( $count_query );
 
-        $query = "SELECT * FROM `{$wpdb->prefix}sonoai_kb_items` $where ORDER BY `created_at` DESC LIMIT %d OFFSET %d";
+        $query = "SELECT main.*, (SELECT COUNT(*) FROM `{$wpdb->prefix}sonoai_kb_items` AS sub WHERE sub.id <= main.id) AS sequence_no FROM `{$wpdb->prefix}sonoai_kb_items` AS main $where ORDER BY main.`created_at` DESC LIMIT %d OFFSET %d";
         $params[] = $per_page;
         $params[] = $offset;
         
