@@ -59,7 +59,7 @@ class RedisManager {
                     'post_id', 'NUMERIC'
                 ]);
             } catch ( \Exception $inner ) {
-                error_log( '[SonoAI] RediSearch Index Creation Failed: ' . $inner->getMessage() );
+                sonoai_log_error( '[SonoAI] RediSearch Index Creation Failed: ' . $inner->getMessage() );
             }
         }
     }
@@ -175,7 +175,7 @@ class RedisManager {
             $client->ltrim( $key, -10, -1 ); // Keep last 10 messages for context
             $client->expire( $key, $ttl );
         } catch ( \Exception $e ) {
-            error_log( '[SonoAI] Redis Memory Store Failure: ' . $e->getMessage() );
+            sonoai_log_error( '[SonoAI] Redis Memory Store Failure: ' . $e->getMessage() );
             self::$client = null;
             self::$skip_redis = true;
         }
@@ -196,7 +196,7 @@ class RedisManager {
 
             return array_map( fn( $m ) => json_decode( $m, true ), $data );
         } catch ( \Exception $e ) {
-            error_log( '[SonoAI] Redis Memory Retrieve Failure: ' . $e->getMessage() );
+            sonoai_log_error( '[SonoAI] Redis Memory Retrieve Failure: ' . $e->getMessage() );
             self::$client = null;
             self::$skip_redis = true;
             return [];
@@ -226,7 +226,7 @@ class RedisManager {
             $client->hset( $key, 'm', wp_json_encode( $meta ) );
             $client->expire( $key, 86400 * 30 ); // Cache for 30 days
         } catch ( \Exception $e ) {
-            error_log( '[SonoAI] Redis Cache Failure: ' . $e->getMessage() );
+            sonoai_log_error( '[SonoAI] Redis Cache Failure: ' . $e->getMessage() );
             self::$client = null;
             self::$skip_redis = true;
         }
@@ -256,7 +256,7 @@ class RedisManager {
                 if ( $iterator == 0 ) break;
             }
         } catch ( \Exception $e ) {
-            error_log( "[SonoAI] Redis Delete ID Failure ($id): " . $e->getMessage() );
+            sonoai_log_error( "[SonoAI] Redis Delete ID Failure ($id): " . $e->getMessage() );
         }
     }
 
@@ -311,7 +311,7 @@ class RedisManager {
             return $results;
 
         } catch ( \Exception $e ) {
-            error_log( '[SonoAI] Redis Search Failure: ' . $e->getMessage() );
+            sonoai_log_error( '[SonoAI] Redis Search Failure: ' . $e->getMessage() );
             self::$client = null;
             self::$skip_redis = true; 
             return []; // Fallback to empty if VSS fails

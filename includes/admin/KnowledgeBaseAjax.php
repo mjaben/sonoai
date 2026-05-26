@@ -52,11 +52,11 @@ class KnowledgeBaseAjax {
 
     private function check( string $nonce_action ): void {
         if ( ! SecurityHelper::check_admin_caps() ) {
-            error_log( sprintf( '[SonoAI KB] Unauthorized access attempt by user %d for action: %s', get_current_user_id(), $nonce_action ) );
+            sonoai_log_error( sprintf( '[SonoAI KB] Unauthorized access attempt by user %d for action: %s', get_current_user_id(), $nonce_action ) );
             wp_send_json_error( [ 'message' => __( 'Unauthorized.', 'sonoai' ) ], 403 );
         }
         if ( ! check_ajax_referer( $nonce_action, 'security', false ) ) {
-            error_log( sprintf( '[SonoAI KB] Nonce verification failed for action: %s. User: %d', $nonce_action, get_current_user_id() ) );
+            sonoai_log_error( sprintf( '[SonoAI KB] Nonce verification failed for action: %s. User: %d', $nonce_action, get_current_user_id() ) );
             wp_send_json_error( [ 'message' => __( 'Forbidden: Security check failed.', 'sonoai' ) ], 403 );
         }
     }
@@ -265,7 +265,7 @@ class KnowledgeBaseAjax {
         $knowledge_id = Embedding::insert( (int) $post_id, $type, $plain_text, $image_urls, $mode, $topic_slug, $country, $source_title, $source_url );
         
         if ( is_wp_error( $knowledge_id ) ) {
-            error_log( sprintf( '[SonoAI KB] Embedding::insert failed for type %s, post_id %d: %s', $type, $post_id, $knowledge_id->get_error_message() ) );
+            sonoai_log_error( sprintf( '[SonoAI KB] Embedding::insert failed for type %s, post_id %d: %s', $type, $post_id, $knowledge_id->get_error_message() ) );
             return $knowledge_id;
         }
 
@@ -617,7 +617,7 @@ class KnowledgeBaseAjax {
         ] );
 
         if ( is_wp_error( $result ) ) {
-            error_log( sprintf( '[SonoAI KB] Add Txt failed for user %d: %s', get_current_user_id(), $result->get_error_message() ) );
+            sonoai_log_error( sprintf( '[SonoAI KB] Add Txt failed for user %d: %s', get_current_user_id(), $result->get_error_message() ) );
             wp_send_json_error( [ 'message' => $result->get_error_message() ] );
         }
 
@@ -912,11 +912,11 @@ class KnowledgeBaseAjax {
         remove_filter( 'wp_handle_upload_prefilter', $rename_filter );
 
         if ( isset( $upload['error'] ) ) {
-            error_log( '[SonoAI KB] Image upload failed: ' . $upload['error'] );
+            sonoai_log_error( '[SonoAI KB] Image upload failed: ' . $upload['error'] );
             wp_send_json_error( [ 'message' => $upload['error'] ] );
         }
 
-        error_log( sprintf( '[SonoAI KB] Image uploaded successfully. URL: %s, File: %s', $upload['url'], $upload['file'] ) );
+        sonoai_log_error( sprintf( '[SonoAI KB] Image uploaded successfully. URL: %s, File: %s', $upload['url'], $upload['file'] ) );
 
         wp_send_json_success( [
             'url'  => $upload['url'],
@@ -1071,7 +1071,7 @@ class KnowledgeBaseAjax {
             }
 
             if ( empty( trim( $plain_text ) ) ) {
-                error_log( "[SonoAI] Re-index skipped (no content) for knowledge_id: {$old_knowledge_id}" );
+                sonoai_log_error( "[SonoAI] Re-index skipped (no content) for knowledge_id: {$old_knowledge_id}" );
                 $errors++;
                 continue;
             }
@@ -1091,7 +1091,7 @@ class KnowledgeBaseAjax {
             );
 
             if ( is_wp_error( $new_knowledge_id ) ) {
-                error_log( '[SonoAI] Re-index failed for knowledge_id ' . $old_knowledge_id . ': ' . $new_knowledge_id->get_error_message() );
+                sonoai_log_error( '[SonoAI] Re-index failed for knowledge_id ' . $old_knowledge_id . ': ' . $new_knowledge_id->get_error_message() );
                 $errors++;
                 continue;
             }

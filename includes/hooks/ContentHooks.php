@@ -110,7 +110,7 @@ class ContentHooks {
         $result = Embedding::insert( $post_id, $post_type, $text );
 
         if ( is_wp_error( $result ) ) {
-            error_log( '[SonoAI] Embedding failed for post ' . $post_id . ': ' . $result->get_error_message() );
+            sonoai_log_error( '[SonoAI] Embedding failed for post ' . $post_id . ': ' . $result->get_error_message() );
         }
     }
 

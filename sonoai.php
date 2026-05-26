@@ -17,7 +17,15 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Custom logger for SonoAI.
  */
 function sonoai_log_error( $message ) {
+    // 1. Log to the standard PHP error log
     error_log( "SonoAI Error: {$message}" );
+
+    // 2. Log to a dedicated sonoai-errors.log file inside the plugin folder
+    $log_file = defined( 'SONOAI_DIR' ) ? SONOAI_DIR . 'sonoai-errors.log' : __DIR__ . '/sonoai-errors.log';
+    $timestamp = date( 'Y-m-d H:i:s' );
+    $formatted = "[{$timestamp}] {$message}" . PHP_EOL;
+
+    @file_put_contents( $log_file, $formatted, FILE_APPEND | LOCK_EX );
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────

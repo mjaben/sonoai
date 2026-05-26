@@ -186,13 +186,13 @@ class Embedding {
 
             // Retry once on transient timeout errors
             if ( is_wp_error( $embedding ) && ( str_contains( $embedding->get_error_message(), 'timeout' ) || str_contains( $embedding->get_error_message(), 'timed out' ) ) ) {
-                error_log( '[SonoAI] Embedding timeout for chunk ' . $idx . '. Retrying in 2s...' );
+                sonoai_log_error( '[SonoAI] Embedding timeout for chunk ' . $idx . '. Retrying in 2s...' );
                 sleep( 2 ); 
                 $embedding = AIProvider::generate_embedding( $embedding_text );
             }
 
             if ( is_wp_error( $embedding ) ) {
-                error_log( '[SonoAI] Embedding failed for post ' . $post_id . ': ' . $embedding->get_error_message() );
+                sonoai_log_error( '[SonoAI] Embedding failed for post ' . $post_id . ': ' . $embedding->get_error_message() );
                 $errors++;
                 continue;
             }
@@ -236,7 +236,7 @@ class Embedding {
             }
 
             if ( false === $result ) {
-                error_log( '[SonoAI] DB insert failed: ' . $wpdb->last_error );
+                sonoai_log_error( '[SonoAI] DB insert failed: ' . $wpdb->last_error );
                 $errors++;
             }
         }
@@ -308,7 +308,7 @@ class Embedding {
         if ( ! is_array( $query_vector ) ) {
             $query_vector = AIProvider::generate_embedding( $query );
             if ( is_wp_error( $query_vector ) ) {
-                error_log( '[SonoAI] Search embedding error: ' . $query_vector->get_error_message() );
+                sonoai_log_error( '[SonoAI] Search embedding error: ' . $query_vector->get_error_message() );
                 return [];
             }
             set_transient( $cache_key, $query_vector, DAY_IN_SECONDS );
