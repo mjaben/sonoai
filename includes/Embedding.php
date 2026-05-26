@@ -160,9 +160,9 @@ class Embedding {
         $errors = 0;
         $insert_start = isset( $_SERVER['REQUEST_TIME_FLOAT'] ) ? $_SERVER['REQUEST_TIME_FLOAT'] : microtime( true );
         $max_exec = (int) ini_get( 'max_execution_time' );
-        $safety_ceiling = $max_exec ? $max_exec - 5 : 25;
-        $safety_ceiling = min( $safety_ceiling, 25 ); // Clamp at 25s to stay well below server timeouts
-        $safety_ceiling = max( $safety_ceiling, 10 ); // Guarantee a minimum execution window
+        // If max_exec is set, leave a 5s safety margin. If 0 (unlimited), default to 295s.
+        $safety_ceiling = $max_exec ? $max_exec - 5 : 295;
+        $safety_ceiling = max( $safety_ceiling, 10 ); // Guarantee at least a 10-second execution window
 
         foreach ( $chunks_data as $idx => $data ) {
             // Prevent execution timeouts by breaking chunk loop early
