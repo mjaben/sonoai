@@ -1037,6 +1037,17 @@ class KnowledgeBaseAjax {
             $offset     = SecurityHelper::get_param( 'offset', 0, 'int' );
             $batch_size = SecurityHelper::get_param( 'batch_size', 5, 'int' );
 
+            // Clean up orphaned embeddings in MySQL from past failed/interrupted runs
+            if ( $offset === 0 ) {
+                $wpdb->query( "
+                    DELETE FROM `{$emb_table}` 
+                    WHERE `knowledge_id` NOT IN (
+                        SELECT DISTINCT `knowledge_id` FROM `{$kb_table}`
+                    )
+                " );
+                sonoai_log_error( '[SonoAI Reindex] Purged orphaned embeddings from MySQL database.' );
+            }
+
             // Count total items
             $total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM `{$kb_table}`" );
 
