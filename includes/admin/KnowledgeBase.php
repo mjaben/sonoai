@@ -1109,13 +1109,30 @@ class KnowledgeBase {
                     <tr data-knowledge-id="<?php echo esc_attr( $item->knowledge_id ); ?>">
                         <td><input type="checkbox" value="<?php echo esc_attr( $item->knowledge_id ); ?>"></td>
                         <td class="kb-col-source">
-                            <?php if ( $item->source_url ) : ?>
-                                <a href="<?php echo esc_url( $item->source_url ); ?>" target="_blank" rel="noopener">
-                                    <?php echo esc_html( $item->source_title ?: $item->source_url ); ?>
-                                </a>
-                            <?php else : ?>
-                                <?php echo esc_html( $item->source_title ?: '—' ); ?>
-                            <?php endif; ?>
+                            <?php 
+                            $full_source = $item->source_title ?: ( $item->source_url ?: '—' );
+                            $short_source = wp_trim_words( $full_source, 8, '' ); 
+                            $is_truncated = ( $short_source !== $full_source );
+                            ?>
+                            <div class="kb-source-wrap" title="<?php echo esc_attr( $full_source ); ?>">
+                                <?php if ( $item->source_url ) : ?>
+                                    <a href="<?php echo esc_url( $item->source_url ); ?>" target="_blank" rel="noopener" class="kb-source-short">
+                                        <?php echo esc_html( $short_source ); ?><?php if($is_truncated) echo '...'; ?>
+                                    </a>
+                                    <?php if ( $is_truncated ) : ?>
+                                        <a href="<?php echo esc_url( $item->source_url ); ?>" target="_blank" rel="noopener" class="kb-source-full" style="display:none;">
+                                            <?php echo esc_html( $full_source ); ?>
+                                        </a>
+                                        <button type="button" class="kb-source-toggle-btn" style="background:none;border:none;color:#2563eb;font-size:11px;cursor:pointer;padding:0;margin-left:4px;text-decoration:underline;">More</button>
+                                    <?php endif; ?>
+                                <?php else : ?>
+                                    <span class="kb-source-short"><?php echo esc_html( $short_source ); ?><?php if($is_truncated) echo '...'; ?></span>
+                                    <?php if ( $is_truncated ) : ?>
+                                        <span class="kb-source-full" style="display:none;"><?php echo esc_html( $full_source ); ?></span>
+                                        <button type="button" class="kb-source-toggle-btn" style="background:none;border:none;color:#2563eb;font-size:11px;cursor:pointer;padding:0;margin-left:4px;text-decoration:underline;">More</button>
+                                    <?php endif; ?>
+                                <?php endif; ?>
+                            </div>
                             <div style="font-size: 0.85em; color: #666; margin-top: 4px;">
                                 <strong><?php esc_html_e( 'Mode:', 'sonoai' ); ?></strong> <?php echo esc_html( $mode_label ); ?> |
                                 <strong><?php esc_html_e( 'Topic:', 'sonoai' ); ?></strong> <?php echo esc_html( $topic_name ); ?>
@@ -1130,7 +1147,7 @@ class KnowledgeBase {
                         <td class="kb-col-actions">
                             <?php if ( $has_view && $item->source_url ) : ?>
                                 <a href="<?php echo esc_url( $item->source_url ); ?>" target="_blank" rel="noopener"
-                                   class="kb-action-link">👁 <?php echo esc_html( $actions['view'] ); ?></a>
+                                   class="kb-action-link" title="<?php echo esc_attr( $item->source_title ?: $item->source_url ); ?>">👁 <?php echo esc_html( $actions['view'] ); ?></a>
                             <?php endif; ?>
                             <?php if ( $has_delete ) : ?>
                                 <button type="button" class="kb-action-link kb-delete-btn"

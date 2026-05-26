@@ -42,6 +42,22 @@
         initRedisSync();
         initReindexAll();
         initApiConfig(); // Unified API & Provider logic
+
+        // Inline Source Expansion for mobile
+        document.body.addEventListener('click', function(e) {
+            if (e.target.classList.contains('kb-source-toggle-btn')) {
+                var wrap = e.target.closest('.kb-source-wrap');
+                if (wrap) {
+                    var short = wrap.querySelector('.kb-source-short');
+                    var full = wrap.querySelector('.kb-source-full');
+                    if (short && full) {
+                        short.style.display = 'none';
+                        full.style.display = 'inline';
+                        e.target.style.display = 'none';
+                    }
+                }
+            }
+        });
     });
 
     /**
