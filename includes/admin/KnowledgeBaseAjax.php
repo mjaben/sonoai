@@ -146,6 +146,20 @@ class KnowledgeBaseAjax {
     }
 
     /**
+     * Parse and sanitize topic IDs from request into a comma-separated string.
+     */
+    private function get_request_topic_ids(): ?string {
+        $topic_ids_input = $_POST['topic_ids'] ?? $_POST['topic_id'] ?? '';
+        if ( is_array( $topic_ids_input ) ) {
+            $topic_ids = array_map( 'intval', $topic_ids_input );
+        } else {
+            $topic_ids = array_filter( array_map( 'intval', explode( ',', $topic_ids_input ) ) );
+        }
+        $topic_ids = array_filter( $topic_ids );
+        return ! empty( $topic_ids ) ? implode( ',', $topic_ids ) : null;
+    }
+
+    /**
      * Handle updating metadata (mode/topic) for a single KB item
      */
     public function handle_update_meta() {
@@ -154,7 +168,7 @@ class KnowledgeBaseAjax {
         $post_id  = SecurityHelper::get_param( 'post_id', 0, 'int' );
         $type     = SecurityHelper::get_param( 'type', 'wp' );
         $mode     = SecurityHelper::get_param( 'mode', 'guideline' );
-        $topic_id = SecurityHelper::get_param( 'topic_id', 0, 'int' );
+        $topic_id = $this->get_request_topic_ids();
 
         if ( ! $post_id ) {
             wp_send_json_error( [ 'message' => __( 'Invalid post ID.', 'sonoai' ) ] );
@@ -164,12 +178,18 @@ class KnowledgeBaseAjax {
         $table_name = $this->kb_table();
         $emb_table  = $this->emb_table();
 
-        // Get topic slug for embedding update
+        // Get topic slugs for embedding update
         $topic_slug = null;
-        if ( $topic_id ) {
-            $topic = $wpdb->get_row( $wpdb->prepare( "SELECT slug FROM `{$wpdb->prefix}sonoai_kb_topics` WHERE id = %d", $topic_id ) );
-            if ( $topic ) {
-                $topic_slug = $topic->slug;
+        if ( ! empty( $topic_id ) ) {
+            $ids = array_filter( array_map( 'intval', explode( ',', $topic_id ) ) );
+            if ( ! empty( $ids ) ) {
+                $placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
+                $topics = $wpdb->get_results( $wpdb->prepare( "SELECT slug FROM `{$wpdb->prefix}sonoai_kb_topics` WHERE id IN ($placeholders)", $ids ) );
+                $slugs = [];
+                foreach ( $topics as $t ) {
+                    $slugs[] = $t->slug;
+                }
+                $topic_slug = implode( ',', $slugs );
             }
         }
 
@@ -178,13 +198,13 @@ class KnowledgeBaseAjax {
             $table_name,
             [
                 'mode'     => $mode,
-                'topic_id' => $topic_id ?: null
+                'topic_id' => $topic_id
             ],
             [
                 'post_id' => $post_id,
                 'type'    => $type
             ],
-            [ '%s', '%d' ],
+            [ '%s', '%s' ],
             [ '%d', '%s' ]
         );
 
@@ -245,21 +265,25 @@ class KnowledgeBaseAjax {
         $post_id      = $args['post_id']      ?? 0;
         $image_urls   = $args['image_urls']   ?? [];
         $mode         = in_array( $args['mode'] ?? 'guideline', [ 'guideline', 'research' ], true ) ? $args['mode'] : 'guideline';
-        $topic_id     = ! empty( $args['topic_id'] ) ? (int) $args['topic_id'] : null;
+        $topic_id     = ! empty( $args['topic_id'] ) ? $args['topic_id'] : null;
         $country      = $args['country']     ?? '';
 
         if ( empty( $plain_text ) ) {
             return new \WP_Error( 'empty_content', __( 'Content is empty.', 'sonoai' ) );
         }
 
-        // Get topic slug if topic_id is provided
+        // Get topic slugs if topic_id is provided
         $topic_slug = '';
-        if ( $topic_id ) {
-            $topic = $wpdb->get_row( $wpdb->prepare( "SELECT slug FROM `{$wpdb->prefix}sonoai_kb_topics` WHERE id = %d", $topic_id ) );
-            if ( $topic ) {
-                $topic_slug = $topic->slug;
-            } else {
-                $topic_id = null; // Reset if invalid
+        if ( ! empty( $topic_id ) ) {
+            $ids = array_filter( array_map( 'intval', explode( ',', $topic_id ) ) );
+            if ( ! empty( $ids ) ) {
+                $placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
+                $topics = $wpdb->get_results( $wpdb->prepare( "SELECT slug FROM `{$wpdb->prefix}sonoai_kb_topics` WHERE id IN ($placeholders)", $ids ) );
+                $slugs = [];
+                foreach ( $topics as $t ) {
+                    $slugs[] = $t->slug;
+                }
+                $topic_slug = implode( ',', $slugs );
             }
         }
 
@@ -293,7 +317,7 @@ class KnowledgeBaseAjax {
                 'embedding_model' => $embedding_model,
                 'chunk_count'     => count( $chunks ),
             ],
-            [ '%s','%s','%s','%d','%s','%d','%s','%s','%s','%s','%s','%s','%d' ]
+            [ '%s','%s','%s','%s','%s','%d','%s','%s','%s','%s','%s','%s','%d' ]
         );
 
         return [
@@ -330,13 +354,12 @@ class KnowledgeBaseAjax {
         
         // We join to filter by mode, topic, or country if requested
         $join = "LEFT JOIN $kb_tbl kb ON kb.post_id = p.ID AND kb.type = 'wp'";
-        $join .= " LEFT JOIN $topics_tbl t ON t.id = kb.topic_id";
 
         if ( $mode ) {
             $where .= $wpdb->prepare( " AND kb.mode = %s", $mode );
         }
         if ( $topic_id ) {
-            $where .= $wpdb->prepare( " AND kb.topic_id = %d", $topic_id );
+            $where .= $wpdb->prepare( " AND FIND_IN_SET(%d, kb.topic_id) > 0", $topic_id );
         }
         if ( $country ) {
             $where .= $wpdb->prepare( " AND kb.country LIKE %s", '%' . $wpdb->esc_like( $country ) . '%' );
@@ -356,8 +379,7 @@ class KnowledgeBaseAjax {
                 kb.embedding_model as model,
                 kb.mode as mode,
                 kb.topic_id as topic_id,
-                kb.country as country,
-                t.name as topic_name
+                kb.country as country
             FROM $posts_tbl p
             $join
             WHERE $where
@@ -368,6 +390,15 @@ class KnowledgeBaseAjax {
 
         $counts = [ 'all' => 0, 'added' => 0, 'not_added' => 0, 'update' => 0 ];
         $filtered  = [];
+
+        // Fetch topics mapping for multi-select resolution
+        $topics_raw = $wpdb->get_results( "SELECT id, name FROM `$topics_tbl`", ARRAY_A );
+        $topic_map  = [];
+        if ( ! empty( $topics_raw ) ) {
+            foreach ( $topics_raw as $t_row ) {
+                $topic_map[ $t_row['id'] ] = $t_row['name'];
+            }
+        }
 
         if ( ! empty( $all_posts ) ) {
             foreach ( $all_posts as $p ) {
@@ -380,6 +411,17 @@ class KnowledgeBaseAjax {
                 $counts[ $p_status ]++;
 
                 if ( $filter === 'all' || $filter === $p_status ) {
+                    $topic_names = [];
+                    if ( ! empty( $p->topic_id ) ) {
+                        $t_ids = array_filter( array_map( 'intval', explode( ',', $p->topic_id ) ) );
+                        foreach ( $t_ids as $tid ) {
+                            if ( isset( $topic_map[ $tid ] ) ) {
+                                $topic_names[] = $topic_map[ $tid ];
+                            }
+                        }
+                    }
+                    $topic_name = ! empty( $topic_names ) ? implode( ', ', $topic_names ) : '—';
+
                     $filtered[] = [
                         'id'            => (int) $p->id,
                         'title'         => $p->title,
@@ -390,8 +432,8 @@ class KnowledgeBaseAjax {
                         'sequence_no'   => $p->sequence_no ? (int) $p->sequence_no : 0,
                         'kb_item_id'    => $p->kb_item_id ? (int) $p->kb_item_id : 0,
                         'mode'          => $p->mode ? ucfirst( $p->mode ) : '—',
-                        'topic_name'    => $p->topic_name ? $p->topic_name : '—',
-                        'topic_id'      => $p->topic_id ? (int) $p->topic_id : 0,
+                        'topic_name'    => $topic_name,
+                        'topic_id'      => $p->topic_id ? $p->topic_id : '',
                         'country'       => $p->country ? $p->country : '—',
                         'raw_mode'      => $p->mode ? $p->mode : '',
                         'ai_model'      => $p->model ? ( ucfirst( $p->provider ) . ' / ' . $p->model ) : '—',
@@ -453,7 +495,7 @@ class KnowledgeBaseAjax {
             'source_title' => $post->post_title,
             'post_id'      => $post->ID,
             'mode'         => SecurityHelper::get_param( 'mode', 'guideline' ),
-            'topic_id'     => SecurityHelper::get_param( 'topic_id', 0, 'int' ),
+            'topic_id'     => $this->get_request_topic_ids(),
         ] );
 
         if ( is_wp_error( $result ) ) {
@@ -537,7 +579,7 @@ class KnowledgeBaseAjax {
             'source_title' => SecurityHelper::get_param( 'source_name', $file['name'] ),
             'country'      => SecurityHelper::get_param( 'country' ),
             'mode'         => SecurityHelper::get_param( 'mode', 'guideline' ),
-            'topic_id'     => SecurityHelper::get_param( 'topic_id', 0, 'int' ),
+            'topic_id'     => $this->get_request_topic_ids(),
         ] );
 
         if ( is_wp_error( $result ) ) {
@@ -580,7 +622,7 @@ class KnowledgeBaseAjax {
             'source_title' => SecurityHelper::get_param( 'source_name', $url ),
             'country'      => SecurityHelper::get_param( 'country' ),
             'mode'         => SecurityHelper::get_param( 'mode', 'guideline' ),
-            'topic_id'     => SecurityHelper::get_param( 'topic_id', 0, 'int' ),
+            'topic_id'     => $this->get_request_topic_ids(),
         ] );
 
         if ( is_wp_error( $result ) ) {
@@ -621,7 +663,7 @@ class KnowledgeBaseAjax {
             'country'      => SecurityHelper::get_param( 'country' ),
             'image_urls'   => $image_urls,
             'mode'         => SecurityHelper::get_param( 'mode', 'guideline' ),
-            'topic_id'     => SecurityHelper::get_param( 'topic_id', 0, 'int' ),
+            'topic_id'     => $this->get_request_topic_ids(),
         ] );
 
         if ( is_wp_error( $result ) ) {
@@ -676,7 +718,7 @@ class KnowledgeBaseAjax {
             'country'      => SecurityHelper::get_param( 'country' ),
             'image_urls'   => $image_urls,
             'mode'         => SecurityHelper::get_param( 'mode', 'guideline' ),
-            'topic_id'     => SecurityHelper::get_param( 'topic_id', 0, 'int' ),
+            'topic_id'     => $this->get_request_topic_ids(),
         ] );
 
         if ( is_wp_error( $result ) ) {
@@ -1098,7 +1140,7 @@ class KnowledgeBaseAjax {
                 $country          = $item['country']      ?? '';
                 $source_title     = $item['source_title'] ?? '';
                 $source_url       = $item['source_url']   ?? '';
-                $topic_id         = ! empty( $item['topic_id'] ) ? (int) $item['topic_id'] : null;
+                $topic_id         = ! empty( $item['topic_id'] ) ? $item['topic_id'] : null;
                 $image_urls       = ! empty( $item['image_urls'] ) ? json_decode( $item['image_urls'], true ) : [];
                 $raw_content      = $item['raw_content']  ?? '';
 
@@ -1122,9 +1164,17 @@ class KnowledgeBaseAjax {
 
                 // ── Get topic slug ──────────────────────────────────────────────
                 $topic_slug = '';
-                if ( $topic_id ) {
-                    $topic = $wpdb->get_row( $wpdb->prepare( "SELECT slug FROM `{$wpdb->prefix}sonoai_kb_topics` WHERE id = %d", $topic_id ) );
-                    if ( $topic ) $topic_slug = $topic->slug;
+                if ( ! empty( $topic_id ) ) {
+                    $ids = array_filter( array_map( 'intval', explode( ',', $topic_id ) ) );
+                    if ( ! empty( $ids ) ) {
+                        $placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
+                        $topics = $wpdb->get_results( $wpdb->prepare( "SELECT slug FROM `{$wpdb->prefix}sonoai_kb_topics` WHERE id IN ($placeholders)", $ids ) );
+                        $slugs = [];
+                        foreach ( $topics as $t ) {
+                            $slugs[] = $t->slug;
+                        }
+                        $topic_slug = implode( ',', $slugs );
+                    }
                 }
 
                 // ── SAFE PATTERN: Embed FIRST, delete old data only on success ──

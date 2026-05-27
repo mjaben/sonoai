@@ -470,7 +470,7 @@ class KnowledgeBase {
             <div class="kb-pagination" id="kb-wp-pagination"></div>
             
             <!-- Quick Edit Modal -->
-            <div id="kb-quick-edit-modal" class="kb-modal" style="display:none;">
+            <dialog id="kb-quick-edit-modal" class="kb-modal" style="display:none;">
                 <div class="kb-modal-content">
                     <div class="kb-modal-header">
                         <h3><?php esc_html_e( 'Quick Edit KB Item', 'sonoai' ); ?></h3>
@@ -486,20 +486,28 @@ class KnowledgeBase {
                             </select>
                         </div>
                         <div class="kb-form-row">
-                            <label><?php esc_html_e('Topic', 'sonoai'); ?></label>
-                            <select id="qe-topic">
-                                <option value="0"><?php esc_html_e('— None —', 'sonoai'); ?></option>
-                                <?php foreach ( self::get_topics() as $t ) : ?>
-                                    <option value="<?php echo esc_attr( $t->id ); ?>"><?php echo esc_html( $t->name ); ?></option>
-                                <?php endforeach; ?>
-                            </select>
+                            <label><?php esc_html_e('Topics', 'sonoai'); ?></label>
+                            <div class="kb-multiselect-dropdown" id="qe-topics-dropdown">
+                                <div class="kb-multiselect-trigger">
+                                    <span class="kb-multiselect-label"><?php esc_html_e('— None —', 'sonoai'); ?></span>
+                                    <svg class="kb-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                </div>
+                                <div class="kb-multiselect-options">
+                                    <?php foreach ( self::get_topics() as $t ) : ?>
+                                        <label class="kb-multiselect-option">
+                                            <input type="checkbox" name="qe_topics[]" value="<?php echo esc_attr( $t->id ); ?>" data-name="<?php echo esc_attr( $t->name ); ?>">
+                                            <span><?php echo esc_html( $t->name ); ?></span>
+                                        </label>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="kb-modal-footer" style="margin-top:20px; text-align:right;">
                         <button type="button" id="qe-save-btn" class="kb-btn"><?php esc_html_e('Save Changes', 'sonoai'); ?></button>
                     </div>
                 </div>
-            </div>
+            </dialog>
             
         </div>
         <input type="hidden" id="kb-current-pt" value="<?php echo esc_attr( $current_pt ); ?>">
@@ -526,7 +534,7 @@ class KnowledgeBase {
             $params[] = $mode;
         }
         if ( $topic_id ) {
-            $where .= " AND `topic_id` = %d";
+            $where .= " AND FIND_IN_SET(%d, `topic_id`) > 0";
             $params[] = $topic_id;
         }
         if ( $country ) {
@@ -551,13 +559,21 @@ class KnowledgeBase {
                             </select>
                         </div>
                         <div class="kb-field-group kb-field-topic">
-                            <label for="kb-pdf-topic"><?php esc_html_e( 'Topic', 'sonoai' ); ?></label>
-                            <select name="topic_id" id="kb-pdf-topic" class="kb-select-sm">
-                                <option value=""><?php esc_html_e( '— No Topic —', 'sonoai' ); ?></option>
-                                <?php foreach ( self::get_topics() as $t ) : ?>
-                                    <option value="<?php echo esc_attr( $t->id ); ?>"><?php echo esc_html( $t->name ); ?></option>
-                                <?php endforeach; ?>
-                            </select>
+                            <label><?php esc_html_e( 'Topics', 'sonoai' ); ?></label>
+                            <div class="kb-multiselect-dropdown" id="kb-pdf-topic-dropdown">
+                                <div class="kb-multiselect-trigger">
+                                    <span class="kb-multiselect-label"><?php esc_html_e( '— No Topic —', 'sonoai' ); ?></span>
+                                    <svg class="kb-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                </div>
+                                <div class="kb-multiselect-options">
+                                    <?php foreach ( self::get_topics() as $t ) : ?>
+                                        <label class="kb-multiselect-option">
+                                            <input type="checkbox" name="topic_ids[]" value="<?php echo esc_attr( $t->id ); ?>" data-name="<?php echo esc_attr( $t->name ); ?>">
+                                            <span><?php echo esc_html( $t->name ); ?></span>
+                                        </label>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
                         </div>
                         <div class="kb-field-group kb-field-country">
                             <label for="kb-pdf-country"><?php esc_html_e( 'Country', 'sonoai' ); ?></label>
@@ -617,7 +633,7 @@ class KnowledgeBase {
             $params[] = $mode;
         }
         if ( $topic_id ) {
-            $where .= " AND `topic_id` = %d";
+            $where .= " AND FIND_IN_SET(%d, `topic_id`) > 0";
             $params[] = $topic_id;
         }
         if ( $country ) {
@@ -642,13 +658,21 @@ class KnowledgeBase {
                             </select>
                         </div>
                         <div class="kb-field-group kb-field-topic">
-                            <label for="kb-url-topic"><?php esc_html_e( 'Topic', 'sonoai' ); ?></label>
-                            <select name="topic_id" id="kb-url-topic" class="kb-select-sm">
-                                <option value=""><?php esc_html_e( '— No Topic —', 'sonoai' ); ?></option>
-                                <?php foreach ( self::get_topics() as $t ) : ?>
-                                    <option value="<?php echo esc_attr( $t->id ); ?>"><?php echo esc_html( $t->name ); ?></option>
-                                <?php endforeach; ?>
-                            </select>
+                            <label><?php esc_html_e( 'Topics', 'sonoai' ); ?></label>
+                            <div class="kb-multiselect-dropdown" id="kb-url-topic-dropdown">
+                                <div class="kb-multiselect-trigger">
+                                    <span class="kb-multiselect-label"><?php esc_html_e( '— No Topic —', 'sonoai' ); ?></span>
+                                    <svg class="kb-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                </div>
+                                <div class="kb-multiselect-options">
+                                    <?php foreach ( self::get_topics() as $t ) : ?>
+                                        <label class="kb-multiselect-option">
+                                            <input type="checkbox" name="topic_ids[]" value="<?php echo esc_attr( $t->id ); ?>" data-name="<?php echo esc_attr( $t->name ); ?>">
+                                            <span><?php echo esc_html( $t->name ); ?></span>
+                                        </label>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
                         </div>
                         <div class="kb-field-group kb-field-country">
                             <label for="kb-url-country"><?php esc_html_e( 'Country', 'sonoai' ); ?></label>
@@ -717,14 +741,22 @@ class KnowledgeBase {
                                 <option value="research"><?php esc_html_e( 'Research', 'sonoai' ); ?></option>
                             </select>
                         </div>
-                        <div class="kb-field-group">
-                            <label for="kb-jsonl-topic"><?php esc_html_e( 'Global Topic', 'sonoai' ); ?></label>
-                            <select name="topic_id" id="kb-jsonl-topic" class="kb-select-sm">
-                                <option value=""><?php esc_html_e( '— No Topic —', 'sonoai' ); ?></option>
-                                <?php foreach ( self::get_topics() as $t ) : ?>
-                                    <option value="<?php echo esc_attr( $t->id ); ?>"><?php echo esc_html( $t->name ); ?></option>
-                                <?php endforeach; ?>
-                            </select>
+                        <div class="kb-field-group kb-field-topic">
+                            <label><?php esc_html_e( 'Global Topics', 'sonoai' ); ?></label>
+                            <div class="kb-multiselect-dropdown" id="kb-jsonl-topic-dropdown">
+                                <div class="kb-multiselect-trigger">
+                                    <span class="kb-multiselect-label"><?php esc_html_e( '— No Topic —', 'sonoai' ); ?></span>
+                                    <svg class="kb-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                </div>
+                                <div class="kb-multiselect-options">
+                                    <?php foreach ( self::get_topics() as $t ) : ?>
+                                        <label class="kb-multiselect-option">
+                                            <input type="checkbox" name="topic_ids[]" value="<?php echo esc_attr( $t->id ); ?>" data-name="<?php echo esc_attr( $t->name ); ?>">
+                                            <span><?php echo esc_html( $t->name ); ?></span>
+                                        </label>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -769,7 +801,7 @@ class KnowledgeBase {
             $params[] = $mode;
         }
         if ( $topic_id ) {
-            $where .= " AND `topic_id` = %d";
+            $where .= " AND FIND_IN_SET(%d, `topic_id`) > 0";
             $params[] = $topic_id;
         }
         if ( $country ) {
@@ -837,13 +869,32 @@ class KnowledgeBase {
                                 </select>
                             </div>
                             <div class="kb-field-group kb-field-topic">
-                                <label for="kb-txt-topic"><?php esc_html_e( 'Topic', 'sonoai' ); ?></label>
-                                <select name="topic_id" id="kb-txt-topic" class="kb-select-sm">
-                                    <option value=""><?php esc_html_e( '— No Topic —', 'sonoai' ); ?></option>
-                                    <?php foreach ( self::get_topics() as $t ) : ?>
-                                        <option value="<?php echo esc_attr( $t->id ); ?>" <?php selected( $editing_item->topic_id ?? null, $t->id ); ?>><?php echo esc_html( $t->name ); ?></option>
-                                    <?php endforeach; ?>
-                                </select>
+                                <label><?php esc_html_e( 'Topics', 'sonoai' ); ?></label>
+                                <div class="kb-multiselect-dropdown" id="kb-txt-topic-dropdown">
+                                    <div class="kb-multiselect-trigger">
+                                        <?php
+                                        $selected_ids = ! empty( $editing_item->topic_id ) ? array_filter( array_map( 'intval', explode( ',', $editing_item->topic_id ) ) ) : [];
+                                        $selected_names = [];
+                                        foreach ( $selected_ids as $sid ) {
+                                            $t_obj = $wpdb->get_row( $wpdb->prepare( "SELECT name FROM `{$wpdb->prefix}sonoai_kb_topics` WHERE id = %d", $sid ) );
+                                            if ( $t_obj ) $selected_names[] = $t_obj->name;
+                                        }
+                                        $label = ! empty( $selected_names ) ? implode( ', ', $selected_names ) : __( '— No Topic —', 'sonoai' );
+                                        ?>
+                                        <span class="kb-multiselect-label" title="<?php echo esc_attr( $label ); ?>"><?php echo esc_html( wp_trim_words( $label, 4, '...' ) ); ?></span>
+                                        <svg class="kb-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                    </div>
+                                    <div class="kb-multiselect-options">
+                                        <?php foreach ( self::get_topics() as $t ) : 
+                                            $checked = in_array( (int) $t->id, $selected_ids, true ) ? 'checked' : '';
+                                        ?>
+                                            <label class="kb-multiselect-option">
+                                                <input type="checkbox" name="topic_ids[]" value="<?php echo esc_attr( $t->id ); ?>" data-name="<?php echo esc_attr( $t->name ); ?>" <?php echo $checked; ?>>
+                                                <span><?php echo esc_html( $t->name ); ?></span>
+                                            </label>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
                             </div>
                             <div class="kb-field-group kb-field-country">
                                 <label for="kb-txt-country"><?php esc_html_e( 'Country', 'sonoai' ); ?></label>
@@ -998,7 +1049,16 @@ class KnowledgeBase {
                             'edit_item' => $item->knowledge_id,
                         ], admin_url( 'admin.php' ) );
                         $mode_label = ucfirst( $item->mode ?? 'guideline' );
-                        $topic_name = $item->topic_id && isset( $topic_map[ $item->topic_id ] ) ? $topic_map[ $item->topic_id ] : '—';
+                        $topic_names = [];
+                        if ( ! empty( $item->topic_id ) ) {
+                            $t_ids = array_filter( array_map( 'intval', explode( ',', $item->topic_id ) ) );
+                            foreach ( $t_ids as $tid ) {
+                                if ( isset( $topic_map[ $tid ] ) ) {
+                                    $topic_names[] = $topic_map[ $tid ];
+                                }
+                            }
+                        }
+                        $topic_name = ! empty( $topic_names ) ? implode( ', ', $topic_names ) : '—';
                     ?>
                     <tr data-knowledge-id="<?php echo esc_attr( $item->knowledge_id ); ?>">
                         <td><input type="checkbox" value="<?php echo esc_attr( $item->knowledge_id ); ?>"></td>
@@ -1017,23 +1077,33 @@ class KnowledgeBase {
                             <span class="kb-badge-model"><?php echo esc_html( $item->provider . ' / ' . ( $item->embedding_model ?? '—' ) ); ?></span>
                         </td>
                         <td class="kb-col-actions">
-                            <a href="<?php echo esc_url( $edit_url ); ?>" class="kb-action-link">✏️ <?php esc_html_e( 'Edit', 'sonoai' ); ?></a>
-                            <button type="button" class="kb-action-link kb-view-txt-btn"
-                                    data-content="<?php echo esc_attr( $item->raw_content ?? '' ); ?>">
-                                👁 <?php esc_html_e( 'View', 'sonoai' ); ?>
-                            </button>
-                            <button type="button" class="kb-action-link kb-reindex-item-btn"
-                                    data-knowledge-id="<?php echo esc_attr( $item->knowledge_id ); ?>">
-                                🔄 <?php esc_html_e( 'Re-index', 'sonoai' ); ?>
-                            </button>
-                            <button type="button" class="kb-action-link kb-resync-item-btn"
-                                    data-knowledge-id="<?php echo esc_attr( $item->knowledge_id ); ?>">
-                                ⚡ <?php esc_html_e( 'Re-sync', 'sonoai' ); ?>
-                            </button>
-                            <button type="button" class="kb-action-link kb-delete-btn"
-                                    data-knowledge-id="<?php echo esc_attr( $item->knowledge_id ); ?>">
-                                🗑 <?php esc_html_e( 'Delete', 'sonoai' ); ?>
-                            </button>
+                            <div class="kb-row-actions-dropdown">
+                                <button type="button" class="kb-row-actions-btn" aria-haspopup="true" aria-expanded="false">
+                                    <?php esc_html_e( 'Actions', 'sonoai' ); ?>
+                                    <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg" class="kb-chevron-icon">
+                                        <path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </button>
+                                <div class="kb-row-actions-menu">
+                                    <a href="<?php echo esc_url( $edit_url ); ?>" class="kb-action-link"><?php esc_html_e( 'Edit', 'sonoai' ); ?></a>
+                                    <button type="button" class="kb-action-link kb-view-txt-btn"
+                                            data-content="<?php echo esc_attr( $item->raw_content ?? '' ); ?>">
+                                        <?php esc_html_e( 'View', 'sonoai' ); ?>
+                                    </button>
+                                    <button type="button" class="kb-action-link kb-reindex-item-btn"
+                                            data-knowledge-id="<?php echo esc_attr( $item->knowledge_id ); ?>">
+                                        <?php esc_html_e( 'Re-index', 'sonoai' ); ?>
+                                    </button>
+                                    <button type="button" class="kb-action-link kb-resync-item-btn"
+                                            data-knowledge-id="<?php echo esc_attr( $item->knowledge_id ); ?>">
+                                        <?php esc_html_e( 'Re-sync', 'sonoai' ); ?>
+                                    </button>
+                                    <button type="button" class="kb-action-link kb-delete-btn kb-delete-danger"
+                                            data-knowledge-id="<?php echo esc_attr( $item->knowledge_id ); ?>">
+                                        <?php esc_html_e( 'Delete', 'sonoai' ); ?>
+                                    </button>
+                                </div>
+                            </div>
                         </td>
                     </tr>
                     <?php endforeach; ?>
@@ -1124,7 +1194,17 @@ class KnowledgeBase {
                     ?>
                     <?php foreach ( $items as $item ) :
                         $mode_label = ucfirst( $item->mode ?? 'guideline' );
-                        $topic_name = $item->topic_id && isset( $topic_map[ $item->topic_id ] ) ? $topic_map[ $item->topic_id ] : '—';
+                        
+                        $topic_names = [];
+                        if ( ! empty( $item->topic_id ) ) {
+                            $t_ids = array_filter( array_map( 'intval', explode( ',', $item->topic_id ) ) );
+                            foreach ( $t_ids as $tid ) {
+                                if ( isset( $topic_map[ $tid ] ) ) {
+                                    $topic_names[] = $topic_map[ $tid ];
+                                }
+                            }
+                        }
+                        $topic_name = ! empty( $topic_names ) ? implode( ', ', $topic_names ) : '—';
                     ?>
                     <tr data-knowledge-id="<?php echo esc_attr( $item->knowledge_id ); ?>">
                         <td><input type="checkbox" value="<?php echo esc_attr( $item->knowledge_id ); ?>"></td>
@@ -1166,24 +1246,34 @@ class KnowledgeBase {
                             <span class="kb-badge-model"><?php echo esc_html( $item->provider . ' / ' . ( $item->embedding_model ?? '—' ) ); ?></span>
                         </td>
                         <td class="kb-col-actions">
-                            <?php if ( $has_view && $item->source_url ) : ?>
-                                <a href="<?php echo esc_url( $item->source_url ); ?>" target="_blank" rel="noopener"
-                                   class="kb-action-link" title="<?php echo esc_attr( $item->source_title ?: $item->source_url ); ?>">👁 <?php echo esc_html( $actions['view'] ); ?></a>
-                            <?php endif; ?>
-                            <button type="button" class="kb-action-link kb-reindex-item-btn"
-                                    data-knowledge-id="<?php echo esc_attr( $item->knowledge_id ); ?>">
-                                🔄 <?php esc_html_e( 'Re-index', 'sonoai' ); ?>
-                            </button>
-                            <button type="button" class="kb-action-link kb-resync-item-btn"
-                                    data-knowledge-id="<?php echo esc_attr( $item->knowledge_id ); ?>">
-                                ⚡ <?php esc_html_e( 'Re-sync', 'sonoai' ); ?>
-                            </button>
-                            <?php if ( $has_delete ) : ?>
-                                <button type="button" class="kb-action-link kb-delete-btn"
-                                        data-knowledge-id="<?php echo esc_attr( $item->knowledge_id ); ?>">
-                                    🗑 <?php echo esc_html( $actions['delete'] ); ?>
+                            <div class="kb-row-actions-dropdown">
+                                <button type="button" class="kb-row-actions-btn" aria-haspopup="true" aria-expanded="false">
+                                    <?php esc_html_e( 'Actions', 'sonoai' ); ?>
+                                    <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg" class="kb-chevron-icon">
+                                        <path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
                                 </button>
-                            <?php endif; ?>
+                                <div class="kb-row-actions-menu">
+                                    <?php if ( $has_view && $item->source_url ) : ?>
+                                        <a href="<?php echo esc_url( $item->source_url ); ?>" target="_blank" rel="noopener"
+                                           class="kb-action-link" title="<?php echo esc_attr( $item->source_title ?: $item->source_url ); ?>"><?php echo esc_html( $actions['view'] ); ?></a>
+                                    <?php endif; ?>
+                                    <button type="button" class="kb-action-link kb-reindex-item-btn"
+                                            data-knowledge-id="<?php echo esc_attr( $item->knowledge_id ); ?>">
+                                        <?php esc_html_e( 'Re-index', 'sonoai' ); ?>
+                                    </button>
+                                    <button type="button" class="kb-action-link kb-resync-item-btn"
+                                            data-knowledge-id="<?php echo esc_attr( $item->knowledge_id ); ?>">
+                                        <?php esc_html_e( 'Re-sync', 'sonoai' ); ?>
+                                    </button>
+                                    <?php if ( $has_delete ) : ?>
+                                        <button type="button" class="kb-action-link kb-delete-btn kb-delete-danger"
+                                                data-knowledge-id="<?php echo esc_attr( $item->knowledge_id ); ?>">
+                                            <?php echo esc_html( $actions['delete'] ); ?>
+                                        </button>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
                         </td>
                     </tr>
                     <?php endforeach; ?>

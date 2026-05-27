@@ -140,13 +140,14 @@ class Topics {
 		// Cascade slug update to embeddings.
 		if ( $updated !== false && $old_slug && $old_slug !== $new_slug ) {
 			$emb_tbl = $wpdb->prefix . 'sonoai_embeddings';
-			$wpdb->update(
-				$emb_tbl,
-				[ 'topic_slug' => $new_slug ],
-				[ 'topic_slug' => $old_slug ],
-				[ '%s' ],
-				[ '%s' ]
-			);
+			$rows = $wpdb->get_results( $wpdb->prepare( "SELECT id, topic_slug FROM `$emb_tbl` WHERE FIND_IN_SET(%s, topic_slug) > 0", $old_slug ), ARRAY_A );
+			foreach ( $rows as $row ) {
+				$slugs = array_map( 'trim', explode( ',', $row['topic_slug'] ) );
+				$slugs = array_map( function( $s ) use ( $old_slug, $new_slug ) {
+					return $s === $old_slug ? $new_slug : $s;
+				}, $slugs );
+				$wpdb->update( $emb_tbl, [ 'topic_slug' => implode( ',', $slugs ) ], [ 'id' => $row['id'] ] );
+			}
 		}
 
 		return $updated !== false;
@@ -174,15 +175,24 @@ class Topics {
 		$deleted = $wpdb->delete( $table, [ 'id' => $id ], [ '%d' ] );
 
 		if ( $deleted ) {
-			// Null out topic_id on KB items.
-			$wpdb->query(
-				$wpdb->prepare( "UPDATE `$kb_tbl` SET topic_id = NULL WHERE topic_id = %d", $id )
-			);
-			// Null out topic_slug on embeddings.
+			// Remove from topic_id on KB items.
+			$rows = $wpdb->get_results( "SELECT id, topic_id FROM `$kb_tbl` WHERE topic_id IS NOT NULL", ARRAY_A );
+			foreach ( $rows as $row ) {
+				$ids = array_filter( array_map( 'intval', explode( ',', $row['topic_id'] ) ) );
+				if ( in_array( $id, $ids, true ) ) {
+					$ids = array_diff( $ids, [ $id ] );
+					$wpdb->update( $kb_tbl, [ 'topic_id' => ! empty( $ids ) ? implode( ',', $ids ) : null ], [ 'id' => $row['id'] ] );
+				}
+			}
+
+			// Remove from topic_slug on embeddings.
 			if ( $slug ) {
-				$wpdb->query(
-					$wpdb->prepare( "UPDATE `$emb_tbl` SET topic_slug = NULL WHERE topic_slug = %s", $slug )
-				);
+				$rows = $wpdb->get_results( $wpdb->prepare( "SELECT id, topic_slug FROM `$emb_tbl` WHERE FIND_IN_SET(%s, topic_slug) > 0", $slug ), ARRAY_A );
+				foreach ( $rows as $row ) {
+					$slugs = array_filter( array_map( 'trim', explode( ',', $row['topic_slug'] ) ) );
+					$slugs = array_diff( $slugs, [ $slug ] );
+					$wpdb->update( $emb_tbl, [ 'topic_slug' => ! empty( $slugs ) ? implode( ',', $slugs ) : null ], [ 'id' => $row['id'] ] );
+				}
 			}
 		}
 

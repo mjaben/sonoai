@@ -187,7 +187,14 @@ class Embedding {
 
             $meta_parts = [];
             if ( ! empty( $topic_slug ) ) {
-                $meta_parts[] = 'Topic: ' . ucwords( str_replace( '-', ' ', $topic_slug ) );
+                $slugs = array_filter( array_map( 'trim', explode( ',', $topic_slug ) ) );
+                if ( ! empty( $slugs ) ) {
+                    $topics_formatted = array_map( function( $slug ) {
+                        return ucwords( str_replace( '-', ' ', $slug ) );
+                    }, $slugs );
+                    $label = count( $slugs ) > 1 ? 'Topics' : 'Topic';
+                    $meta_parts[] = $label . ': ' . implode( ', ', $topics_formatted );
+                }
             }
             if ( ! empty( $country ) ) {
                 $meta_parts[] = 'Country: ' . $country;

@@ -104,7 +104,7 @@ class Activator {
             `raw_content`     LONGTEXT                 DEFAULT NULL,
             `image_urls`      LONGTEXT                 DEFAULT NULL,
             `mode`            VARCHAR(20)     NOT NULL DEFAULT 'guideline',
-            `topic_id`        INT UNSIGNED             DEFAULT NULL,
+            `topic_id`        VARCHAR(255)             DEFAULT NULL,
             `country`         VARCHAR(100)             DEFAULT NULL,
             `provider`        VARCHAR(20)     NOT NULL DEFAULT 'openai',
             `embedding_model` VARCHAR(100)             DEFAULT NULL,
@@ -124,10 +124,22 @@ class Activator {
             $wpdb->query( "ALTER TABLE `$kb_items_table` ADD KEY `idx_mode` (`mode`)" );
         }
         if ( ! empty( $kb_cols ) && ! in_array( 'topic_id', $kb_cols, true ) ) {
-            $wpdb->query( "ALTER TABLE `$kb_items_table` ADD COLUMN `topic_id` INT UNSIGNED DEFAULT NULL AFTER `mode`" );
+            $wpdb->query( "ALTER TABLE `$kb_items_table` ADD COLUMN `topic_id` VARCHAR(255) DEFAULT NULL AFTER `mode`" );
         }
         if ( ! empty( $kb_cols ) && ! in_array( 'country', $kb_cols, true ) ) {
             $wpdb->query( "ALTER TABLE `$kb_items_table` ADD COLUMN `country` VARCHAR(100) DEFAULT NULL AFTER `topic_id`" );
+        }
+
+        // Upgrade topic_id in kb_items_table to VARCHAR(255) to support multi-topic comma-separated lists
+        $topic_id_type = $wpdb->get_row( "SHOW COLUMNS FROM `$kb_items_table` LIKE 'topic_id'" );
+        if ( $topic_id_type && ( strpos( strtolower( $topic_id_type->Type ), 'varchar' ) === false || strpos( $topic_id_type->Type, '255' ) === false ) ) {
+            $wpdb->query( "ALTER TABLE `$kb_items_table` MODIFY COLUMN `topic_id` VARCHAR(255) DEFAULT NULL" );
+        }
+
+        // Upgrade topic_slug in embeddings to VARCHAR(255) to support multi-topic comma-separated lists
+        $topic_slug_type = $wpdb->get_row( "SHOW COLUMNS FROM `$embeddings_table` LIKE 'topic_slug'" );
+        if ( $topic_slug_type && ( strpos( strtolower( $topic_slug_type->Type ), 'varchar' ) === false || strpos( $topic_slug_type->Type, '255' ) === false ) ) {
+            $wpdb->query( "ALTER TABLE `$embeddings_table` MODIFY COLUMN `topic_slug` VARCHAR(255) DEFAULT NULL" );
         }
 
         // ── Sessions table ────────────────────────────────────────────────────

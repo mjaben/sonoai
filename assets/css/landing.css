@@ -1,0 +1,1289 @@
+/* ============================================================
+   SonoAI — Landing Page Design Stylesheet
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+
+.sonoai-landing-app {
+    /* ─── Light Mode Theme (Default) ─── */
+    --brand-purple:     #A337DB;
+    --brand-purple-dim: rgba(163, 55, 219, 0.1);
+    --brand-purple-hover: #8929BD;
+    --brand-teal:       #15B787;
+    --brand-teal-dim:   rgba(21, 183, 135, 0.1);
+
+    --landing-bg:       #FFFFFF;
+    --landing-surface:  #F9F6FC;
+    --landing-surface-2:#EFEAF5;
+    --landing-border:   rgba(163, 55, 219, 0.12);
+    
+    --text-primary:     #1C1326;
+    --text-secondary:   #544A60;
+    --text-muted:       #8A7E97;
+    
+    --card-shadow:      0 10px 30px rgba(163, 55, 219, 0.04);
+    --card-shadow-hover:0 20px 40px rgba(163, 55, 219, 0.08);
+    
+    --font-heading:     'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-body:        'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    
+    --border-radius:    14px;
+    --border-radius-lg: 20px;
+    --border-radius-sm: 8px;
+    
+    --transition:       0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    font-family: var(--font-body);
+    background-color: var(--landing-bg);
+    color: var(--text-primary);
+    line-height: 1.6;
+    overflow-x: hidden;
+    position: relative;
+    transition: background-color var(--transition), color var(--transition);
+}
+
+/* ─── Dark Mode Theme (Triggered by Class) ─── */
+.sonoai-landing-app.sono-landing-dark {
+    --landing-bg:       #0B0813;
+    --landing-surface:  #161122;
+    --landing-surface-2:#231B34;
+    --landing-border:   rgba(163, 55, 219, 0.2);
+    
+    --text-primary:     #F1ECF7;
+    --text-secondary:   #B1A8BC;
+    --text-muted:       #7D728A;
+    
+    --card-shadow:      0 10px 45px rgba(0, 0, 0, 0.45);
+    --card-shadow-hover:0 20px 60px rgba(163, 55, 219, 0.15);
+}
+
+/* ─── Base & Layout Utility ─── */
+.sonoai-landing-app * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+.sonoai-landing-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
+    width: 100%;
+}
+
+.grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    align-items: center;
+}
+
+.grid-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+}
+
+.gap-4 { gap: 32px; }
+.gap-2 { gap: 20px; }
+
+.text-center { text-align: center; }
+.text-gradient {
+    background: linear-gradient(135deg, var(--brand-purple) 30%, var(--brand-teal) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* Section Header styling */
+.section-header {
+    margin-bottom: 56px;
+}
+
+.section-tag {
+    display: inline-block;
+    background: var(--brand-purple-dim);
+    color: var(--brand-purple);
+    font-size: 11.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    padding: 6px 14px;
+    border-radius: 9999px;
+    margin-bottom: 16px;
+}
+
+.section-header h2 {
+    font-family: var(--font-heading);
+    font-size: 38px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+    margin-bottom: 16px;
+}
+
+.section-header p {
+    font-size: 17px;
+    color: var(--text-secondary);
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* Buttons System */
+.sonoai-landing-btn-primary,
+.sonoai-landing-btn-secondary,
+.sonoai-landing-btn-outline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-body);
+    font-size: 13.5px;
+    font-weight: 600;
+    border-radius: 9999px;
+    padding: 9px 20px;
+    cursor: pointer;
+    transition: var(--transition);
+    text-decoration: none !important;
+    border: none;
+    line-height: 1;
+}
+
+.sonoai-landing-btn-primary {
+    background: var(--brand-purple);
+    color: #FFFFFF !important;
+    box-shadow: 0 4px 14px rgba(163, 55, 219, 0.25);
+}
+
+.sonoai-landing-btn-primary:hover {
+    background: var(--brand-purple-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(163, 55, 219, 0.35);
+}
+
+.sonoai-landing-btn-primary.large {
+    padding: 14px 32px;
+    font-size: 15px;
+}
+
+.sonoai-landing-btn-secondary {
+    background: var(--landing-surface-2);
+    color: var(--text-primary) !important;
+}
+
+.sonoai-landing-btn-secondary:hover {
+    background: var(--landing-border);
+}
+
+.sonoai-landing-btn-outline {
+    background: transparent;
+    border: 1.5px solid var(--brand-purple);
+    color: var(--brand-purple) !important;
+}
+
+.sonoai-landing-btn-outline:hover {
+    background: var(--brand-purple-dim);
+}
+
+.sonoai-landing-btn-outline.large {
+    padding: 13px 30px;
+    font-size: 15px;
+}
+
+/* ============================================================
+   1. HEADER & NAVIGATION STYLING
+   ============================================================ */
+.sonoai-landing-header {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--landing-border);
+    transition: background var(--transition), border var(--transition);
+}
+
+.sono-landing-dark .sonoai-landing-header {
+    background: rgba(11, 8, 19, 0.85);
+}
+
+.sonoai-landing-header .sonoai-landing-container {
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.sonoai-landing-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.sonoai-landing-brand-mark {
+    width: 32px;
+    height: 32px;
+    background: var(--brand-purple-dim);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--brand-purple);
+}
+
+.sonoai-landing-brand-name {
+    font-family: var(--font-heading);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+    display: block;
+    line-height: 1.1;
+}
+
+.sonoai-landing-brand-sub {
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+}
+
+.sonoai-landing-nav {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+}
+
+.sonoai-landing-nav-link {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-decoration: none !important;
+    transition: var(--transition);
+}
+
+.sonoai-landing-nav-link:hover {
+    color: var(--brand-purple);
+}
+
+.sonoai-landing-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.sonoai-landing-theme-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 8px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+}
+
+.sonoai-landing-theme-toggle:hover {
+    background: var(--landing-surface-2);
+    color: var(--text-primary);
+}
+
+/* ============================================================
+   2. HERO SECTION
+   ============================================================ */
+.sonoai-landing-hero {
+    padding: 88px 0 96px;
+    position: relative;
+}
+
+.sonoai-landing-hero-left {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.sonoai-landing-hero-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid var(--landing-border);
+    background: var(--landing-surface);
+    padding: 6px 14px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+}
+
+.pulse-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--brand-purple);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--brand-purple);
+    animation: pulseGlow 1.8s infinite ease-in-out;
+}
+
+@keyframes pulseGlow {
+    0% { transform: scale(0.9); opacity: 0.6; }
+    50% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 12px var(--brand-purple); }
+    100% { transform: scale(0.9); opacity: 0.6; }
+}
+
+.sonoai-landing-hero-title {
+    font-family: var(--font-heading);
+    font-size: 48px;
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -0.03em;
+    color: var(--text-primary);
+    margin-bottom: 20px;
+}
+
+.sonoai-landing-hero-desc {
+    font-size: 17px;
+    color: var(--text-secondary);
+    margin-bottom: 36px;
+    max-width: 520px;
+}
+
+.sonoai-landing-hero-ctas {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 48px;
+    flex-wrap: wrap;
+}
+
+.sonoai-landing-hero-meta {
+    display: flex;
+    align-items: center;
+    gap: 36px;
+    border-top: 1px solid var(--landing-border);
+    padding-top: 28px;
+    width: 100%;
+}
+
+.meta-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.meta-item strong {
+    font-family: var(--font-heading);
+    font-size: 20px;
+    color: var(--brand-purple);
+    font-weight: 700;
+}
+
+.meta-item span {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+/* Hero Right: Live UI Mockup styling */
+.sonoai-landing-hero-right {
+    position: relative;
+    width: 100%;
+}
+
+.sonoai-mock-ui-shell {
+    background: #0E0E10;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    box-shadow: 0 30px 70px rgba(0,0,0,0.5), 0 0 0 1px rgba(163,55,219,0.15);
+    overflow: hidden;
+    width: 100%;
+    max-width: 500px;
+    margin-left: auto;
+    position: relative;
+    z-index: 2;
+}
+
+.sonoai-mock-ui-header {
+    background: #141416;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sonoai-mock-ui-header .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+.sonoai-mock-ui-header .dot.red { background: #ff5f56; }
+.sonoai-mock-ui-header .dot.yellow { background: #ffbd2e; }
+.sonoai-mock-ui-header .dot.green { background: #27c93f; }
+.sonoai-mock-ui-header .title {
+    font-size: 11px;
+    color: #555560;
+    font-family: monospace;
+    margin-left: 12px;
+    letter-spacing: 0.02em;
+}
+
+.sonoai-mock-ui-body {
+    display: flex;
+    height: 300px;
+}
+
+.sonoai-mock-sidebar {
+    width: 120px;
+    background: #141416;
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 16px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.mock-line {
+    height: 8px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.06);
+    width: 100%;
+}
+.mock-line.short { width: 50%; }
+.mock-line.active { background: rgba(163, 55, 219, 0.25); }
+
+.sonoai-mock-chat {
+    flex: 1;
+    background: #0E0E10;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
+}
+
+.mock-bubble {
+    padding: 10px 14px;
+    border-radius: var(--border-radius-sm);
+    font-size: 11.5px;
+    max-width: 85%;
+    line-height: 1.45;
+}
+
+.mock-bubble.user {
+    background: rgba(255,255,255,0.04);
+    color: #e2e2e5;
+    align-self: flex-end;
+    border-bottom-right-radius: 0;
+}
+
+.mock-bubble.assistant {
+    background: #1c1c21;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    color: #d1d1d6;
+    align-self: flex-start;
+    border-bottom-left-radius: 0;
+}
+
+.mock-badge {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-bottom: 6px;
+}
+.mock-badge.teal { background: rgba(21, 183, 135, 0.15); color: #15B787; }
+
+.mock-bubble ul {
+    margin-top: 6px;
+    padding-left: 12px;
+}
+
+.mock-citation {
+    display: block;
+    font-size: 10px;
+    color: #6c6c7e;
+    margin-top: 8px;
+}
+
+.hero-bg-glow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 120%;
+    height: 120%;
+    background: radial-gradient(circle, rgba(163, 55, 219, 0.12) 0%, rgba(163, 55, 219, 0) 65%);
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* ============================================================
+   3. INTERACTIVE SANDBOX
+   ============================================================ */
+.sonoai-landing-sandbox {
+    padding: 96px 0;
+    background: var(--landing-surface);
+    transition: background var(--transition);
+}
+
+.sandbox-widget {
+    background: var(--landing-bg);
+    border: 1px solid var(--landing-border);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--card-shadow);
+    display: flex;
+    overflow: hidden;
+    height: 480px;
+    transition: var(--transition);
+}
+
+.sandbox-prompts {
+    width: 320px;
+    background: var(--landing-surface);
+    border-right: 1px solid var(--landing-border);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: background var(--transition), border var(--transition);
+}
+
+.sandbox-prompt-btn {
+    background: var(--landing-bg);
+    border: 1px solid var(--landing-border);
+    border-radius: var(--border-radius);
+    padding: 16px;
+    text-align: left;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transition: var(--transition);
+}
+
+.sandbox-prompt-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(163, 55, 219, 0.05);
+    border-color: var(--brand-purple);
+}
+
+.sandbox-prompt-btn.active {
+    background: var(--brand-purple-dim);
+    border-color: var(--brand-purple);
+}
+
+.sandbox-prompt-btn .prompt-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.sandbox-prompt-btn .prompt-text {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.35;
+}
+
+/* Sandbox Display styling */
+.sandbox-display {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #0E0E10;
+}
+
+.sandbox-chat-header {
+    height: 56px;
+    background: #141416;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 24px;
+}
+
+.sandbox-chat-header #sandbox-engine-label {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #a3a3c2;
+}
+
+.sandbox-chat-body {
+    flex: 1;
+    padding: 28px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.sandbox-balloon {
+    padding: 16px 20px;
+    border-radius: var(--border-radius);
+    font-size: 13.5px;
+    line-height: 1.55;
+    max-width: 80%;
+}
+
+.sandbox-balloon.user {
+    background: rgba(255, 255, 255, 0.04);
+    color: #E2E2E6;
+    align-self: flex-end;
+    border-bottom-right-radius: 0;
+}
+
+.sandbox-balloon.assistant {
+    background: #1C1C21;
+    border: 1px solid rgba(255,255,255,0.04);
+    color: #D1D1D6;
+    align-self: flex-start;
+    border-bottom-left-radius: 0;
+}
+
+.sandbox-balloon.assistant p {
+    margin-bottom: 10px;
+}
+.sandbox-balloon.assistant p:last-child {
+    margin-bottom: 0;
+}
+.sandbox-balloon.assistant ul {
+    margin-bottom: 12px;
+    padding-left: 18px;
+}
+.sandbox-balloon.assistant li {
+    margin-bottom: 4px;
+}
+
+.sandbox-citation {
+    display: block;
+    font-size: 11px;
+    color: #6C6C7E;
+    margin-top: 14px;
+    font-style: italic;
+}
+
+/* Skeleton loader animations */
+.sandbox-skeleton {
+    width: 60%;
+    align-self: flex-start;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.skeleton-bar {
+    height: 12px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    width: 100%;
+}
+.skeleton-bar.short { width: 40%; }
+.skeleton-bar.medium { width: 75%; }
+
+.skeleton-bar.pulse {
+    animation: skeletonPulse 1.4s infinite ease-in-out;
+}
+
+@keyframes skeletonPulse {
+    0% { opacity: 0.4; }
+    50% { opacity: 0.9; }
+    100% { opacity: 0.4; }
+}
+
+/* Sandbox Scan Visual Thumbnail styling */
+.sandbox-media-trigger {
+    background: #28282E;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    cursor: pointer;
+    height: 130px;
+    margin-top: 14px;
+    overflow: hidden;
+    position: relative;
+    width: 220px;
+}
+
+.trigger-overlay {
+    background: rgba(0,0,0,0.65);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    opacity: 0;
+    transition: var(--transition);
+    color: #FFF;
+    z-index: 2;
+}
+
+.sandbox-media-trigger:hover .trigger-overlay {
+    opacity: 1;
+}
+
+.trigger-overlay svg { color: var(--brand-purple); }
+.trigger-overlay span { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+
+.trigger-placeholder-image {
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    filter: brightness(0.65);
+}
+
+.trigger-placeholder-image.gb-thickening {
+    /* Base64 embedded stylized medical scanner representation placeholder */
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="220" height="130" viewBox="0 0 220 130"><rect width="100%" height="100%" fill="%230E0E10"/><path d="M20 65 Q110 20 200 65" stroke="%23A337DB" stroke-width="2" fill="none" opacity="0.3"/><path d="M20 65 Q110 110 200 65" stroke="%23A337DB" stroke-width="2" fill="none" opacity="0.3"/><ellipse cx="110" cy="65" rx="50" ry="25" fill="%2315B787" opacity="0.15" stroke="%2315B787" stroke-width="1.5"/><circle cx="110" cy="65" r="5" fill="%2315B787" opacity="0.7"/></svg>');
+}
+
+.trigger-placeholder-image.fgr-doppler {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="220" height="130" viewBox="0 0 220 130"><rect width="100%" height="100%" fill="%230E0E10"/><path d="M10 90 L40 90 L60 30 L80 110 L100 90 L130 90 L150 40 L170 105 L190 90 L210 90" stroke="%23A337DB" stroke-width="2" fill="none"/><line x1="10" y1="90" x2="210" y2="90" stroke="%23555" stroke-dasharray="4"/></svg>');
+}
+
+.trigger-placeholder-image.thyroid-fna {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="220" height="130" viewBox="0 0 220 130"><rect width="100%" height="100%" fill="%230E0E10"/><circle cx="110" cy="65" r="35" fill="none" stroke="%2315B787" stroke-width="2" stroke-dasharray="3"/><circle cx="110" cy="65" r="20" fill="none" stroke="%23A337DB" stroke-width="1.5"/><line x1="50" y1="20" x2="100" y2="55" stroke="%23777" stroke-width="1.5"/></svg>');
+}
+
+/* ============================================================
+   4. DUAL CLINICAL ENGINES
+   ============================================================ */
+.sonoai-landing-modes {
+    padding: 96px 0;
+}
+
+.engine-card {
+    background: var(--landing-surface);
+    border: 1px solid var(--landing-border);
+    border-radius: var(--border-radius-lg);
+    padding: 44px;
+    position: relative;
+    overflow: hidden;
+    transition: var(--transition);
+    box-shadow: var(--card-shadow);
+}
+
+.engine-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--card-shadow-hover);
+}
+
+.engine-card.guideline-card:hover {
+    border-color: var(--brand-teal);
+    box-shadow: 0 20px 45px rgba(21, 183, 135, 0.08);
+}
+
+.engine-card.research-card:hover {
+    border-color: var(--brand-purple);
+    box-shadow: 0 20px 45px rgba(163, 55, 219, 0.08);
+}
+
+.card-badge {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 4px 10px;
+    border-radius: 4px;
+}
+.card-badge.teal { background: var(--brand-teal-dim); color: var(--brand-teal); }
+.card-badge.purple { background: var(--brand-purple-dim); color: var(--brand-purple); }
+
+.engine-card h3 {
+    font-family: var(--font-heading);
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+.card-desc {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 28px;
+    line-height: 1.5;
+}
+
+.card-features {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.card-features li {
+    font-size: 13.5px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.card-features li span {
+    font-weight: 700;
+}
+.guideline-card .card-features li span { color: var(--brand-teal); }
+.research-card .card-features li span { color: var(--brand-purple); }
+
+/* ============================================================
+   5. RAG PLATFORM INGESTION
+   ============================================================ */
+.sonoai-landing-rag {
+    padding: 96px 0;
+    background: var(--landing-surface);
+    transition: background var(--transition);
+}
+
+.rag-card {
+    background: var(--landing-bg);
+    border: 1px solid var(--landing-border);
+    border-radius: var(--border-radius);
+    padding: 32px 24px;
+    text-align: center;
+    box-shadow: var(--card-shadow);
+    transition: var(--transition);
+}
+
+.rag-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--card-shadow-hover);
+    border-color: var(--brand-purple);
+}
+
+.rag-icon {
+    font-size: 32px;
+    margin-bottom: 16px;
+}
+
+.rag-card h4 {
+    font-family: var(--font-heading);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+}
+
+.rag-card p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+/* ============================================================
+   6. INSTITUTIONAL ANALYTICS & AUDITING
+   ============================================================ */
+.sonoai-landing-analytics {
+    padding: 96px 0;
+}
+
+.sonoai-landing-analytics h2 {
+    font-family: var(--font-heading);
+    font-size: 34px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    line-height: 1.25;
+}
+
+.sonoai-landing-analytics p.desc {
+    font-size: 16px;
+    color: var(--text-secondary);
+    margin-bottom: 32px;
+}
+
+.bullet-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.bullet-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.bullet-item strong {
+    font-size: 14.5px;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.bullet-item span {
+    font-size: 13.5px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+}
+
+/* Dashboard graphic visualizer styling */
+.analytics-visual {
+    width: 100%;
+}
+
+.mock-dashboard {
+    background: #0E0E10;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.4), 0 0 0 1px rgba(163,55,219,0.1);
+    overflow: hidden;
+    width: 100%;
+    max-width: 480px;
+    margin-left: auto;
+}
+
+.dash-header {
+    background: #141416;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 12px 18px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #a3a3c2;
+}
+
+.dash-body {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.dash-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.dash-bar-row .label {
+    font-size: 11px;
+    color: #8E8EA2;
+    width: 140px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.bar-container {
+    flex: 1;
+    height: 8px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.bar-container .bar {
+    height: 100%;
+    border-radius: 4px;
+}
+.bar-container .bar.purple {
+    background: var(--brand-purple);
+}
+
+.dash-bar-row .value {
+    font-size: 11px;
+    font-weight: 600;
+    color: #E2E2E6;
+    width: 32px;
+    text-align: right;
+}
+
+/* ============================================================
+   7. CALL TO ACTION FOOTER
+   ============================================================ */
+.sonoai-landing-cta {
+    padding: 96px 0;
+    background: linear-gradient(180deg, var(--landing-bg) 0%, var(--landing-surface) 100%);
+    border-top: 1px solid var(--landing-border);
+}
+
+.cta-title {
+    font-family: var(--font-heading);
+    font-size: 40px;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+}
+
+.cta-desc {
+    font-size: 17px;
+    color: var(--text-secondary);
+    max-width: 580px;
+    margin: 0 auto 36px;
+}
+
+.cta-btns {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+/* ============================================================
+   8. CLINICAL LIGHTBOX STYLING
+   ============================================================ */
+.sonoai-landing-lightbox {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(8, 5, 12, 0.95);
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(8px);
+}
+
+.sonoai-landing-lightbox[hidden] {
+    display: none !important;
+}
+
+.sonoai-landing-lightbox-close {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 36px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.sonoai-landing-lightbox-close:hover {
+    color: #FFF;
+    transform: rotate(90deg);
+}
+
+.sonoai-landing-lightbox-content {
+    max-width: 80%;
+    max-height: 70%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    overflow: hidden;
+    background: #0E0E10;
+}
+
+.sonoai-landing-lightbox-content img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.sonoai-landing-lightbox-caption {
+    color: #B1A8BC;
+    font-size: 13px;
+    margin-top: 20px;
+    max-width: 600px;
+    text-align: center;
+    line-height: 1.5;
+    padding: 0 24px;
+}
+
+/* ============================================================
+   9. RESPONSIVE BREAKPOINTS
+   ============================================================ */
+@media (max-width: 992px) {
+    .grid-2 {
+        grid-template-columns: 1fr;
+        gap: 48px;
+    }
+    
+    .grid-4 {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+    }
+    
+    .sonoai-landing-hero-right {
+        order: -1;
+    }
+    
+    .sonoai-mock-ui-shell {
+        margin: 0 auto;
+    }
+    
+    .sandbox-widget {
+        flex-direction: column;
+        height: auto;
+    }
+    
+    .sandbox-prompts {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--landing-border);
+    }
+    
+    .sandbox-display {
+        height: 400px;
+    }
+    
+    .sonoai-landing-hero-title {
+        font-size: 38px;
+    }
+}
+
+@media (max-width: 768px) {
+    .sonoai-landing-nav {
+        display: none;
+    }
+    
+    .section-header h2 {
+        font-size: 30px;
+    }
+    
+    .grid-4 {
+        grid-template-columns: 1fr;
+    }
+    
+    .sonoai-landing-hero-meta {
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+    
+    .cta-title {
+        font-size: 28px;
+    }
+}
+
+/* ============================================================
+   10. PRICING SECTION STYLING
+   ============================================================ */
+.sonoai-landing-pricing {
+    padding: 96px 0;
+}
+
+.pricing-card {
+    background: var(--landing-surface);
+    border: 1.5px solid var(--landing-border);
+    border-radius: var(--border-radius-lg);
+    padding: 40px;
+    position: relative;
+    overflow: hidden;
+    transition: var(--transition);
+    box-shadow: var(--card-shadow);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.pricing-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--card-shadow-hover);
+}
+
+.pricing-card.featured {
+    border-color: var(--brand-purple);
+    background: var(--landing-surface);
+    box-shadow: 0 15px 45px rgba(163, 55, 219, 0.06);
+}
+
+.pricing-ribbon {
+    position: absolute;
+    top: 15px;
+    right: -42px;
+    background: var(--brand-purple);
+    color: #FFF;
+    font-size: 8px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 6px 40px;
+    transform: rotate(45deg);
+    box-shadow: 0 2px 8px rgba(163, 55, 219, 0.2);
+}
+
+.pricing-header h4 {
+    font-family: var(--font-heading);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+.pricing-header .price {
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
+    margin-bottom: 16px;
+}
+
+.pricing-header .price .currency {
+    font-family: var(--font-heading);
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--brand-purple);
+}
+
+.pricing-header .price .amount {
+    font-family: var(--font-heading);
+    font-size: 48px;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1;
+}
+
+.pricing-header .price .period {
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.pricing-header .price .price-strike {
+    font-size: 16px;
+    text-decoration: line-through;
+    color: var(--text-muted);
+    margin-left: 12px;
+    font-weight: 500;
+}
+
+.pricing-desc {
+    font-size: 13.5px;
+    color: var(--text-secondary);
+    margin-bottom: 28px;
+    line-height: 1.5;
+}
+
+.pricing-features {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 36px;
+}
+
+.pricing-features li {
+    font-size: 13.5px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.pricing-features li span {
+    color: var(--brand-teal);
+    font-weight: bold;
+}
+
+.pricing-card.featured .pricing-features li span {
+    color: var(--brand-purple);
+}
+
+.full-width {
+    width: 100%;
+}
+

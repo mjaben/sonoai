@@ -27,6 +27,7 @@ class Shortcode {
 
     private function __construct() {
         add_shortcode( 'sonoai_chat', [ $this, 'render' ] );
+        add_shortcode( 'sonoai_landing', [ $this, 'render_landing' ] );
         add_action( 'wp_enqueue_scripts', [ $this, 'register_assets' ] );
 
         // Detect shortcode early so we can override the template.
@@ -92,48 +93,64 @@ class Shortcode {
             return;
         }
 
-        if ( ! has_shortcode( $post->post_content, 'sonoai_chat' ) ) {
+        $has_chat    = has_shortcode( $post->post_content, 'sonoai_chat' );
+        $has_landing = has_shortcode( $post->post_content, 'sonoai_landing' );
+
+        if ( ! $has_chat && ! $has_landing ) {
             return;
         }
 
         $this->is_active = true;
 
-        // Detect session UUID from either GET param or our new query var.
-        $session_uuid = get_query_var( 'sonoai_uuid' ) ?: ( isset( $_GET['uuid'] ) ? sanitize_text_field( $_GET['uuid'] ) : '' );
+        if ( $has_chat ) {
+            // Detect session UUID from either GET param or our new query var.
+            $session_uuid = get_query_var( 'sonoai_uuid' ) ?: ( isset( $_GET['uuid'] ) ? sanitize_text_field( $_GET['uuid'] ) : '' );
 
-        // Enqueue assets now so wp_head() includes them.
-        add_action( 'wp_enqueue_scripts', function () use ( $session_uuid ) {
-            wp_enqueue_style( 'sonoai-chat' );
-            wp_enqueue_script( 'sonoai-chat' );
-            wp_localize_script( 'sonoai-chat', 'sonoai_vars', [
-                'rest_url'      => esc_url( rest_url( 'sonoai/v1/' ) ),
-                'nonce'         => wp_create_nonce( 'wp_rest' ),
-                'is_logged_in'  => is_user_logged_in(),
-                'login_url'     => wp_login_url( get_permalink() ),
-                'user'          => $this->get_user_data(),
-                'history_limit' => (int) sonoai_option( 'history_limit', 50 ),
-                'session_uuid'  => $session_uuid,
-                'base_url'      => get_permalink(),
-                'i18n'          => [
-                    'new_chat'     => __( 'New Chat', 'sonoai' ),
-                    'send'         => __( 'Send', 'sonoai' ),
-                    'placeholder'  => __( 'Ask about ultrasound, sonography, or upload a scan…', 'sonoai' ),
-                    'thinking'     => __( 'SonoAI is thinking…', 'sonoai' ),
-                    'error'        => __( 'Something went wrong. Please try again.', 'sonoai' ),
-                    'upload_hint'  => __( 'Upload a sonogram image', 'sonoai' ),
-                    'login_cta'    => __( 'Login to access SonoAI', 'sonoai' ),
-                    'login_button' => __( 'Log In', 'sonoai' ),
-                    'login_desc'   => __( 'Sign in to start your AI-powered sonography consultation.', 'sonoai' ),
-                    'delete'       => __( 'Delete', 'sonoai' ),
-                    'history'      => __( 'Chat History', 'sonoai' ),
-                    'today'        => __( 'Today', 'sonoai' ),
-                    'no_history'   => __( 'No previous chats.', 'sonoai' ),
-                ],
-            ] );
-        }, 5 );
+            // Enqueue assets now so wp_head() includes them.
+            add_action( 'wp_enqueue_scripts', function () use ( $session_uuid ) {
+                wp_enqueue_style( 'sonoai-chat' );
+                wp_enqueue_script( 'sonoai-chat' );
+                wp_localize_script( 'sonoai-chat', 'sonoai_vars', [
+                    'rest_url'      => esc_url( rest_url( 'sonoai/v1/' ) ),
+                    'nonce'         => wp_create_nonce( 'wp_rest' ),
+                    'is_logged_in'  => is_user_logged_in(),
+                    'login_url'     => wp_login_url( get_permalink() ),
+                    'user'          => $this->get_user_data(),
+                    'history_limit' => (int) sonoai_option( 'history_limit', 50 ),
+                    'session_uuid'  => $session_uuid,
+                    'base_url'      => get_permalink(),
+                    'i18n'          => [
+                        'new_chat'     => __( 'New Chat', 'sonoai' ),
+                        'send'         => __( 'Send', 'sonoai' ),
+                        'placeholder'  => __( 'Ask about ultrasound, sonography, or upload a scan…', 'sonoai' ),
+                        'thinking'     => __( 'SonoAI is thinking…', 'sonoai' ),
+                        'error'        => __( 'Something went wrong. Please try again.', 'sonoai' ),
+                        'upload_hint'  => __( 'Upload a sonogram image', 'sonoai' ),
+                        'login_cta'    => __( 'Login to access SonoAI', 'sonoai' ),
+                        'login_button' => __( 'Log In', 'sonoai' ),
+                        'login_desc'   => __( 'Sign in to start your AI-powered sonography consultation.', 'sonoai' ),
+                        'delete'       => __( 'Delete', 'sonoai' ),
+                        'history'      => __( 'Chat History', 'sonoai' ),
+                        'today'        => __( 'Today', 'sonoai' ),
+                        'no_history'   => __( 'No previous chats.', 'sonoai' ),
+                    ],
+                ] );
+            }, 5 );
+        } elseif ( $has_landing ) {
+            add_action( 'wp_enqueue_scripts', function () {
+                wp_enqueue_style( 'sonoai-landing' );
+                wp_enqueue_script( 'sonoai-landing' );
+                wp_localize_script( 'sonoai-landing', 'sonoai_landing_vars', [
+                    'rest_url'     => esc_url( rest_url( 'sonoai/v1/' ) ),
+                    'nonce'        => wp_create_nonce( 'wp_rest' ),
+                    'is_logged_in' => is_user_logged_in(),
+                    'login_url'    => wp_login_url( get_permalink() ),
+                ] );
+            }, 5 );
+        }
 
         // Override the template: output a bare HTML page and exit.
-        add_filter( 'template_include', function () {
+        add_filter( 'template_include', function () use ( $has_chat, $has_landing ) {
             // Capture styles/scripts.
             ob_start();
             ?>
@@ -145,15 +162,24 @@ class Shortcode {
 <title><?php echo esc_html( get_the_title() ); ?> — <?php bloginfo( 'name' ); ?></title>
 <?php wp_head(); ?>
 <style>
-    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #0d0d0f; }
-    body.sonoai-fullscreen { display: flex; flex-direction: column; }
-    #sonoai-app { height: 100vh !important; height: 100dvh !important; border-radius: 0 !important; border: none !important; }
+    html, body { margin: 0; padding: 0; min-height: 100%; height: auto; background: #ffffff; }
+    <?php if ( $has_chat ) : ?>
+        html, body { height: 100%; overflow: hidden; background: #0d0d0f; }
+        body.sonoai-fullscreen { display: flex; flex-direction: column; }
+        #sonoai-app { height: 100vh !important; height: 100dvh !important; border-radius: 0 !important; border: none !important; }
+    <?php else : ?>
+        html, body { overflow-y: auto; overflow-x: hidden; }
+    <?php endif; ?>
 </style>
 </head>
-<body class="sonoai-fullscreen">
+<body class="<?php echo $has_chat ? 'sonoai-fullscreen' : 'sonoai-landing-fullscreen'; ?>">
 <?php
             // Run the shortcode manually.
-            echo do_shortcode( '[sonoai_chat]' );
+            if ( $has_chat ) {
+                echo do_shortcode( '[sonoai_chat]' );
+            } else {
+                echo do_shortcode( '[sonoai_landing]' );
+            }
             wp_footer();
 ?>
 </body>
@@ -184,6 +210,21 @@ class Shortcode {
             'sonoai-chat',
             SONOAI_URL . 'assets/js/chat.js',
             [],
+            SONOAI_VERSION,
+            true   // Load in footer.
+        );
+
+        wp_register_style(
+            'sonoai-landing',
+            SONOAI_URL . 'assets/css/landing.css',
+            [],
+            SONOAI_VERSION
+        );
+
+        wp_register_script(
+            'sonoai-landing',
+            SONOAI_URL . 'assets/js/landing.js',
+            [ 'jquery' ],
             SONOAI_VERSION,
             true   // Load in footer.
         );
@@ -224,6 +265,23 @@ class Shortcode {
 
         ob_start();
         include SONOAI_DIR . 'templates/chat.php';
+        return ob_get_clean();
+    }
+
+    public function render_landing( array $atts = [] ): string {
+        wp_enqueue_style( 'sonoai-landing' );
+        wp_enqueue_script( 'sonoai-landing' );
+
+        // Localize vars for the landing sandbox.
+        wp_localize_script( 'sonoai-landing', 'sonoai_landing_vars', [
+            'rest_url'     => esc_url( rest_url( 'sonoai/v1/' ) ),
+            'nonce'        => wp_create_nonce( 'wp_rest' ),
+            'is_logged_in' => is_user_logged_in(),
+            'login_url'    => wp_login_url( get_permalink() ),
+        ] );
+
+        ob_start();
+        include SONOAI_DIR . 'templates/landing.php';
         return ob_get_clean();
     }
 

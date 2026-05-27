@@ -37,12 +37,14 @@
         initTxtTab();
         initGlobalFilters();
         initDeleteButtons();
+        initActionsDropdown();
         initViewModal();
         initTopicsTab();
         initRedisSync();
         initReindexAll();
         initSelectiveActions();
         initApiConfig(); // Unified API & Provider logic
+        initMultiselectDropdowns();
 
         // Inline Source Expansion for mobile
         document.body.addEventListener('click', function(e) {
@@ -101,7 +103,11 @@
             
             // Overrides
             fd.append('mode', document.getElementById('kb-jsonl-mode').value);
-            fd.append('topic_id', document.getElementById('kb-jsonl-topic').value);
+            var selectedJsonlTopics = [];
+            $('#kb-jsonl-topic-dropdown input[type="checkbox"]:checked').each(function() {
+                selectedJsonlTopics.push($(this).val());
+            });
+            fd.append('topic_id', selectedJsonlTopics.join(','));
 
             $.ajax({
                 url: ajax,
@@ -488,22 +494,33 @@
                 var badgeHtml = '';
                 var btnsHtml = '';
 
-                if (p.kb_status === 'added') {
-                    badgeHtml = '<span class="kb-badge-added">Added</span>';
-                    btnsHtml  = '<button type="button" class="kb-add-btn kb-quick-edit-btn" data-post-id="' + p.id + '" data-mode="' + p.raw_mode + '" data-topic="' + p.topic_id + '">Quick Edit</button>'
-                              + '<button type="button" class="kb-reindex-item-btn" data-knowledge-id="' + p.knowledge_id + '" style="margin-left:4px;background:#eab308;color:white;border:none;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;">🔄 Re-index</button>'
-                              + '<button type="button" class="kb-resync-item-btn" data-knowledge-id="' + p.knowledge_id + '" style="margin-left:4px;background:#22c55e;color:white;border:none;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;">⚡ Re-sync</button>'
-                              + '<button type="button" class="kb-add-btn kb-remove-btn" data-post-id="' + p.id + '">Remove</button>';
-                } else if (p.kb_status === 'update') {
-                    badgeHtml = '<span class="kb-badge-update">Requires Update</span>';
-                    btnsHtml  = '<button type="button" class="kb-add-btn kb-update-btn" data-post-id="' + p.id + '">Update</button>'
-                              + '<button type="button" class="kb-add-btn kb-quick-edit-btn" data-post-id="' + p.id + '" data-mode="' + p.raw_mode + '" data-topic="' + p.topic_id + '">Quick Edit</button>'
-                              + '<button type="button" class="kb-reindex-item-btn" data-knowledge-id="' + p.knowledge_id + '" style="margin-left:4px;background:#eab308;color:white;border:none;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;">🔄 Re-index</button>'
-                              + '<button type="button" class="kb-resync-item-btn" data-knowledge-id="' + p.knowledge_id + '" style="margin-left:4px;background:#22c55e;color:white;border:none;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;">⚡ Re-sync</button>'
-                              + '<button type="button" class="kb-add-btn kb-remove-btn" data-post-id="' + p.id + '">Remove</button>';
+                if (p.kb_status === 'added' || p.kb_status === 'update') {
+                    badgeHtml = p.kb_status === 'added' ? '<span class="kb-badge-added">Added</span>' : '<span class="kb-badge-update">Requires Update</span>';
+                    
+                    var dropdownHtml = '<div class="kb-row-actions-dropdown">'
+                                     + '  <button type="button" class="kb-row-actions-btn" aria-haspopup="true" aria-expanded="false">'
+                                     + '    Actions'
+                                     + '    <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg" class="kb-chevron-icon">'
+                                     + '      <path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>'
+                                     + '    </svg>'
+                                     + '  </button>'
+                                     + '  <div class="kb-row-actions-menu">';
+                    
+                    if (p.kb_status === 'update') {
+                        dropdownHtml += '    <button type="button" class="kb-add-btn kb-update-btn" data-post-id="' + p.id + '">Update</button>';
+                    }
+                    
+                    dropdownHtml += '    <button type="button" class="kb-add-btn kb-quick-edit-btn" data-post-id="' + p.id + '" data-mode="' + p.raw_mode + '" data-topic="' + p.topic_id + '">Quick Edit</button>'
+                                  + '    <button type="button" class="kb-reindex-item-btn" data-knowledge-id="' + p.knowledge_id + '">Re-index</button>'
+                                  + '    <button type="button" class="kb-resync-item-btn" data-knowledge-id="' + p.knowledge_id + '">Re-sync</button>'
+                                  + '    <button type="button" class="kb-add-btn kb-remove-btn kb-delete-danger" data-post-id="' + p.id + '">Remove</button>'
+                                  + '  </div>'
+                                  + '</div>';
+                    
+                    btnsHtml = dropdownHtml;
                 } else {
                     badgeHtml = '<span class="kb-badge-not-added">Not Added</span>';
-                    btnsHtml  = '<button type="button" class="kb-add-btn" data-post-id="' + p.id + '"><span class="kb-btn-text">Add to KB</span><span class="kb-spinner" style="display:none"></span></button>';
+                    btnsHtml  = '<button type="button" class="kb-add-btn kb-btn-primary-sm" data-post-id="' + p.id + '"><span class="kb-btn-text">Add to KB</span><span class="kb-spinner" style="display:none"></span></button>';
                 }
 
                 var itemNoHtml = p.sequence_no ? '<strong>#' + p.sequence_no + '</strong><br><small style="opacity:0.6;font-size:10px;">ID: ' + p.kb_item_id + '</small>' : '—';
@@ -561,17 +578,26 @@
                 btn.addEventListener('click', function () {
                     var pid = this.dataset.postId;
                     var mode = this.dataset.mode;
-                    var topic = this.dataset.topic;
+                    var topics = this.dataset.topic || '';
 
                     var qePid = document.getElementById('qe-post-id');
                     var qeMode = document.getElementById('qe-mode');
-                    var qeTopic = document.getElementById('qe-topic');
                     var modal = document.getElementById('kb-quick-edit-modal');
 
                     if (qePid) qePid.value = pid;
                     if (qeMode) qeMode.value = mode || 'guideline';
-                    if (qeTopic) qeTopic.value = topic || 0;
-                    if (modal) modal.style.display = 'flex';
+
+                    var $dropdown = $('#qe-topics-dropdown');
+                    $dropdown.find('input[type="checkbox"]').prop('checked', false);
+                    if (topics) {
+                        var topicIds = topics.split(',').map(function(t) { return t.trim(); });
+                        topicIds.forEach(function(tid) {
+                            $dropdown.find('input[type="checkbox"][value="' + tid + '"]').prop('checked', true);
+                        });
+                    }
+                    $dropdown.find('input[type="checkbox"]').first().trigger('change');
+
+                    if (modal) openModal(modal);
                 });
             });
 
@@ -653,10 +679,15 @@
             fd.append('security', nonces.addPdf);
             fd.append('pdf_file', fileInp.files[0]);
             
-            ['mode', 'topic_id', 'country', 'source_name', 'source_url'].forEach(function(f) {
-                var el = document.getElementById('kb-pdf-' + f.replace('_id', ''));
-                if (el) fd.append(f === 'topic' ? 'topic_id' : f, el.value);
+            ['mode', 'country', 'source_name', 'source_url'].forEach(function(f) {
+                var el = document.getElementById('kb-pdf-' + f);
+                if (el) fd.append(f, el.value);
             });
+            var pdfTopics = [];
+            $('#kb-pdf-topic-dropdown input[type="checkbox"]:checked').each(function() {
+                pdfTopics.push($(this).val());
+            });
+            fd.append('topic_id', pdfTopics.join(','));
 
             $.ajax({
                 url: ajax,
@@ -710,10 +741,15 @@
                 security: nonces.addUrl, 
                 url: input.value.trim() 
             };
-            ['mode', 'topic_id', 'country', 'source_name', 'source_url'].forEach(function(f) {
-                var el = document.getElementById('kb-url-' + f.replace('_id', ''));
-                if (el) payload[f === 'topic' ? 'topic_id' : f] = el.value;
+            ['mode', 'country', 'source_name', 'source_url'].forEach(function(f) {
+                var el = document.getElementById('kb-url-' + f);
+                if (el) payload[f] = el.value;
             });
+            var urlTopics = [];
+            $('#kb-url-topic-dropdown input[type="checkbox"]:checked').each(function() {
+                urlTopics.push($(this).val());
+            });
+            payload.topic_id = urlTopics.join(',');
 
             $.post(ajax, payload, function (res) {
                 if (res.success) {
@@ -864,7 +900,13 @@
                     content: content,
                     images: JSON.stringify(images),
                     mode: modeSel.value,
-                    topic_id: (document.getElementById('kb-txt-topic') || {}).value,
+                    topic_id: (function() {
+                        var txtTopics = [];
+                        $('#kb-txt-topic-dropdown input[type="checkbox"]:checked').each(function() {
+                            txtTopics.push($(this).val());
+                        });
+                        return txtTopics.join(',');
+                    })(),
                     country: (document.getElementById('kb-txt-country') || {}).value,
                     source_name: (document.getElementById('kb-txt-source-name') || {}).value,
                     source_url:  (document.getElementById('kb-txt-source-url') || {}).value
@@ -905,6 +947,37 @@
             $.post(ajax, { action: 'sonoai_kb_delete_item', security: nonces.deleteItem, knowledge_id: kid }, function(res) {
                 if (res.success) row.fadeOut();
             });
+        });
+    }
+
+    function initActionsDropdown() {
+        // Toggle the dropdown when the Actions button is clicked
+        $(document).on('click', '.kb-row-actions-btn', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            var dropdown = $(this).closest('.kb-row-actions-dropdown');
+            var isOpen = dropdown.hasClass('is-open');
+            
+            // Close all other dropdowns first
+            $('.kb-row-actions-dropdown').not(dropdown).removeClass('is-open').find('.kb-row-actions-btn').attr('aria-expanded', 'false');
+            
+            if (!isOpen) {
+                dropdown.addClass('is-open');
+                $(this).attr('aria-expanded', 'true');
+            }
+        });
+
+        // Close all dropdowns when clicking outside
+        $(document).on('click', function (e) {
+            if (!$(e.target).closest('.kb-row-actions-dropdown').length) {
+                $('.kb-row-actions-dropdown').removeClass('is-open').find('.kb-row-actions-btn').attr('aria-expanded', 'false');
+            }
+        });
+
+        // Close dropdown when a menu item is clicked
+        $(document).on('click', '.kb-row-actions-menu a, .kb-row-actions-menu button', function () {
+            $(this).closest('.kb-row-actions-dropdown').removeClass('is-open').find('.kb-row-actions-btn').attr('aria-expanded', 'false');
         });
     }
 
@@ -1466,6 +1539,118 @@
         } else {
             modal.style.display = 'none';
         }
+    }
+
+    /**
+     * Initialize all premium checkable multi-select dropdowns
+     */
+    function initMultiselectDropdowns() {
+        // Toggle dropdown options visibility on trigger click
+        $(document).on('click', '.kb-multiselect-trigger', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var dropdown = $(this).closest('.kb-multiselect-dropdown');
+            var isOpen = dropdown.hasClass('open');
+            
+            // Close all other multiselect dropdowns
+            $('.kb-multiselect-dropdown').not(dropdown).removeClass('open');
+            
+            if (isOpen) {
+                dropdown.removeClass('open');
+            } else {
+                dropdown.addClass('open');
+            }
+        });
+
+        // Close when clicking outside
+        $(document).on('click', function (e) {
+            if (!$(e.target).closest('.kb-multiselect-dropdown').length) {
+                $('.kb-multiselect-dropdown').removeClass('open');
+            }
+        });
+
+        // Update trigger label dynamically when option checkbox is toggled
+        $(document).on('change', '.kb-multiselect-option input[type="checkbox"]', function () {
+            var dropdown = $(this).closest('.kb-multiselect-dropdown');
+            updateMultiselectLabel(dropdown);
+        });
+
+        // Helper to update label text based on selected values
+        function updateMultiselectLabel(dropdown) {
+            var labelSpan = dropdown.find('.kb-multiselect-label');
+            var checkedCheckboxes = dropdown.find('.kb-multiselect-option input[type="checkbox"]:checked');
+            var isQe = dropdown.attr('id') === 'qe-topics-dropdown';
+            var defaultText = isQe ? '— None —' : '— No Topic —';
+            
+            if (checkedCheckboxes.length === 0) {
+                labelSpan.text(defaultText).removeAttr('title');
+            } else {
+                var selectedNames = [];
+                checkedCheckboxes.each(function () {
+                    selectedNames.push($(this).data('name') || $(this).next('span').text());
+                });
+                var fullLabel = selectedNames.join(', ');
+                labelSpan.attr('title', fullLabel);
+                
+                // Truncate display label if too long
+                if (fullLabel.length > 25) {
+                    labelSpan.text(fullLabel.substring(0, 22) + '...');
+                } else {
+                    labelSpan.text(fullLabel);
+                }
+            }
+        }
+
+        // Initialize display labels for pre-selected options
+        $('.kb-multiselect-dropdown').each(function () {
+            updateMultiselectLabel($(this));
+        });
+
+        // ── Quick Edit Cancel Event ──────────────────────────────────────────
+        $(document).on('click', '#qe-cancel-btn, #qe-close-btn', function() {
+            var modal = document.getElementById('kb-quick-edit-modal');
+            if (modal) closeModal(modal);
+        });
+
+        // ── Quick Edit Save Event ────────────────────────────────────────────
+        $(document).on('click', '#qe-save-btn', function() {
+            var saveBtn = $(this);
+            var pid = $('#qe-post-id').val();
+            var mode = $('#qe-mode').val();
+            
+            var selectedTopics = [];
+            $('#qe-topics-dropdown input[type="checkbox"]:checked').each(function() {
+                selectedTopics.push($(this).val());
+            });
+
+            saveBtn.prop('disabled', true).text('Saving...');
+
+            var payload = {
+                action: 'sonoai_kb_update_meta',
+                security: nonces.updateMeta,
+                post_id: pid,
+                type: 'wp',
+                mode: mode,
+                topic_ids: selectedTopics.join(',')
+            };
+
+            $.post(ajax, payload, function(res) {
+                if (res.success) {
+                    showToast('Quick edit saved successfully!', 'success');
+                    var modal = document.getElementById('kb-quick-edit-modal');
+                    if (modal) closeModal(modal);
+                    
+                    // Reload posts dynamically to display new topic lists
+                    location.reload(); 
+                } else {
+                    alert(res.data.message || 'Error occurred while saving.');
+                }
+            }).fail(function() {
+                alert('Fatal error occurred while saving.');
+            }).always(function() {
+                saveBtn.prop('disabled', false).text('Save Changes');
+            });
+        });
     }
 
 })(jQuery);
