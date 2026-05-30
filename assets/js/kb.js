@@ -103,11 +103,7 @@
             
             // Overrides
             fd.append('mode', document.getElementById('kb-jsonl-mode').value);
-            var selectedJsonlTopics = [];
-            $('#kb-jsonl-topic-dropdown input[type="checkbox"]:checked').each(function() {
-                selectedJsonlTopics.push($(this).val());
-            });
-            fd.append('topic_id', selectedJsonlTopics.join(','));
+
 
             $.ajax({
                 url: ajax,
@@ -683,11 +679,7 @@
                 var el = document.getElementById('kb-pdf-' + f);
                 if (el) fd.append(f, el.value);
             });
-            var pdfTopics = [];
-            $('#kb-pdf-topic-dropdown input[type="checkbox"]:checked').each(function() {
-                pdfTopics.push($(this).val());
-            });
-            fd.append('topic_id', pdfTopics.join(','));
+
 
             $.ajax({
                 url: ajax,
@@ -749,7 +741,7 @@
             $('#kb-url-topic-dropdown input[type="checkbox"]:checked').each(function() {
                 urlTopics.push($(this).val());
             });
-            payload.topic_id = urlTopics.join(',');
+            payload.topic_ids = urlTopics;
 
             $.post(ajax, payload, function (res) {
                 if (res.success) {
@@ -900,12 +892,12 @@
                     content: content,
                     images: JSON.stringify(images),
                     mode: modeSel.value,
-                    topic_id: (function() {
+                    topic_ids: (function() {
                         var txtTopics = [];
                         $('#kb-txt-topic-dropdown input[type="checkbox"]:checked').each(function() {
                             txtTopics.push($(this).val());
                         });
-                        return txtTopics.join(',');
+                        return txtTopics;
                     })(),
                     country: (document.getElementById('kb-txt-country') || {}).value,
                     source_name: (document.getElementById('kb-txt-source-name') || {}).value,
@@ -1631,7 +1623,7 @@
                 post_id: pid,
                 type: 'wp',
                 mode: mode,
-                topic_ids: selectedTopics.join(',')
+                topic_ids: selectedTopics
             };
 
             $.post(ajax, payload, function(res) {
