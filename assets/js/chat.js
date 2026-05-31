@@ -1311,6 +1311,10 @@
                 // Conditional Display Logic
                 var hasName    = name    && name    !== 'undefined' && name    !== 'N/A' && name    !== 'UNKNOWN';
                 var hasCountry = country && country !== 'undefined' && country !== 'UNKNOWN COUNTRY' && country !== 'N/A';
+                
+                if (url === 'https://url.com' || url === 'http://' || url.toLowerCase() === 'none' || url.toLowerCase() === 'n/a' || url === 'null') {
+                    url = '';
+                }
                 var hasUrl     = url     && (url.startsWith('http') || url.startsWith('www'));
 
                 // Rule: If both empty — hide entirely
@@ -1355,8 +1359,12 @@
                 if (parts[0].startsWith('http')) { url = parts[0]; } else { name = parts[0]; }
             }
 
-            var hasName    = name    && name    !== 'undefined';
+            var hasName    = name    && name    !== 'undefined' && name    !== 'NONE' && name    !== 'N/A';
             var hasCountry = country && country !== 'UNKNOWN COUNTRY' && country !== 'N/A';
+            
+            if (url === 'https://url.com' || url === 'http://' || url.toLowerCase() === 'none' || url.toLowerCase() === 'n/a' || url === 'null') {
+                url = '';
+            }
             var hasUrl     = url     && (url.startsWith('http') || url.startsWith('www'));
 
             if (!hasName && !hasUrl) return '';

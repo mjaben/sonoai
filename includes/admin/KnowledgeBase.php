@@ -1216,7 +1216,7 @@ class KnowledgeBase {
                             $is_truncated = ( $short_source !== $full_source );
                             ?>
                             <div class="kb-source-wrap" title="<?php echo esc_attr( $full_source ); ?>">
-                                <?php if ( $item->source_url ) : ?>
+                                <?php if ( $item->source_url && $item->source_url !== 'http://' && $item->source_url !== 'https://url.com' ) : ?>
                                     <a href="<?php echo esc_url( $item->source_url ); ?>" target="_blank" rel="noopener" class="kb-source-short">
                                         <?php echo esc_html( $short_source ); ?><?php if($is_truncated) echo '...'; ?>
                                     </a>
@@ -1254,7 +1254,7 @@ class KnowledgeBase {
                                     </svg>
                                 </button>
                                 <div class="kb-row-actions-menu">
-                                    <?php if ( $has_view && $item->source_url ) : ?>
+                                    <?php if ( $has_view && $item->source_url && $item->source_url !== 'http://' && $item->source_url !== 'https://url.com' ) : ?>
                                         <a href="<?php echo esc_url( $item->source_url ); ?>" target="_blank" rel="noopener"
                                            class="kb-action-link" title="<?php echo esc_attr( $item->source_title ?: $item->source_url ); ?>"><?php echo esc_html( $actions['view'] ); ?></a>
                                     <?php endif; ?>

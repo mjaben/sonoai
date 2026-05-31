@@ -250,15 +250,15 @@ class RAG {
 
         if ( $has_sources ) {
             if ( $mode === 'research' ) {
-                $base_prompt .= "You MUST end your response with exactly ONE :::sources block. Topic names are NOT sources. Only use Source Name and Source URL from the context. Format:\n" .
+                $base_prompt .= "You MUST end your response with exactly ONE :::sources block. Topic names are NOT sources. Only use Source Name and Source URL from the context. If no URL is provided, output exactly NONE for the URL. Format:\n" .
                                 ":::sources\n" .
-                                "Source Name | https://url.com\n" .
+                                "Source Name | URL (or NONE)\n" .
                                 ":::";
             } else {
                 // Guideline mode — include country
-                $base_prompt .= "You MUST end your response with exactly ONE :::sources block. Topic names are NOT sources. Only use Source Name, Country, and Source URL from the context. Format:\n" .
+                $base_prompt .= "You MUST end your response with exactly ONE :::sources block. Topic names are NOT sources. Only use Source Name, Country, and Source URL from the context. If no URL is provided, output exactly NONE for the URL. Format:\n" .
                                 ":::sources\n" .
-                                "Source Name | Country | https://url.com\n" .
+                                "Source Name | Country | URL (or NONE)\n" .
                                 ":::";
             }
         } else {
