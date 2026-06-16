@@ -34,7 +34,7 @@ class KnowledgeBase {
             'sonoai-settings',
             __( 'Knowledge Base – SonoAI', 'sonoai' ),
             __( 'Knowledge Base', 'sonoai' ),
-            'manage_options',
+            'sonoai_manage_kb',
             'sonoai-kb',
             [ $this, 'render' ]
         );
@@ -43,7 +43,7 @@ class KnowledgeBase {
     // ── Assets ────────────────────────────────────────────────────────────────
 
     public function enqueue_assets( string $hook ): void {
-        if ( false === strpos( $hook, 'sonoai-kb' ) && false === strpos( $hook, 'sonoai-topics' ) && false === strpos( $hook, 'sonoai-query-logs' ) && false === strpos( $hook, 'sonoai-feedback' ) ) {
+        if ( false === strpos( $hook, 'sonoai-kb' ) && false === strpos( $hook, 'sonoai-topics' ) && false === strpos( $hook, 'sonoai-query-logs' ) && false === strpos( $hook, 'sonoai-feedback' ) && false === strpos( $hook, 'sonoai-access-control' ) && false === strpos( $hook, 'sonoai-audit-log' ) ) {
             return;
         }
         // Classic editor (TinyMCE) for Custom Text tab.
@@ -132,8 +132,12 @@ class KnowledgeBase {
     // ── Render ────────────────────────────────────────────────────────────────
 
     public function render(): void {
-        if ( ! SecurityHelper::check_admin_caps() ) {
+        if ( ! current_user_can( 'sonoai_manage_kb' ) ) {
             return;
+        }
+
+        if ( class_exists( 'SonoAI\AuditLogger' ) ) {
+            AuditLogger::log( 'view_kb_list', 'User viewed the Knowledge Base admin page.' );
         }
 
         $stats     = self::get_kb_stats();

@@ -35,7 +35,7 @@ class ApiConfig {
             'sonoai-settings',                        // parent slug
             __( 'API Configuration – SonoAI', 'sonoai' ),
             __( 'API Configuration', 'sonoai' ),
-            'manage_options',
+            'sonoai_manage_api',
             'sonoai-api-config',
             [ $this, 'render' ]
         );
@@ -127,8 +127,12 @@ class ApiConfig {
     // ── Render ────────────────────────────────────────────────────────────────
 
     public function render(): void {
-        if ( ! current_user_can( 'manage_options' ) ) {
+        if ( ! current_user_can( 'sonoai_manage_api' ) ) {
             return;
+        }
+
+        if ( class_exists( 'SonoAI\AuditLogger' ) ) {
+            AuditLogger::log( 'view_api_config', 'User viewed the API Configuration page.' );
         }
 
         $opts     = (array) get_option( 'sonoai_settings', [] );

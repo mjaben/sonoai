@@ -19,6 +19,8 @@ class Activator {
     public static function run(): void {
         self::create_tables();
         self::create_upload_dir();
+        self::schedule_cron();
+        self::grant_admin_capabilities();
         flush_rewrite_rules();
     }
 
@@ -26,6 +28,7 @@ class Activator {
      * Fired on plugin deactivation.
      */
     public static function deactivate(): void {
+        self::clear_cron();
         flush_rewrite_rules();
     }
 
@@ -237,6 +240,21 @@ class Activator {
             $wpdb->query( "ALTER TABLE `$feedback_table` ADD COLUMN `user_id` BIGINT UNSIGNED NOT NULL DEFAULT 0 AFTER `id`" );
             $wpdb->query( "ALTER TABLE `$feedback_table` ADD KEY `idx_user_id` (`user_id`)" );
         }
+        
+        // ── Audit Logs table ──────────────────────────────────────────────────
+        $audit_table = $wpdb->prefix . 'sonoai_audit_logs';
+        $sql_audit   = "CREATE TABLE IF NOT EXISTS `$audit_table` (
+            `id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `user_id`      BIGINT UNSIGNED NOT NULL DEFAULT 0,
+            `action`       VARCHAR(100)    NOT NULL,
+            `details`      LONGTEXT                 DEFAULT NULL,
+            `created_at`   DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            KEY `idx_user_id` (`user_id`),
+            KEY `idx_action`  (`action`),
+            KEY `idx_created_at` (`created_at`)
+        ) $charset_collate;";
+        dbDelta( $sql_audit );
     }
 
     /**
@@ -251,6 +269,44 @@ class Activator {
         $htaccess = $dir['path'] . '.htaccess';
         if ( ! file_exists( $htaccess ) ) {
             file_put_contents( $htaccess, "Options -Indexes\n" );
+        }
+    }
+
+    /**
+     * Schedule cron jobs.
+     */
+    public static function schedule_cron(): void {
+        if ( ! wp_next_scheduled( 'sonoai_purge_audit_logs' ) ) {
+            wp_schedule_event( time(), 'daily', 'sonoai_purge_audit_logs' );
+        }
+    }
+
+    /**
+     * Clear cron jobs.
+     */
+    public static function clear_cron(): void {
+        wp_clear_scheduled_hook( 'sonoai_purge_audit_logs' );
+    }
+
+    /**
+     * Grant standard capabilities to the administrator role on activation.
+     */
+    public static function grant_admin_capabilities(): void {
+        $role = get_role( 'administrator' );
+        if ( $role ) {
+            $caps = [
+                'sonoai_access',
+                'sonoai_manage_settings',
+                'sonoai_manage_api',
+                'sonoai_manage_kb',
+                'sonoai_manage_topics',
+                'sonoai_view_feedback',
+                'sonoai_view_logs',
+                'sonoai_manage_access',
+            ];
+            foreach ( $caps as $cap ) {
+                $role->add_cap( $cap );
+            }
         }
     }
 }

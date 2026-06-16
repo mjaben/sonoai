@@ -53,13 +53,33 @@ class KnowledgeBaseAjax {
     // ── Shared helpers ────────────────────────────────────────────────────────
 
     private function check( string $nonce_action ): void {
-        if ( ! SecurityHelper::check_admin_caps() ) {
+        $capability = 'sonoai_manage_kb';
+        if ( strpos( $nonce_action, '_topic' ) !== false ) {
+            $capability = 'sonoai_manage_topics';
+        }
+        
+        if ( ! current_user_can( $capability ) ) {
             sonoai_log_error( sprintf( '[SonoAI KB] Unauthorized access attempt by user %d for action: %s', get_current_user_id(), $nonce_action ) );
             wp_send_json_error( [ 'message' => __( 'Unauthorized.', 'sonoai' ) ], 403 );
         }
         if ( ! check_ajax_referer( $nonce_action, 'security', false ) ) {
             sonoai_log_error( sprintf( '[SonoAI KB] Nonce verification failed for action: %s. User: %d', $nonce_action, get_current_user_id() ) );
             wp_send_json_error( [ 'message' => __( 'Forbidden: Security check failed.', 'sonoai' ) ], 403 );
+        }
+        
+        $log_actions = [
+            'sonoai_kb_add_post', 'sonoai_kb_remove_post', 'sonoai_kb_add_pdf',
+            'sonoai_kb_add_url', 'sonoai_kb_add_jsonl', 'sonoai_kb_add_txt',
+            'sonoai_kb_edit_txt', 'sonoai_kb_delete_item', 'sonoai_kb_add_topic',
+            'sonoai_kb_edit_topic', 'sonoai_kb_delete_topic', 'sonoai_kb_update_meta',
+            'sonoai_kb_sync_topics', 'sonoai_kb_sync_redis', 'sonoai_kb_reindex_all',
+            'sonoai_kb_reindex_items', 'sonoai_kb_resync_items'
+        ];
+        if ( in_array( $nonce_action, $log_actions, true ) && class_exists( 'SonoAI\AuditLogger' ) ) {
+            $details = isset($_REQUEST['post_id']) ? 'ID: ' . sanitize_text_field($_REQUEST['post_id']) : '';
+            if (isset($_REQUEST['name'])) $details .= ' Name: ' . sanitize_text_field($_REQUEST['name']);
+            if (isset($_REQUEST['url'])) $details .= ' URL: ' . esc_url_raw($_REQUEST['url']);
+            AuditLogger::log( $nonce_action, trim($details) );
         }
     }
 

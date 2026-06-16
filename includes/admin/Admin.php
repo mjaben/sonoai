@@ -32,11 +32,19 @@ class Admin {
         add_menu_page(
             __( 'SonoAI', 'sonoai' ),
             __( 'SonoAI', 'sonoai' ),
-            'manage_options',
+            'sonoai_access',
             'sonoai-settings',
             [ $this, 'render_settings_page' ],
             SONOAI_URL . 'assets/images/sonoai-brand-icon.svg',
             58
+        );
+        add_submenu_page(
+            'sonoai-settings',
+            __( 'Settings – SonoAI', 'sonoai' ),
+            __( 'Settings', 'sonoai' ),
+            'sonoai_manage_settings',
+            'sonoai-settings',
+            [ $this, 'render_settings_page' ]
         );
 
         // Sub-menus — add any future sub-menus below this line.
@@ -89,8 +97,12 @@ class Admin {
     }
 
     public function render_settings_page(): void {
-        if ( ! current_user_can( 'manage_options' ) ) {
+        if ( ! current_user_can( 'sonoai_manage_settings' ) ) {
             return;
+        }
+        
+        if ( class_exists( 'SonoAI\AuditLogger' ) ) {
+            AuditLogger::log( 'view_settings', 'User viewed the SonoAI General Settings page.' );
         }
 
         $opts    = get_option( 'sonoai_settings', [] );

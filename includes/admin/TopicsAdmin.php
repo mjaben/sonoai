@@ -34,15 +34,19 @@ class TopicsAdmin {
             'sonoai-settings',
             __( 'Topics – SonoAI', 'sonoai' ),
             __( 'Topics', 'sonoai' ),
-            'manage_options',
+            'sonoai_manage_topics',
             'sonoai-topics',
             [ $this, 'render' ]
         );
     }
 
     public function render( bool $is_tab = false ): void {
-        if ( ! current_user_can( 'manage_options' ) ) {
+        if ( ! current_user_can( 'sonoai_manage_topics' ) ) {
             return;
+        }
+
+        if ( class_exists( 'SonoAI\AuditLogger' ) && ! $is_tab ) {
+            AuditLogger::log( 'view_topics', 'User viewed the Topics Management page.' );
         }
 
         $topics = Topics::get_all();

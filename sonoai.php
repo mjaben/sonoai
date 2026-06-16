@@ -3,7 +3,7 @@
  * Plugin Name: Sono AI
  * Description: Educational AI-powered chat assistant for the ultrasound and sonography niche. Performs RAG over WordPress Knowledge Base.
  * Author:      Sonohive Ltd
- * Version:     1.1.3 Beta
+ * Version:     2.0.0
  * Text Domain: sonoai
  * License:     GPL2 or later
  */
@@ -140,6 +140,7 @@ final class SonoAI {
             'includes/RedisManager.php',
             'includes/SavedResponses.php',
             'includes/api/RestAPI.php',
+            'includes/AuditLogger.php',
             'includes/hooks/ContentHooks.php',
             'includes/admin/Admin.php',
             'includes/admin/ApiConfig.php',
@@ -148,6 +149,8 @@ final class SonoAI {
             'includes/admin/KnowledgeBaseAjax.php',
             'includes/admin/FeedbackAnalytics.php',
             'includes/admin/QueryLogs.php',
+            'includes/admin/AuditLogAdmin.php',
+            'includes/admin/AccessControlAdmin.php',
             'includes/Shortcode.php',
         ];
 
@@ -168,6 +171,7 @@ final class SonoAI {
         add_action( 'plugins_loaded', function () {
             try {
                 // Initialize controllers
+                if ( class_exists( 'SonoAI\AuditLogger' ) ) SonoAI\AuditLogger::init();
                 if ( class_exists( 'SonoAI\RestAPI' ) ) SonoAI\RestAPI::instance();
                 if ( class_exists( 'SonoAI\ContentHooks' ) ) SonoAI\ContentHooks::instance();
                 if ( class_exists( 'SonoAI\Admin' ) ) SonoAI\Admin::instance();
@@ -177,6 +181,8 @@ final class SonoAI {
                 if ( class_exists( 'SonoAI\KnowledgeBaseAjax' ) ) SonoAI\KnowledgeBaseAjax::instance();
                 if ( class_exists( 'SonoAI\FeedbackAnalytics' ) ) SonoAI\FeedbackAnalytics::instance();
                 if ( class_exists( 'SonoAI\QueryLogs' ) ) SonoAI\QueryLogs::instance();
+                if ( class_exists( 'SonoAI\AuditLogAdmin' ) ) SonoAI\AuditLogAdmin::instance();
+                if ( class_exists( 'SonoAI\AccessControlAdmin' ) ) SonoAI\AccessControlAdmin::instance();
                 if ( class_exists( 'SonoAI\Shortcode' ) ) SonoAI\Shortcode::instance();
             } catch ( \Throwable $t ) {
                 sonoai_log_error( 'Runtime Class Load Error: ' . $t->getMessage() );

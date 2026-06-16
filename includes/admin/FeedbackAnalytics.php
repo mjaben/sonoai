@@ -179,7 +179,7 @@ class FeedbackAnalytics {
             'sonoai-settings',
             __( 'Feedback Analytics', 'sonoai' ),
             __( 'Feedback Analytics', 'sonoai' ),
-            'manage_options',
+            'sonoai_view_feedback',
             'sonoai-feedback',
             [ $this, 'render_page' ]
         );
@@ -202,8 +202,12 @@ class FeedbackAnalytics {
     }
 
     public function render_page(): void {
-        if ( ! SecurityHelper::check_admin_caps() ) {
+        if ( ! current_user_can( 'sonoai_view_feedback' ) ) {
             return;
+        }
+
+        if ( class_exists( 'SonoAI\AuditLogger' ) ) {
+            AuditLogger::log( 'view_feedback_analytics', 'User viewed the Feedback Analytics page.' );
         }
 
         $stats = self::get_stats();
