@@ -112,6 +112,11 @@ class Activator {
             `provider`        VARCHAR(20)     NOT NULL DEFAULT 'openai',
             `embedding_model` VARCHAR(100)             DEFAULT NULL,
             `chunk_count`     INT             NOT NULL DEFAULT 0,
+            `rlhf_reviewed_by_id` BIGINT UNSIGNED      DEFAULT NULL,
+            `rlhf_status`     VARCHAR(50)     NOT NULL DEFAULT 'Not Started',
+            `rlhf_last_tested_at` DATETIME             DEFAULT NULL,
+            `rlhf_reviewer_notes` TEXT                 DEFAULT NULL,
+            `rlhf_fail_reason` VARCHAR(100)            DEFAULT NULL,
             `created_at`      DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (`id`),
             UNIQUE KEY `uniq_knowledge_id` (`knowledge_id`),
@@ -131,6 +136,16 @@ class Activator {
         }
         if ( ! empty( $kb_cols ) && ! in_array( 'country', $kb_cols, true ) ) {
             $wpdb->query( "ALTER TABLE `$kb_items_table` ADD COLUMN `country` VARCHAR(100) DEFAULT NULL AFTER `topic_id`" );
+        }
+
+        // Add RLHF columns if missing
+        if ( ! empty( $kb_cols ) && ! in_array( 'rlhf_status', $kb_cols, true ) ) {
+            $wpdb->query( "ALTER TABLE `$kb_items_table` ADD COLUMN `rlhf_reviewed_by_id` BIGINT UNSIGNED DEFAULT NULL" );
+            $wpdb->query( "ALTER TABLE `$kb_items_table` ADD COLUMN `rlhf_status` VARCHAR(50) NOT NULL DEFAULT 'Not Started'" );
+            $wpdb->query( "ALTER TABLE `$kb_items_table` ADD COLUMN `rlhf_last_tested_at` DATETIME DEFAULT NULL" );
+            $wpdb->query( "ALTER TABLE `$kb_items_table` ADD COLUMN `rlhf_reviewer_notes` TEXT DEFAULT NULL" );
+            $wpdb->query( "ALTER TABLE `$kb_items_table` ADD COLUMN `rlhf_fail_reason` VARCHAR(100) DEFAULT NULL" );
+            $wpdb->query( "ALTER TABLE `$kb_items_table` ADD KEY `idx_rlhf_status` (`rlhf_status`)" );
         }
 
         // Upgrade topic_id in kb_items_table to VARCHAR(255) to support multi-topic comma-separated lists
@@ -303,6 +318,7 @@ class Activator {
                 'sonoai_view_feedback',
                 'sonoai_view_logs',
                 'sonoai_manage_access',
+                'sonoai_manage_rlhf',
             ];
             foreach ( $caps as $cap ) {
                 $role->add_cap( $cap );

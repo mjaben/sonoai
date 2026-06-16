@@ -147,6 +147,7 @@ class AccessControlAdmin {
             'sonoai_manage_topics',
             'sonoai_view_feedback',
             'sonoai_view_logs',
+            'sonoai_manage_rlhf',
         ];
 
         $assigned = $_POST['caps'] ?? [];
@@ -198,6 +199,7 @@ class AccessControlAdmin {
             'sonoai_manage_topics',
             'sonoai_view_feedback',
             'sonoai_view_logs',
+            'sonoai_manage_rlhf',
             'sonoai_access'
         ];
 
@@ -234,6 +236,7 @@ class AccessControlAdmin {
             'sonoai_manage_topics' => __( 'Manage Topics', 'sonoai' ),
             'sonoai_view_feedback' => __( 'View Feedback Analytics', 'sonoai' ),
             'sonoai_view_logs'     => __( 'View & Clear Query Logs', 'sonoai' ),
+            'sonoai_manage_rlhf'   => __( 'Manage RLHF QA', 'sonoai' ),
         ];
 
         // Find users who have at least sonoai_access

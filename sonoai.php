@@ -151,6 +151,8 @@ final class SonoAI {
             'includes/admin/QueryLogs.php',
             'includes/admin/AuditLogAdmin.php',
             'includes/admin/AccessControlAdmin.php',
+            'includes/admin/RLHFDashboard.php',
+            'includes/admin/RLHFAjax.php',
             'includes/Shortcode.php',
         ];
 
@@ -183,6 +185,8 @@ final class SonoAI {
                 if ( class_exists( 'SonoAI\QueryLogs' ) ) SonoAI\QueryLogs::instance();
                 if ( class_exists( 'SonoAI\AuditLogAdmin' ) ) SonoAI\AuditLogAdmin::instance();
                 if ( class_exists( 'SonoAI\AccessControlAdmin' ) ) SonoAI\AccessControlAdmin::instance();
+                if ( class_exists( 'SonoAI\RLHFDashboard' ) ) SonoAI\RLHFDashboard::instance();
+                if ( class_exists( 'SonoAI\RLHFAjax' ) ) SonoAI\RLHFAjax::instance();
                 if ( class_exists( 'SonoAI\Shortcode' ) ) SonoAI\Shortcode::instance();
             } catch ( \Throwable $t ) {
                 sonoai_log_error( 'Runtime Class Load Error: ' . $t->getMessage() );
