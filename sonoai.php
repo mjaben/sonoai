@@ -29,7 +29,7 @@ function sonoai_log_error( $message ) {
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-define( 'SONOAI_VERSION',  '1.1.3' );
+define( 'SONOAI_VERSION',  '2.0.0' );
 define( 'SONOAI_DIR',      plugin_dir_path( __FILE__ ) );
 define( 'SONOAI_URL',      plugin_dir_url( __FILE__ ) );
 define( 'SONOAI_BASENAME', plugin_basename( __FILE__ ) );
