@@ -42,6 +42,7 @@ class QueryLogs {
         }
 
         if ( isset( $_POST['action'] ) ) {
+            check_admin_referer( 'sonoai_query_logs_action' );
             global $wpdb;
             $table = $wpdb->prefix . 'sonoai_query_logs';
 
@@ -117,6 +118,7 @@ class QueryLogs {
             <!-- Panel Wrap -->
             <div class="kb-panel-wrap" style="border-radius: 12px; margin-top: 30px;">
                 <form method="post" id="query-logs-form">
+                    <?php wp_nonce_field( 'sonoai_query_logs_action' ); ?>
                     
                     <div class="kb-list-bar">
                         <div class="kb-bulk">
