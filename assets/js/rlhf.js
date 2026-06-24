@@ -117,13 +117,23 @@
                 if (item.rlhf_status === 'Passed') passedCount++;
                 else pendingCount++;
                 
+                // Get the first line of the raw content for the title
+                let displayTitle = item.source_title || 'Untitled Item';
+                if (item.raw_content) {
+                    const firstLine = item.raw_content.split('\n').find(line => line.trim().length > 0);
+                    if (firstLine) {
+                        // Truncate to a reasonable length in case the first paragraph is extremely long
+                        displayTitle = firstLine.length > 100 ? firstLine.substring(0, 100) + '...' : firstLine;
+                    }
+                }
+                
                 const html = `
                     <div class="rlhf-task-item" data-id="${item.id}" data-index="${index}" id="task-item-${item.id}">
                         <div class="rlhf-task-meta">
                             <span>[${item.type.toUpperCase()}] ID: ${item.id}</span>
                             <span style="color: ${statusColor}; font-weight: 500;">${item.rlhf_status}</span>
                         </div>
-                        <div class="rlhf-task-title">${item.source_title || 'Untitled Item'}</div>
+                        <div class="rlhf-task-title">${displayTitle}</div>
                     </div>
                 `;
                 this.$taskList.append(html);
