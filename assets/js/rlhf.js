@@ -31,6 +31,7 @@
             
             // Workspace
             this.$contentViewer = $('#rlhf-content-viewer');
+            this.$copyTruthBtn = $('#rlhf-copy-truth');
             this.$metaBadges = $('#rlhf-meta-badges');
             this.$chatHistory = $('#rlhf-chat-history');
             this.$chatInput = $('#rlhf-chat-input');
@@ -72,6 +73,22 @@
             });
             
             this.$submitBtn.on('click', () => this.submitGrade());
+            
+            this.$copyTruthBtn.on('click', () => {
+                const text = this.$contentViewer.text();
+                if (text) {
+                    navigator.clipboard.writeText(text).then(() => {
+                        const originalHtml = this.$copyTruthBtn.html();
+                        this.$copyTruthBtn.html('✅ Copied!').css('color', '#10b981');
+                        setTimeout(() => {
+                            this.$copyTruthBtn.html(originalHtml).css('color', '');
+                        }, 2000);
+                    }).catch(err => {
+                        console.error('Could not copy text: ', err);
+                        alert('Failed to copy text to clipboard.');
+                    });
+                }
+            });
         },
         
         fetchItems: function() {

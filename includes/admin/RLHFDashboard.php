@@ -140,7 +140,10 @@ class RLHFDashboard {
                         
                         <!-- 1. Ground Truth Reference -->
                         <div class="rlhf-block rlhf-ground-truth">
-                            <h3>🔍 <?php esc_html_e( 'Ground Truth Reference', 'sonoai' ); ?></h3>
+                            <div class="rlhf-block-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <h3 style="margin: 0;">🔍 <?php esc_html_e( 'Ground Truth Reference', 'sonoai' ); ?></h3>
+                                <button type="button" id="rlhf-copy-truth" class="rlhf-btn-icon" title="Copy Ground Truth" style="font-size: 12px; padding: 4px 8px; border-radius: 4px; background: #f3f4f6; border: 1px solid #e5e7eb; cursor: pointer;">📋 Copy</button>
+                            </div>
                             <div class="rlhf-meta-badges" id="rlhf-meta-badges"></div>
                             <div class="rlhf-content-viewer" id="rlhf-content-viewer"></div>
                         </div>
