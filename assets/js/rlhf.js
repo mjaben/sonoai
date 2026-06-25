@@ -89,6 +89,7 @@
                 success: (response) => {
                     if (response.success) {
                         this.items = response.data.items;
+                        this.stats = response.data.stats;
                         this.renderList();
                     } else {
                         this.$taskList.html(`<div class="rlhf-loading">Error: ${response.data}</div>`);
@@ -102,20 +103,19 @@
         
         renderList: function() {
             this.$taskList.empty();
-            let pendingCount = 0;
-            let passedCount = 0;
             
             if (this.items.length === 0) {
                 this.$taskList.html('<div class="rlhf-loading">No tasks found for these filters. 🎉</div>');
-                this.updateStats(0, 0);
+                if (this.stats) {
+                    this.updateStats(this.stats.pending, this.stats.passed);
+                } else {
+                    this.updateStats(0, 0);
+                }
                 return;
             }
             
             this.items.forEach((item, index) => {
                 const statusColor = item.rlhf_status === 'Passed' ? '#10b981' : (item.rlhf_status === 'Needs Re-training' ? '#ef4444' : '#6b7280');
-                
-                if (item.rlhf_status === 'Passed') passedCount++;
-                else pendingCount++;
                 
                 // Get the first line of the raw content for the title
                 let displayTitle = item.source_title || 'Untitled Item';
@@ -139,7 +139,9 @@
                 this.$taskList.append(html);
             });
             
-            this.updateStats(pendingCount, passedCount);
+            if (this.stats) {
+                this.updateStats(this.stats.pending, this.stats.passed);
+            }
         },
         
         updateStats: function(pending, passed) {

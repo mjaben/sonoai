@@ -62,8 +62,39 @@ class RLHFAjax {
 
         $items = $wpdb->get_results( $query, ARRAY_A );
 
+        // Get accurate total stats, applying only the type filter (not the status filter or limit)
+        $count_where = "1=1";
+        $count_params = [];
+        if ( $type !== 'all' ) {
+            $count_where .= " AND `type` = %s";
+            $count_params[] = $type;
+        }
+
+        $count_query = "SELECT rlhf_status, COUNT(*) as count FROM `$table` WHERE $count_where GROUP BY rlhf_status";
+        if ( ! empty( $count_params ) ) {
+            $count_query = $wpdb->prepare( $count_query, ...$count_params );
+        }
+        $stats_results = $wpdb->get_results( $count_query, ARRAY_A );
+
+        $total_pending = 0;
+        $total_passed = 0;
+
+        if ( $stats_results ) {
+            foreach ( $stats_results as $row ) {
+                if ( $row['rlhf_status'] === 'Passed' ) {
+                    $total_passed += (int) $row['count'];
+                } else {
+                    $total_pending += (int) $row['count'];
+                }
+            }
+        }
+
         wp_send_json_success( [
-            'items' => $items ?: []
+            'items' => $items ?: [],
+            'stats' => [
+                'pending' => $total_pending,
+                'passed'  => $total_passed
+            ]
         ] );
     }
 
