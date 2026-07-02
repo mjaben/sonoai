@@ -262,26 +262,26 @@ class RedisManager {
 
     /**
      * Perform a fast similarity search across cached vectors in Redis.
-     * Note: This uses a simple brute-force loop for small-to-medium sets.
-     * For large scale, we would use RediSearch FT.SEARCH.
+     * Combines Vector Range (native filtering) with a Hard Limit.
      */
-    public function search_vectors( array $query_vector, string $mode, float $min_sim = 0.70, int $limit = 5 ): array {
+    public function search_vectors( array $query_vector, string $mode, float $min_sim = 0.70, int $limit = 10 ): array {
         try {
             $client = $this->get_client();
             if ( ! $client ) return [];
 
             $binary_query = pack( 'f*', ...$query_vector );
+            $max_dist     = 1.0 - $min_sim; // Convert similarity to distance for Redis
             
-            // RediSearch KNN Query: Filter by mode TAG, then perform Vector Search
-            // Query format: "@mode:{guideline} => [KNN $limit @v $binary_query AS score]"
-            $query = sprintf( '@mode:{%s} => [KNN %d @v $v_blob AS score]', $mode, $limit );
+            // RediSearch Vector Range Query: Filter by mode and radius, then sort and limit
+            $query = sprintf( '@mode:{%s} @v:[VECTOR_RANGE $radius $v_blob]=>{$YIELD_DISTANCE_AS: score}', $mode );
             
             $response = $client->executeRaw([
                 'FT.SEARCH', 'idx:sonoai_vss',
                 $query,
-                'PARAMS', '2', 'v_blob', $binary_query,
-                'DIALECT', '2',
-                'LIMIT', '0', $limit
+                'PARAMS', '4', 'radius', (string) $max_dist, 'v_blob', $binary_query,
+                'SORTBY', 'score', 'ASC',
+                'LIMIT', '0', $limit,
+                'DIALECT', '2'
             ]);
 
             if ( empty( $response ) || ! is_array( $response ) || $response[0] === 0 ) {
@@ -292,6 +292,7 @@ class RedisManager {
             
             // FT.SEARCH returns [count, key1, [fields...], key2, [fields...]]
             for ( $i = 1; $i < count( $response ); $i += 2 ) {
+                if ( ! isset( $response[ $i + 1 ] ) || ! is_array( $response[ $i + 1 ] ) ) continue;
                 $fields = $response[ $i + 1 ];
                 $item = [];
                 for ( $j = 0; $j < count( $fields ); $j += 2 ) {
@@ -300,8 +301,10 @@ class RedisManager {
 
                 if ( ! empty( $item['m'] ) ) {
                     $meta = json_decode( $item['m'], true );
-                    $score = 1 - (float) ( $item['score'] ?? 0 ); // Convert distance to similarity
+                    $score = 1 - (float) ( $item['score'] ?? 0 ); // Convert distance back to similarity
                     
+                    // We technically don't need this check anymore as Redis filtered it, 
+                    // but we keep it for precision safety and to add the similarity key.
                     if ( $score >= $min_sim ) {
                         $results[] = array_merge( $meta, [ 'similarity' => $score ] );
                     }
